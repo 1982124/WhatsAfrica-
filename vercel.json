@@ -1,12 +1,15 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/app-v5.html" },
-    { "source": "/:slug", "destination": "/app-v5.html" }
+    { "source": "/", "destination": "/app-v6.html" },
+    { "source": "/:slug", "destination": "/app-v6.html" }
   ],
   "headers": [
     {
-      "source": "/app-v5.html",
+      "source": "/app-v6.html",
       "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), payment=()" },
         { "key": "Cache-Control", "value": "no-store, max-age=0, must-revalidate" }
       ]
     },
