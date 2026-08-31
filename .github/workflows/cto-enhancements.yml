@@ -1,0 +1,40 @@
+name: WhatsAfrica CTO Enhancements
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install enhancement layer
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('app-v5.html')
+          text = p.read_text(encoding='utf-8')
+          marker = '<!-- WHATS_AFRICA_CTO_LAYER_V2 -->'
+          if marker in text:
+              print('CTO layer already installed')
+              raise SystemExit(0)
+          if '</body>' not in text:
+              raise SystemExit('app-v5.html has no closing body tag')
+          layer = marker + '\n<script src="/cto-enhancements.js"></script>\n'
+          p.write_text(text.replace('</body>', layer + '</body>', 1), encoding='utf-8')
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- app-v5.html; then
+            echo 'No changes needed.'
+            exit 0
+          fi
+          git config user.name 'whatsafrica-cto-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app-v5.html
+          git commit -m 'feat: install WhatsAfrica CTO enhancement layer'
+          git push
