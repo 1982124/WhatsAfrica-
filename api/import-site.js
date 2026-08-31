@@ -1,28 +1,12 @@
-const MAX_HTML = 800000;
-const clean = (v, n=500) => String(v || '').replace(/\s+/g,' ').trim().slice(0,n);
-const abs = (u, base) => { try { return new URL(u, base).toString(); } catch { return ''; } };
-function meta(html, key) {
-  const re = new RegExp(`<meta[^>]+(?:property|name)=["']${key.replace(':','\\:')}["'][^>]+content=["']([^"']+)["'][^>]*>`, 'i');
-  const m = html.match(re); return m ? clean(m[1],1000) : '';
-}
-function textBetween(s){ return clean(s.replace(/<[^>]+>/g,' '),300); }
-function parseJsonLd(html, base) {
-  const out=[]; const blocks=[...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
-  for(const b of blocks){ try { const data=JSON.parse(b[1]); const arr=Array.isArray(data)?data:(data['@graph']||[data]); for(const x of arr){ const t=String(x?.['@type']||'').toLowerCase(); if(!t.includes('product')) continue; const offers=Array.isArray(x.offers)?x.offers[0]:x.offers; const image=Array.isArray(x.image)?x.image[0]:x.image; out.push({title:clean(x.name,160),description:clean(x.description,400),price:clean(offers?.price,40),currency:clean(offers?.priceCurrency,12)||'FCFA',image_url:abs(image,base),source_url:base,kind:'produit'}); } } catch {} }
-  return out;
-}
-module.exports=async function handler(req,res){
-  res.setHeader('Content-Type','application/json; charset=utf-8'); res.setHeader('Cache-Control','no-store');
-  if(req.method!=='POST') return res.status(405).json({error:'Méthode non autorisée.'});
-  try {
-    const url=String(req.body?.url||'').trim(); if(!/^https?:\/\//i.test(url)) return res.status(400).json({error:'Entrez une URL complète commençant par https://'});
-    const target=new URL(url); if(!['http:','https:'].includes(target.protocol)) throw new Error('URL non valide');
-    const r=await fetch(target.toString(),{redirect:'follow',headers:{'User-Agent':'WhatsAfricaCatalogBot/1.0'}}); if(!r.ok) return res.status(502).json({error:`Le site a répondu avec le statut ${r.status}.`});
-    const html=(await r.text()).slice(0,MAX_HTML); const finalUrl=r.url||target.toString();
-    const products=parseJsonLd(html,finalUrl).slice(0,30);
-    const pageTitle=meta(html,'og:title')||meta(html,'twitter:title')||textBetween((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)||[])[1]||'');
-    const pageDescription=meta(html,'og:description')||meta(html,'description'); const pageImage=abs(meta(html,'og:image')||meta(html,'twitter:image'),finalUrl);
-    if(!products.length && pageTitle) products.push({title:pageTitle,description:pageDescription,price:'',currency:'FCFA',image_url:pageImage,source_url:finalUrl,kind:'service'});
-    return res.status(200).json({source_url:finalUrl,site:{title:pageTitle,description:pageDescription,image_url:pageImage},products});
-  } catch(e){ console.error('import-site',e); return res.status(500).json({error:'Impossible de lire ce site. Vérifiez le lien et réessayez.'}); }
-};
+const {URL}=require('url');
+const dns=require('dns').promises;
+const MAX_HTML=1000000;
+const clean=(v,n)=>typeof v==='string'?v.replace(/[\u0000-\u001F\u007F]/g,'').slice(0,n).trim():'';
+const norm=s=>clean(s,300).toLowerCase().replace(/\s+/g,' ');
+function privateIp(ip){return /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|fc|fd|fe80)/i.test(ip)}
+async function safeUrl(raw){const u=new URL(raw);if(!['http:','https:'].includes(u.protocol))throw new Error('Le lien doit commencer par http:// ou https://');if(u.hostname==='localhost'||privateIp(u.hostname))throw new Error('Adresse de site non autorisée.');const addrs=await dns.lookup(u.hostname,{all:true});if(addrs.some(a=>privateIp(a.address)))throw new Error('Adresse réseau privée refusée.');return u}
+const absolute=(v,b)=>{try{return new URL(v,b).toString()}catch{return ''}};
+function strip(s){return clean(String(s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' '),700)}
+function jsonLd(html,base){const out=[],re=/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;let m;while((m=re.exec(html))){try{const d=JSON.parse(m[1]),nodes=Array.isArray(d)?d:(d['@graph']||[d]);for(const x of nodes){const t=x?.['@type'];if(t==='Product'||(Array.isArray(t)&&t.includes('Product'))){const o=Array.isArray(x.offers)?x.offers[0]:x.offers;out.push({title:strip(x.name),description:strip(x.description),price:clean(o?.price,50),currency:clean(o?.priceCurrency,20)||'FCFA',image_url:absolute(Array.isArray(x.image)?x.image[0]:x.image,base),kind:'produit'})}}}catch{}}return out}
+function meta(html,base){const tags=html.match(/<meta[^>]+>/gi)||[],m={};for(const t of tags){const n=(t.match(/(?:property|name)=["']([^"']+)["']/i)||[])[1],c=(t.match(/content=["']([^"']*)["']/i)||[])[1];if(n&&c)m[n.toLowerCase()]=c}return m['og:title']?[{title:strip(m['og:title']),description:strip(m['og:description']),price:'',currency:'FCFA',image_url:absolute(m['og:image'],base),kind:'produit'}]:[]}
+module.exports=async function(req,res){res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');if(req.method!=='POST')return res.status(405).json({error:'Méthode non autorisée.'});try{const raw=clean(req.body?.url,1000);if(!raw)return res.status(400).json({error:'Le lien du site est requis.'});const u=await safeUrl(raw);const r=await fetch(u,{redirect:'follow',headers:{'User-Agent':'WhatsAfricaCatalogBot/1.0'}});if(!r.ok)return res.status(502).json({error:`Le site a répondu avec le statut ${r.status}.`});if(!(r.headers.get('content-type')||'').includes('text/html'))return res.status(415).json({error:'Cette page ne contient pas de catalogue HTML exploitable.'});const html=(await r.text()).slice(0,MAX_HTML);let products=jsonLd(html,u.toString());if(!products.length)products=meta(html,u.toString());const seen=new Set();products=products.filter(p=>p.title&&!seen.has(norm(p.title))&&seen.add(norm(p.title))).slice(0,30);return res.status(200).json({source_url:u.toString(),products})}catch(e){console.error('import-site',e);return res.status(400).json({error:e.message||'Import impossible.'})}};
