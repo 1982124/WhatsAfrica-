@@ -4,6 +4,9 @@
     { "source": "/admin", "destination": "/cockpit.html" },
     { "source": "/dashboard", "destination": "/cockpit.html" },
     { "source": "/crm", "destination": "/crm.html" },
+    { "source": "/live", "destination": "/live.html" },
+    { "source": "/live/:id", "destination": "/live.html" },
+    { "source": "/groups", "destination": "/groups.html" },
     { "source": "/:slug", "destination": "/public.html" }
   ],
   "headers": [
