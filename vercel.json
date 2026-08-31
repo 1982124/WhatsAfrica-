@@ -3,6 +3,7 @@
     { "source": "/", "destination": "/launch.html" },
     { "source": "/admin", "destination": "/cockpit.html" },
     { "source": "/dashboard", "destination": "/cockpit.html" },
+    { "source": "/crm", "destination": "/crm.html" },
     { "source": "/:slug", "destination": "/public.html" }
   ],
   "headers": [
