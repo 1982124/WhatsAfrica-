@@ -1,0 +1,99 @@
+name: WhatsAfrica UX Enhancements
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  enhance:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply enhancement layer once
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('app-v5.html')
+          text = p.read_text(encoding='utf-8')
+          marker = '<!-- WHATS_AFRICA_CTO_ENHANCEMENTS_V1 -->'
+          if marker in text:
+              print('Enhancement layer already installed.')
+              raise SystemExit(0)
+
+          enhancement = r'''<!-- WHATS_AFRICA_CTO_ENHANCEMENTS_V1 -->
+<style>
+/* CTO polish: denser rhythm, stronger commerce hierarchy, mobile-first touch targets */
+:root{--wa-radius:18px}
+.section{padding:24px 0}.panel,.tile{padding:16px;border-radius:var(--wa-radius)}
+.hero{padding:58px 0 32px}.hero p{margin-bottom:10px}.actions{margin-top:14px}
+.product{border-radius:var(--wa-radius)}.product img{height:205px}.product-body{padding:13px}
+.wa-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.wa-search{flex:1;min-width:190px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:11px 14px;outline:none}
+.wa-search:focus{border-color:#ffffff35;box-shadow:0 0 0 3px #ffffff08}
+.wa-chip{border:1px solid var(--line);background:#ffffff08;color:var(--muted);border-radius:999px;padding:8px 11px;font-size:12px;cursor:pointer}
+.wa-chip.on{background:var(--accent);color:#17120a;border-color:transparent;font-weight:800}
+.wa-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.wa-mini{font-size:12px;padding:8px 10px;border-radius:10px}
+.wa-featured{outline:1px solid #f2b84b55;box-shadow:0 12px 40px #f2b84b10}.wa-featured::before{content:'À LA UNE';display:block;position:absolute;z-index:2;margin:9px;background:var(--accent);color:#17120a;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:900;letter-spacing:.8px}
+.product{position:relative}
+.wa-empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px;display:none}
+.wa-sticky-cta{position:fixed;right:16px;bottom:16px;z-index:70;border:0;border-radius:999px;padding:12px 15px;background:var(--accent);color:#17120a;font-weight:850;box-shadow:0 12px 35px #0007;display:none}
+@media(max-width:760px){.hero{padding:42px 0 24px}.product img{height:180px}.wa-sticky-cta{right:12px;bottom:12px}.screen{padding-bottom:82px}}
+</style>
+<script>
+(function(){
+  'use strict';
+  const WA={
+    compactText(v){return String(v||'').replace(/\s+/g,' ').trim()},
+    copy(text){if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(text);const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();return Promise.resolve()},
+    share(url,title){if(navigator.share)return navigator.share({title:title||'WhatsAfrica',url}).catch(()=>{});return this.copy(url).then(()=>window.toast&&toast('Lien copié.'))},
+    publicMode(){return document.getElementById('public')&&document.getElementById('public').style.display!=='none'},
+    enhancePublic(){
+      const root=document.getElementById('public');if(!root)return;
+      const cards=[...root.querySelectorAll('.product')];
+      if(!cards.length)return;
+      if(root.querySelector('.wa-toolbar'))return;
+      const toolbar=document.createElement('div');toolbar.className='wa-toolbar';
+      toolbar.innerHTML='<input class="wa-search" aria-label="Rechercher un produit ou service" placeholder="Rechercher un produit ou service…"><button class="wa-chip on" data-wa-filter="all">Tout</button><button class="wa-chip" data-wa-filter="physical">Produits</button><button class="wa-chip" data-wa-filter="digital">Numérique</button><button class="wa-chip" data-wa-filter="service">Services</button>';
+      const firstSection=root.querySelector('.section')||root.firstElementChild; if(firstSection)firstSection.parentNode.insertBefore(toolbar,firstSection);
+      const empty=document.createElement('div');empty.className='wa-empty';empty.textContent='Aucun résultat. Essayez un autre mot-clé.';root.appendChild(empty);
+      const run=()=>{const q=toolbar.querySelector('input').value.toLowerCase().trim();const filter=toolbar.querySelector('.wa-chip.on')?.dataset.waFilter||'all';let shown=0;cards.forEach((c,i)=>{const text=c.innerText.toLowerCase();const type=c.querySelector('.badge')?.innerText.toLowerCase()||'';const typeOk=filter==='all'||(filter==='digital'&&type.includes('numérique'))||(filter==='service'&&type.includes('service'))||(filter==='physical'&&type.includes('physique'));const ok=typeOk&&(!q||text.includes(q));c.style.display=ok?'':'none';if(ok)shown++;c.classList.toggle('wa-featured',i===0&&!q&&filter==='all')});empty.style.display=shown?'none':'block'};
+      toolbar.querySelector('input').addEventListener('input',run);toolbar.querySelectorAll('.wa-chip').forEach(b=>b.addEventListener('click',()=>{toolbar.querySelectorAll('.wa-chip').forEach(x=>x.classList.remove('on'));b.classList.add('on');run()}));run();
+      const cta=document.createElement('button');cta.className='wa-sticky-cta';cta.textContent='Parler à l’assistant';cta.onclick=()=>{const b=[...root.querySelectorAll('button')].find(x=>/assistant|parler/i.test(x.textContent));if(b)b.click();else location.hash='#assistant'};root.appendChild(cta);cta.style.display='block';
+    },
+    enhanceApp(){
+      const screen=document.getElementById('screen');if(!screen||!document.getElementById('app')?.classList.contains('on'))return;
+      if(screen.querySelector('.wa-dashboard-tools'))return;
+      if(typeof profile==='undefined'||!profile)return;
+      const tools=document.createElement('div');tools.className='wa-dashboard-tools panel';tools.style.marginBottom='13px';
+      const url=location.origin+'/'+encodeURIComponent(profile.smartlink_slug);
+      tools.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><strong>Votre présence WhatsAfrica</strong><div class="muted small" style="margin-top:3px">Partagez votre vitrine en un geste.</div></div><div class="wa-actions"><button class="btn ghost wa-mini" id="waCopyLink">Copier le lien</button><button class="btn primary wa-mini" id="waShareLink">Partager</button></div></div>';
+      screen.prepend(tools);
+      document.getElementById('waCopyLink').onclick=()=>WA.copy(url).then(()=>window.toast&&toast('Lien SmartLink copié.'));
+      document.getElementById('waShareLink').onclick=()=>WA.share(url,'WhatsAfrica — '+profile.display_name);
+    }
+  };
+  const tick=()=>{if(WA.publicMode())WA.enhancePublic();else WA.enhanceApp()};
+  new MutationObserver(tick).observe(document.body,{subtree:true,childList:true});
+  document.addEventListener('DOMContentLoaded',tick);setTimeout(tick,500);setTimeout(tick,1500);
+})();
+</script>'''
+          if '</body>' not in text:
+              raise SystemExit('app-v5.html has no closing body tag')
+          p.write_text(text.replace('</body>', enhancement+'\n</body>', 1), encoding='utf-8')
+      - name: Commit generated enhancement
+        run: |
+          if git diff --quiet -- app-v5.html; then
+            echo 'No generated changes.'
+            exit 0
+          fi
+          git config user.name 'whatsafrica-cto-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app-v5.html
+          git commit -m 'feat: elevate SmartLink commerce discovery and sharing'
+          git push
