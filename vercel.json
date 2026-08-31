@@ -1,11 +1,11 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/app-v2.html" },
-    { "source": "/:slug", "destination": "/app-v2.html" }
+    { "source": "/", "destination": "/app-v3.html" },
+    { "source": "/:slug", "destination": "/app-v3.html" }
   ],
   "headers": [
     {
-      "source": "/app-v2.html",
+      "source": "/app-v3.html",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
