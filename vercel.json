@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/final.html" },
+    { "source": "/", "destination": "/launch.html" },
     { "source": "/:slug", "destination": "/public.html" }
   ],
   "headers": [
