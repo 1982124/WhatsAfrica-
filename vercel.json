@@ -1,13 +1,13 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/app-v6.html" },
-    { "source": "/:slug", "destination": "/app-v6.html" }
+    { "source": "/", "destination": "/app-v2.html" },
+    { "source": "/:slug", "destination": "/app-v2.html" }
   ],
   "headers": [
     {
-      "source": "/app-v6.html",
+      "source": "/app-v2.html",
       "headers": [
-        { "key": "X-WhatsAfrica-Version", "value": "public-v6-2026-08-31-2" },
+        { "key": "X-WhatsAfrica-Version", "value": "public-v2-recovery-2026-08-31" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), payment=()" },
@@ -17,7 +17,7 @@
     {
       "source": "/",
       "headers": [
-        { "key": "X-WhatsAfrica-Version", "value": "public-v6-2026-08-31-2" },
+        { "key": "X-WhatsAfrica-Version", "value": "public-v2-recovery-2026-08-31" },
         { "key": "Cache-Control", "value": "no-store, max-age=0, must-revalidate" }
       ]
     }
