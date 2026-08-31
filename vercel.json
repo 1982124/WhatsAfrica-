@@ -1,15 +1,16 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/app-v3.html" },
-    { "source": "/:slug", "destination": "/app-v3.html" }
+    { "source": "/", "destination": "/app-v4.html" },
+    { "source": "/:slug", "destination": "/app-v4.html" }
   ],
   "headers": [
     {
-      "source": "/app-v3.html",
+      "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), payment=()" }
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" }
       ]
     }
   ]
