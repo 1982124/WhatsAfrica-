@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/launch.html" },
+    { "source": "/admin", "destination": "/cockpit.html" },
+    { "source": "/dashboard", "destination": "/cockpit.html" },
     { "source": "/:slug", "destination": "/public.html" }
   ],
   "headers": [
