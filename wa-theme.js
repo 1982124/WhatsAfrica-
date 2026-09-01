@@ -1,0 +1,23 @@
+/* WhatsAfrica Theme Engine — controlled tokens only. No arbitrary CSS/HTML/JS. */
+(function(){'use strict';
+const KEY='wa:theme:v1';
+const DEFAULT={name:'Africa Original',mode:'system',primary:'#e8a83c',secondary:'#172033',accent:'#57d39b',bg:'#090d17',surface:'#111827',surface2:'#0c1422',text:'#f8f5eb',muted:'#98a5bb',border:'#26334c',radius:'16px',shadow:'0 12px 30px rgba(0,0,0,.18)',backgroundType:'solid',backgroundValue:''};
+const PRESETS={
+ 'africa-original':{name:'Africa Original',primary:'#e8a83c',secondary:'#172033',accent:'#57d39b',bg:'#090d17',surface:'#111827',surface2:'#0c1422',text:'#f8f5eb',muted:'#98a5bb',border:'#26334c',radius:'16px'},
+ sahel:{name:'Sahel',primary:'#c98b3c',secondary:'#5b4025',accent:'#d7b56d',bg:'#17120d',surface:'#241b12',surface2:'#302318',text:'#fff7e8',muted:'#cbbba4',border:'#4a3827',radius:'14px'},
+ ocean:{name:'Ocean',primary:'#28a7c7',secondary:'#155e75',accent:'#54d2c2',bg:'#07151b',surface:'#0c2029',surface2:'#102b36',text:'#effcff',muted:'#9fc4ce',border:'#23434e',radius:'18px'},
+ midnight:{name:'Midnight',primary:'#8b7cf6',secondary:'#24204a',accent:'#7dd3fc',bg:'#070711',surface:'#11111f',surface2:'#171729',text:'#f7f7ff',muted:'#a7a6bd',border:'#2b2a46',radius:'18px'},
+ light:{name:'Light',mode:'light',primary:'#c87919',secondary:'#334155',accent:'#16806b',bg:'#f7f8fa',surface:'#ffffff',surface2:'#f0f2f5',text:'#18202a',muted:'#64748b',border:'#d8dee7',radius:'14px'},
+ premium:{name:'Premium',primary:'#d4af37',secondary:'#3d2d12',accent:'#a8e6cf',bg:'#0b0b0c',surface:'#171717',surface2:'#202020',text:'#fffaf0',muted:'#b7b1a4',border:'#39352c',radius:'20px'},
+ sunset:{name:'Sunset',primary:'#f97316',secondary:'#7c2d12',accent:'#fb7185',bg:'#180c0a',surface:'#28120d',surface2:'#351711',text:'#fff7ed',muted:'#d6b5a6',border:'#51261a',radius:'18px'},
+ nature:{name:'Nature',primary:'#65a30d',secondary:'#365314',accent:'#22c55e',bg:'#08130a',surface:'#102014',surface2:'#15291a',text:'#f3fff4',muted:'#a7c4aa',border:'#29482e',radius:'16px'},
+ 'high-contrast':{name:'High Contrast',primary:'#ffff00',secondary:'#000000',accent:'#00ffff',bg:'#000000',surface:'#050505',surface2:'#0a0a0a',text:'#ffffff',muted:'#e5e5e5',border:'#ffffff',radius:'8px',shadow:'none'}
+};
+const HEX=/^#[0-9a-f]{6}$/i;
+function safe(t){t=t||{};const out={...DEFAULT};for(const k of Object.keys(out)){if(typeof t[k]==='string'&&t[k].length<=120)out[k]=t[k];}for(const k of ['primary','secondary','accent','bg','surface','surface2','text','muted','border'])if(!HEX.test(out[k]))out[k]=DEFAULT[k];if(!['system','light','dark'].includes(out.mode))out.mode='system';if(!['solid','gradient','image'].includes(out.backgroundType))out.backgroundType='solid';if(typeof out.backgroundValue!=='string'||out.backgroundValue.length>2048||/^(javascript|data:text\/html):/i.test(out.backgroundValue))out.backgroundValue='';if(!/^\d{1,2}px$/.test(out.radius))out.radius=DEFAULT.radius;return out;}
+function apply(theme){const t=safe(theme);const r=document.documentElement;r.dataset.waTheme=t.mode;r.style.setProperty('--wa-bg',t.bg);r.style.setProperty('--wa-surface',t.surface);r.style.setProperty('--wa-surface-2',t.surface2);r.style.setProperty('--wa-primary',t.primary);r.style.setProperty('--wa-secondary',t.secondary);r.style.setProperty('--wa-accent',t.accent);r.style.setProperty('--wa-text',t.text);r.style.setProperty('--wa-muted',t.muted);r.style.setProperty('--wa-border',t.border);r.style.setProperty('--wa-radius',t.radius);r.style.setProperty('--wa-shadow',t.shadow||DEFAULT.shadow);if(t.backgroundType==='gradient')r.style.setProperty('--wa-background','linear-gradient(135deg,'+t.bg+','+t.secondary+')');else if(t.backgroundType==='image'&&t.backgroundValue)r.style.setProperty('--wa-background','url("'+t.backgroundValue.replace(/["\\]/g,'')+'") center/cover fixed');else r.style.setProperty('--wa-background',t.bg);return t;}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||'null');return apply(x||DEFAULT)}catch(e){return apply(DEFAULT)}}
+function save(theme){const t=apply(theme);localStorage.setItem(KEY,JSON.stringify(t));window.dispatchEvent(new CustomEvent('wa:theme-change',{detail:t}));return t;}
+window.WhatsAfricaTheme={apply,load,save,presets:PRESETS,sanitize:safe,storageKey:KEY};
+const style=document.createElement('style');style.textContent=':root{--wa-bg:#090d17;--wa-surface:#111827;--wa-surface-2:#0c1422;--wa-primary:#e8a83c;--wa-secondary:#172033;--wa-accent:#57d39b;--wa-text:#f8f5eb;--wa-muted:#98a5bb;--wa-border:#26334c;--wa-radius:16px;--wa-shadow:0 12px 30px rgba(0,0,0,.18);--wa-background:var(--wa-bg)}[data-wa-theme] body{background:var(--wa-background);color:var(--wa-text)}';document.head.appendChild(style);load();
+})();
