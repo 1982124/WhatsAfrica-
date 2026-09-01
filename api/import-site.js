@@ -4,6 +4,7 @@ const net=require('net');
 const MAX_HTML=1000000;
 const MAX_READER_TEXT=120000;
 const MAX_REDIRECTS=15;
+const MAX_READER_REDIRECTS=5;
 const FETCH_TIMEOUT_MS=15000;
 const READER_TIMEOUT_MS=20000;
 const clean=(v,n)=>typeof v==='string'?v.replace(/[\u0000-\u001F\u007F]/g,'').slice(0,n).trim():'';
@@ -51,16 +52,33 @@ function storeCookies(headers,jar){
 function loopKey(u){const x=new URL(u.toString());x.hash='';if((x.protocol==='http:'&&x.port==='80')||(x.protocol==='https:'&&x.port==='443'))x.port='';return x.toString()}
 async function fetchReader(start){
   await safeUrl(start);
+  let target=`https://r.jina.ai/${start}`;
+  const seen=new Set();
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),READER_TIMEOUT_MS);
   try{
-    const target=`https://r.jina.ai/${start}`;
-    const r=await fetch(target,{redirect:'follow',signal:controller.signal,headers:{'User-Agent':'WhatsAfricaImporter/2.1','Accept':'text/markdown,text/plain;q=0.9,*/*;q=0.5','X-Engine':'browser','X-Return-Format':'markdown'}});
-    if(!r.ok)throw new Error(`Lecteur de secours indisponible (${r.status}).`);
-    const text=(await r.text()).slice(0,MAX_READER_TEXT);
-    if(!text.trim())throw new Error('Le lecteur de secours n’a retourné aucun contenu.');
-    console.warn('import-site reader-fallback',{source:start});
-    return {url:new URL(start),readerText:text,reader:true};
+    for(let redirects=0;redirects<=MAX_READER_REDIRECTS;redirects++){
+      const key=loopKey(new URL(target));
+      if(seen.has(key))throw new Error('Le lecteur de secours a rencontré une boucle de redirection.');
+      seen.add(key);
+      const r=await fetch(target,{redirect:'manual',signal:controller.signal,headers:{'User-Agent':'WhatsAfricaImporter/2.2','Accept':'text/markdown,text/plain;q=0.9,*/*;q=0.5','X-Engine':'browser','X-Return-Format':'markdown'}});
+      if(r.status>=300&&r.status<400){
+        const location=r.headers.get('location');
+        if(!location)throw new Error('Le lecteur de secours a renvoyé une redirection sans destination.');
+        const next=absolute(location,target);
+        if(!next)throw new Error('Le lecteur de secours a renvoyé une destination invalide.');
+        const nextUrl=await safeUrl(next);
+        if(nextUrl.hostname!=='r.jina.ai')throw new Error('Le lecteur de secours a renvoyé vers un domaine non autorisé.');
+        target=nextUrl.toString();
+        continue;
+      }
+      if(!r.ok)throw new Error(`Lecteur de secours indisponible (${r.status}).`);
+      const text=(await r.text()).slice(0,MAX_READER_TEXT);
+      if(!text.trim())throw new Error('Le lecteur de secours n’a retourné aucun contenu.');
+      console.warn('import-site reader-fallback',{source:start});
+      return {url:new URL(start),readerText:text,reader:true};
+    }
+    throw new Error('Le lecteur de secours a effectué trop de redirections.');
   }catch(e){
     if(e?.name==='AbortError')throw new Error('Le site a mis trop de temps à répondre, même via le lecteur de secours.');
     throw e;
@@ -83,7 +101,7 @@ async function fetchHtml(start){
     let r;
     try{
       const headers={
-        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36 WhatsAfricaBot/2.1',
+        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36 WhatsAfricaBot/2.2',
         'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language':'fr-FR,fr;q=0.9,en;q=0.8',
         'Cache-Control':'no-cache','Pragma':'no-cache'
