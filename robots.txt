@@ -4,5 +4,3 @@ Disallow: /api/
 Disallow: /admin
 Disallow: /dashboard
 Disallow: /crm
-
-Sitemap: https://whatsafrica.com/sitemap.xml
