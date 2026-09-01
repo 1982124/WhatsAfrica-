@@ -7,7 +7,8 @@
     { "source": "/live", "destination": "/live.html" },
     { "source": "/live/:id", "destination": "/live.html" },
     { "source": "/groups", "destination": "/groups.html" },
-    { "source": "/:slug", "destination": "/public.html" }
+    { "source": "/commande/:token", "destination": "/public-commerce.html" },
+    { "source": "/:slug", "destination": "/public-commerce.html" }
   ],
   "headers": [
     {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Cache-Control","value":"no-store, max-age=0, must-revalidate"}]}
