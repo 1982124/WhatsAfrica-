@@ -7,8 +7,14 @@ const MAX_REDIRECTS=15;
 const MAX_READER_REDIRECTS=5;
 const FETCH_TIMEOUT_MS=15000;
 const READER_TIMEOUT_MS=20000;
+const RATE_LIMIT=10;
+const RATE_WINDOW=60;
+const memoryBuckets=new Map();
 const clean=(v,n)=>typeof v==='string'?v.replace(/[\u0000-\u001F\u007F]/g,'').slice(0,n).trim():'';
 const norm=s=>clean(s,300).toLowerCase().replace(/\s+/g,' ');
+function clientIp(req){return String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim().slice(0,120)}
+function memoryLimited(req){const ip=clientIp(req),now=Date.now();let b=memoryBuckets.get(ip);if(!b||now-b.start>=RATE_WINDOW*1000)b={start:now,count:0};b.count++;memoryBuckets.set(ip,b);return b.count<=RATE_LIMIT}
+async function limited(req){const ip=clientIp(req),url=process.env.SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SECRET_KEY;if(!url||!key)return memoryLimited(req);try{const r=await fetch(`${url}/rest/v1/rpc/consume_rate_limit`,{method:'POST',headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({p_key:`import-site:${ip}`,p_limit:RATE_LIMIT,p_window_seconds:RATE_WINDOW})});if(!r.ok)return memoryLimited(req);const result=await r.json();return result===true||result?.allowed===true}catch{return memoryLimited(req)}}
 function privateIp(ip){
   if(!ip)return false;
   const v=ip.toLowerCase();
@@ -136,7 +142,10 @@ async function fetchHtml(start){
 module.exports=async function(req,res){
   res.setHeader('Content-Type','application/json; charset=utf-8');
   res.setHeader('Cache-Control','no-store');
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('X-Robots-Tag','noindex, nofollow');
   if(req.method!=='POST')return res.status(405).json({error:'Méthode non autorisée.'});
+  if(!(await limited(req)))return res.status(429).json({error:'Trop de demandes. Réessayez dans une minute.'});
   try{
     const raw=clean(req.body?.url,1000);
     if(!raw)return res.status(400).json({error:'Le lien du site ou du produit est requis.'});
