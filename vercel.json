@@ -6,6 +6,8 @@
     { "source": "/crm", "destination": "/crm.html" },
     { "source": "/live", "destination": "/live.html" },
     { "source": "/live/:id", "destination": "/live.html" },
+    { "source": "/business-live", "destination": "/live.html" },
+    { "source": "/business-live/:id", "destination": "/live.html" },
     { "source": "/groups", "destination": "/groups.html" },
     { "source": "/commande/:token", "destination": "/public-commerce.html" },
     { "source": "/:slug", "destination": "/public-commerce.html" }
