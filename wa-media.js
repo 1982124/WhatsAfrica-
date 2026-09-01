@@ -1,0 +1,10 @@
+/* WhatsAfrica Media Engine — client-side guardrails. Private media must use private storage + E2EE at the messaging layer. */
+(function(){'use strict';
+const RULES={image:{maxBytes:6*1024*1024,mimes:['image/jpeg','image/png','image/webp','image/gif']},video:{maxBytes:25*1024*1024,mimes:['video/mp4','video/webm'],maxSeconds:60,maxWidth:1920,maxHeight:1080}};
+function validate(file,kind){if(!file)throw new Error('Aucun fichier sélectionné.');const r=RULES[kind];if(!r)throw new Error('Type média non pris en charge.');if(!r.mimes.includes(file.type))throw new Error('Format non autorisé.');if(file.size>r.maxBytes)throw new Error('Fichier trop volumineux. Limite: '+Math.round(r.maxBytes/1024/1024)+' Mo.');return true;}
+function inspectVideo(file){validate(file,'video');return new Promise((resolve,reject)=>{const u=URL.createObjectURL(file),v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{const d={duration:v.duration,width:v.videoWidth,height:v.videoHeight};URL.revokeObjectURL(u);if(!Number.isFinite(d.duration)||d.duration>RULES.video.maxSeconds)reject(new Error('Vidéo trop longue. Maximum: '+RULES.video.maxSeconds+' secondes.'));else if(d.width>RULES.video.maxWidth||d.height>RULES.video.maxHeight)reject(new Error('Résolution maximale: 1920×1080.'));else resolve(d)};v.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('Vidéo illisible ou corrompue.'))};v.src=u;});}
+async function validateMedia(file,kind){validate(file,kind);return kind==='video'?inspectVideo(file):{width:null,height:null};}
+function preview(file,el){if(!el)return;const u=URL.createObjectURL(file);el.onload=()=>URL.revokeObjectURL(u);el.src=u;el.classList.remove('hidden');}
+function videoPreview(file,el){if(!el)return;const u=URL.createObjectURL(file);el.onloadeddata=()=>URL.revokeObjectURL(u);el.src=u;el.controls=true;el.muted=true;el.playsInline=true;el.classList.remove('hidden');}
+window.WhatsAfricaMedia={RULES,validate,validateMedia,preview,videoPreview};
+})();
