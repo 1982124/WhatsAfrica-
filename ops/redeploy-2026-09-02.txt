@@ -1,0 +1,1 @@
+Production redeploy trigger after Vercel environment update (SUPABASE_SECRET_KEY). No application logic.
