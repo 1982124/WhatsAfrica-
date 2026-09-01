@@ -22,7 +22,6 @@
       {"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},
       {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"}
     ]},
-    {"source":"/(?!api/|dashboard|admin|crm).*","headers":[{"key":"X-Robots-Tag","value":"index, follow"}]},
     {"source":"/(api|dashboard|admin|crm)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]}
   ]
 }
