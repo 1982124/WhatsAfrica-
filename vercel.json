@@ -7,7 +7,7 @@
     { "source": "/confirm-email", "destination": "/confirm-email.html" },
     { "source": "/account-security", "destination": "/account-security.html" },
     { "source": "/admin", "destination": "/admin-cockpit.html" },
-    { "source": "/dashboard", "destination": "/cockpit.html" },
+    { "source": "/dashboard", "destination": "/auth" },
     { "source": "/smartlink", "destination": "/smartlink-creator.html" },
     { "source": "/vitrine", "destination": "/business-vitrine.html" },
     { "source": "/analytics", "destination": "/analytics.html" },
