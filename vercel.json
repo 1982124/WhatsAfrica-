@@ -5,6 +5,10 @@
     { "source": "/dashboard", "destination": "/cockpit.html" },
     { "source": "/analytics", "destination": "/analytics.html" },
     { "source": "/assistant", "destination": "/assistant-settings.html" },
+    { "source": "/assistant-settings", "destination": "/assistant-settings.html" },
+    { "source": "/broadcast-admin", "destination": "/broadcast-admin.html" },
+    { "source": "/payment-links", "destination": "/payment-links.html" },
+    { "source": "/group-manager", "destination": "/group-manager.html" },
     { "source": "/inbox", "destination": "/inbox.html" },
     { "source": "/calls", "destination": "/calls.html" },
     { "source": "/crm", "destination": "/crm.html" },
@@ -26,6 +30,6 @@
       {"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},
       {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"}
     ]},
-    {"source":"/(api|dashboard|admin|crm|calls|inbox|analytics)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]}
+    {"source":"/(api|dashboard|admin|crm|calls|inbox|analytics|assistant-settings|broadcast-admin|payment-links|group-manager)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]}
   ]
 }
