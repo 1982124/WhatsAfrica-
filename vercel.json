@@ -8,7 +8,7 @@
     { "source": "/account-security", "destination": "/account-security.html" },
     { "source": "/admin", "destination": "/admin-cockpit.html" },
     { "source": "/dashboard", "destination": "/cockpit.html" },
-    { "source": "/smartlink", "destination": "/cockpit.html" },
+    { "source": "/smartlink", "destination": "/smartlink-creator.html" },
     { "source": "/vitrine", "destination": "/business-vitrine.html" },
     { "source": "/analytics", "destination": "/analytics.html" },
     { "source": "/assistant", "destination": "/assistant-settings.html" },
