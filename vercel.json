@@ -13,8 +13,8 @@
     { "source": "/business-live/:id", "destination": "/live.html" },
     { "source": "/groups", "destination": "/groups.html" },
     { "source": "/universe", "destination": "/universe.html" },
-    { "source": "/commande/:token", "destination": "/public-commerce.html" },
-    { "source": "/:slug", "destination": "/public-commerce.html" }
+    { "source": "/commande/:token", "destination": "/smart-commerce.html" },
+    { "source": "/:slug", "destination": "/smart-commerce.html" }
   ],
   "headers": [
     {"source":"/(.*)","headers":[
