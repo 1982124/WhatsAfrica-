@@ -1,30 +1,21 @@
 (function(){'use strict';
-/* WhatsAfrica: deterministic navigation + resilient Cockpit auth + calls CTA. */
-function cockpitNav(){
-  if(!/Cockpit/i.test(document.title))return;
+/* WhatsAfrica: clear, persistent navigation + resilient Cockpit auth + calls CTA. */
+function addNav(){
+  const title=(document.title||'').toLowerCase();
   const wrap=document.querySelector('.wrap');
-  if(!wrap||document.getElementById('waCockpitNav'))return;
+  if(!wrap||document.getElementById('waMainNav'))return;
   const nav=document.createElement('nav');
-  nav.id='waCockpitNav';
-  nav.setAttribute('aria-label','Navigation WhatsAfrica');
-  nav.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px;padding:10px 0;border-bottom:1px solid #26334c;';
-  const links=[['🏠 Accueil','/'],['🔴 Business Live','/live'],['🎯 CRM','/crm'],['📥 Inbox','/inbox']];
-  links.forEach(([label,href])=>{
-    const a=document.createElement('a');
-    a.href=href;
-    a.textContent=label;
-    a.className='btn ghost';
-    a.style.textDecoration='none';
-    nav.appendChild(a);
-  });
+  nav.id='waMainNav';
+  nav.setAttribute('aria-label','Menu principal WhatsAfrica');
+  nav.innerHTML='<div class="waNavBrand"><a href="/">Whats<span>Africa</span></a><small>Communiquez · Découvrez · Vendez</small></div><div class="waNavLinks"><a href="/">🏠 <b>Accueil</b></a><a href="/live">🔴 <b>Business Live</b></a><a href="/groups">👥 <b>Groupes</b></a><a href="/smartlink">🔗 <b>Smart Link</b></a><a href="/inbox">📥 <b>Inbox</b></a><a href="/crm">🎯 <b>CRM</b></a><a href="/dashboard">👤 <b>Mon compte</b></a></div>';
+  const style=document.createElement('style');
+  style.textContent='#waMainNav{position:sticky;top:0;z-index:9999;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 22px;padding:12px 14px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(13,11,22,.97);box-shadow:0 10px 30px rgba(0,0,0,.28);backdrop-filter:blur(14px)}#waMainNav .waNavBrand{display:flex;flex-direction:column;line-height:1.05}.waNavBrand a{font:bold 21px Georgia,serif;color:#f7f1e4;text-decoration:none}.waNavBrand a span{color:#e8a83c}.waNavBrand small{margin-top:5px;color:#aaa39a;font-size:10px;letter-spacing:.4px}.waNavLinks{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.waNavLinks a{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:9px 12px;border:1px solid rgba(255,255,255,.13);border-radius:10px;background:#171326;color:#f7f1e4;text-decoration:none;font-weight:700;font-size:13px;white-space:nowrap}.waNavLinks a:hover,.waNavLinks a:focus-visible{border-color:#e8a83c;transform:translateY(-1px)}.waNavLinks a[href="/live"]{border-color:rgba(255,92,108,.45)}@media(max-width:800px){#waMainNav{position:relative;align-items:stretch}.waNavBrand{width:100%}.waNavLinks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.waNavLinks a{justify-content:center}.waNavLinks a b{font-size:12px}}@media(max-width:430px){.waNavLinks{grid-template-columns:1fr 1fr}.waNavLinks a{padding:9px 6px;font-size:12px}}
+';
+  document.head.appendChild(style);
   const top=wrap.querySelector('.top');
   if(top)top.insertAdjacentElement('afterend',nav);else wrap.prepend(nav);
   const live=document.getElementById('liveBtn');
-  if(live){
-    const a=document.createElement('a');
-    a.href='/live';a.textContent='🔴 Business Live';a.className=live.className;a.style.textDecoration='none';a.setAttribute('role','button');
-    live.replaceWith(a);
-  }
+  if(live){const a=document.createElement('a');a.href='/live';a.textContent='🔴 Business Live';a.className=live.className;a.style.textDecoration='none';a.setAttribute('role','button');live.replaceWith(a)}
 }
 function stabilizeCockpitAuth(){
   if(!/Cockpit/i.test(document.title)||typeof db==='undefined'||!db.auth)return;
@@ -34,20 +25,11 @@ function stabilizeCockpitAuth(){
   db.auth.getSession().then(({data,error})=>{if(error){console.error('Cockpit getSession',error);return}if(data?.session)recover(data.session)}).catch(e=>console.error('Cockpit session bootstrap',e));
   db.auth.onAuthStateChange((event,session)=>{if(session&&(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'||event==='INITIAL_SESSION'))recover(session);if(event==='SIGNED_OUT'){if(app)app.classList.add('hidden');if(auth)auth.classList.remove('hidden');if(logout)logout.classList.add('hidden')}});
   const login=document.getElementById('login');
-  if(login&&!login.dataset.waBound){
-    login.dataset.waBound='1';
-    login.addEventListener('click',async e=>{
-      e.preventDefault();e.stopImmediatePropagation();
-      const email=(document.getElementById('email')?.value||'').trim(),password=document.getElementById('password')?.value||'';
-      if(!email||!password){if(msg)msg.innerHTML='<span class="err">Saisissez votre e-mail et votre mot de passe.</span>';return}
-      login.disabled=true;login.textContent='Connexion en cours…';
-      try{const r=await db.auth.signInWithPassword({email,password});if(r.error)throw r.error;if(!r.data?.session||!r.data?.user)throw new Error('Session de connexion non reçue.');reveal(r.data.session);try{if(typeof enter==='function')await enter(r.data.user)}catch(e2){console.error('Cockpit login secondary init',e2)}reveal(r.data.session);if(msg)msg.textContent=''}catch(e){console.error('Cockpit login',e);if(msg)msg.innerHTML='<span class="err">'+String(e.message||'Connexion impossible.').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>'}finally{login.disabled=false;login.textContent='Se connecter'}
-    },true);
-  }
+  if(login&&!login.dataset.waBound){login.dataset.waBound='1';login.addEventListener('click',async e=>{e.preventDefault();e.stopImmediatePropagation();const email=(document.getElementById('email')?.value||'').trim(),password=document.getElementById('password')?.value||'';if(!email||!password){if(msg)msg.innerHTML='<span class="err">Saisissez votre e-mail et votre mot de passe.</span>';return}login.disabled=true;login.textContent='Connexion en cours…';try{const r=await db.auth.signInWithPassword({email,password});if(r.error)throw r.error;if(!r.data?.session||!r.data?.user)throw new Error('Session de connexion non reçue.');reveal(r.data.session);try{if(typeof enter==='function')await enter(r.data.user)}catch(e2){console.error('Cockpit login secondary init',e2)}reveal(r.data.session);if(msg)msg.textContent=''}catch(e){console.error('Cockpit login',e);if(msg)msg.innerHTML='<span class="err">'+String(e.message||'Connexion impossible.').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>'}finally{login.disabled=false;login.textContent='Se connecter'}},true)}
   if(logout&&!logout.dataset.waBound){logout.dataset.waBound='1';logout.addEventListener('click',async e=>{e.preventDefault();e.stopImmediatePropagation();try{await db.auth.signOut()}finally{location.reload()}},true)}
 }
 const css='.wa-call-cta{margin:18px 0;padding:22px;border:1px solid rgba(242,184,75,.35);border-radius:18px;background:linear-gradient(135deg,rgba(242,184,75,.13),rgba(34,199,163,.08));box-shadow:0 12px 36px rgba(0,0,0,.16)}.wa-call-cta h2{margin:0 0 7px;font-size:22px}.wa-call-cta p{margin:0 0 14px;color:#98a5bb;line-height:1.55}.wa-call-cta .wa-call-actions{display:flex;gap:9px;flex-wrap:wrap}.wa-call-cta a{display:inline-flex;align-items:center;justify-content:center;padding:11px 15px;border-radius:11px;text-decoration:none;font-weight:850}.wa-call-primary{background:#f2b84b;color:#171208}.wa-call-secondary{border:1px solid #26334c;color:#fff;background:transparent}@media(max-width:600px){.wa-call-cta{padding:18px}.wa-call-cta .wa-call-actions a{width:100%}}';
 function mount(){if(document.getElementById('waCallCta'))return;const s=document.createElement('style');s.textContent=css;document.head.appendChild(s);const c=document.createElement('section');c.id='waCallCta';c.className='wa-call-cta';const cockpit=/Cockpit/i.test(document.title);c.innerHTML='<div style="font-size:12px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;color:#22c7a3;margin-bottom:7px">Communication WhatsAfrica</div><h2>📹 Appels vidéo</h2><p>'+(cockpit?'Appelez vos contacts directement depuis WhatsAfrica. Présentez un produit, négociez ou concluez une affaire en vidéo.':'Appelez, présentez, négociez et concluez en vidéo. La conversation peut maintenant devenir une rencontre directe.')+'</p><div class="wa-call-actions"><a class="wa-call-primary" href="/calls">📹 Appeler maintenant</a><a class="wa-call-secondary" href="/calls">Découvrir les appels vidéo</a></div>';const main=document.querySelector('main');if(!main)return;if(cockpit){const h1=main.querySelector('h1');if(h1&&h1.parentNode)h1.parentNode.insertBefore(c,h1.nextSibling);else main.prepend(c)}else{const hero=main.querySelector('.hero');const grid=main.querySelector('.grid');if(grid)grid.parentNode.insertBefore(c,grid);else if(hero)hero.appendChild(c);else main.prepend(c)}}
-function boot(){cockpitNav();stabilizeCockpitAuth();mount()}
+function boot(){addNav();stabilizeCockpitAuth();mount()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
