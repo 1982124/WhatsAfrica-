@@ -54,6 +54,18 @@ $('mediaType').dispatchEvent(new Event('change'));
 db.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){showRecovery();return}if(event==='SIGNED_OUT'&&!recoveryMode){$('auth').classList.remove('hidden');$('app').classList.add('hidden');$('recovery').classList.add('hidden')}});
 enter().catch(e=>{if(!recoveryMode){$('auth').classList.remove('hidden');$('app').classList.add('hidden');$('authMsg').innerHTML='<span class="err">'+escapeHtml(e.message)+'</span>'}});
 </script>
+<script>
+(function(){
+  const params=new URLSearchParams(location.search);
+  const hash=new URLSearchParams(location.hash.replace(/^#/,'').replace(/^\?/,'').replace(/&/g,'&'));
+  const isRecovery=params.get('type')==='recovery'||hash.get('type')==='recovery';
+  if(!isRecovery)return;
+  const force=()=>{if(typeof showRecovery==='function')showRecovery();};
+  force();
+  window.addEventListener('load',force,{once:true});
+  db.auth.getSession().then(()=>force()).catch(()=>force());
+})();
+</script>
 <script src="/wa-smartlink-qr.js" defer></script>
 <script src="/wa-call-cta.js"></script>
 </body>
