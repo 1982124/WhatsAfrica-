@@ -3,6 +3,7 @@
     { "source": "/", "destination": "/launch.html" },
     { "source": "/admin", "destination": "/admin-cockpit.html" },
     { "source": "/dashboard", "destination": "/cockpit.html" },
+    { "source": "/assistant", "destination": "/assistant-settings.html" },
     { "source": "/inbox", "destination": "/inbox.html" },
     { "source": "/calls", "destination": "/calls.html" },
     { "source": "/crm", "destination": "/crm.html" },
