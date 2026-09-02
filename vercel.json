@@ -21,7 +21,7 @@
     { "source": "/business-live/:id", "destination": "/live.html" },
     { "source": "/groups", "destination": "/groups.html" },
     { "source": "/universe", "destination": "/universe.html" },
-    { "source": "/commande/:token", "destination": "/smart-commerce.html" },
+    { "source": "/commande/:token", "destination": "/order-tracking.html" },
     { "source": "/:slug", "destination": "/smart-commerce-v2.html" }
   ],
   "headers": [
