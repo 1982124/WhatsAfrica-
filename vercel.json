@@ -22,6 +22,7 @@
     { "source": "/groups", "destination": "/groups.html" },
     { "source": "/universe", "destination": "/universe.html" },
     { "source": "/commande/:token", "destination": "/order-tracking.html" },
+    { "source": "/s/:token", "destination": "/share.html" },
     { "source": "/:slug", "destination": "/smart-commerce-v2.html" }
   ],
   "headers": [
