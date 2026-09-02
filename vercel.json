@@ -9,6 +9,7 @@
     { "source": "/broadcast-admin", "destination": "/broadcast-admin.html" },
     { "source": "/payment-links", "destination": "/payment-links.html" },
     { "source": "/group-manager", "destination": "/group-manager.html" },
+    { "source": "/invite", "destination": "/invite.html" },
     { "source": "/inbox", "destination": "/inbox.html" },
     { "source": "/calls", "destination": "/calls.html" },
     { "source": "/crm", "destination": "/crm.html" },
