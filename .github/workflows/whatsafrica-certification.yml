@@ -1,0 +1,71 @@
+name: WhatsAfrica — Certification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  static-certification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate HTML/JS assets exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f vercel.json
+          test -f calls-v2.html
+          test -f wa-calls-v2.js
+          test -f share.html
+          test -f share-center.html
+          test -f group-manager.html
+          test -f inbox.html
+          test -f admin-cockpit.html
+
+      - name: Validate critical routes are declared
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in '"/share"' '"/calls"' '"/inbox"' '"/s/:token"' '"/invite"' '"/admin"'; do
+            grep -Fq "$route" vercel.json
+          done
+
+      - name: Validate security headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Strict-Transport-Security' vercel.json
+          grep -Fq 'X-Content-Type-Options' vercel.json
+          grep -Fq 'X-Frame-Options' vercel.json
+          grep -Fq 'Permissions-Policy' vercel.json
+
+      - name: Validate WebRTC and SmartLink primitives
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'RTCPeerConnection' wa-calls-v2.js
+          grep -Fq 'getUserMedia' wa-calls-v2.js
+          grep -Fq 'create_share_link' wa-calls-v2.js
+          grep -Fq 'resolve_share_link' share.html
+
+      - name: Validate no service-role key is committed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIn --exclude-dir=.git --exclude='*.md' 'service_role' .; then
+            echo 'Potential service_role exposure detected.'
+            exit 1
+          fi
+
+      - name: Validate JavaScript syntax for standalone engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check wa-calls-v2.js
