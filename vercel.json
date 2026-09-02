@@ -3,6 +3,7 @@
     { "source": "/", "destination": "/launch.html" },
     { "source": "/admin", "destination": "/admin-cockpit.html" },
     { "source": "/dashboard", "destination": "/cockpit.html" },
+    { "source": "/vitrine", "destination": "/business-vitrine.html" },
     { "source": "/analytics", "destination": "/analytics.html" },
     { "source": "/assistant", "destination": "/assistant-settings.html" },
     { "source": "/assistant-settings", "destination": "/assistant-settings.html" },
@@ -20,7 +21,7 @@
     { "source": "/groups", "destination": "/groups.html" },
     { "source": "/universe", "destination": "/universe.html" },
     { "source": "/commande/:token", "destination": "/smart-commerce.html" },
-    { "source": "/:slug", "destination": "/smart-commerce.html" }
+    { "source": "/:slug", "destination": "/smart-commerce-v2.html" }
   ],
   "headers": [
     {"source":"/(.*)","headers":[
@@ -31,6 +32,6 @@
       {"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},
       {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"}
     ]},
-    {"source":"/(api|dashboard|admin|crm|calls|inbox|analytics|assistant-settings|broadcast-admin|payment-links|group-manager)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]}
+    {"source":"/(api|dashboard|admin|crm|calls|inbox|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]}
   ]
 }
