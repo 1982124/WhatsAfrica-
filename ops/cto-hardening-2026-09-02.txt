@@ -1,0 +1,11 @@
+WhatsAfrica CTO hardening checkpoint — 2026-09-02
+
+Applied:
+- Restricted direct client execution of privileged SECURITY DEFINER RPCs.
+- Preserved anonymous public order tracking and share-link resolution where intentionally required.
+- Hardened commercial assistant context size and provider fallback.
+- Hardened site import redirect handling and in-memory limiter cleanup.
+
+Verification target:
+- Vercel production build must be READY.
+- Production runtime errors must remain clear after deployment.
