@@ -7,9 +7,11 @@
     { "source": "/confirm-email", "destination": "/confirm-email.html" },
     { "source": "/account-security", "destination": "/account-security.html" },
     { "source": "/admin", "destination": "/admin-cockpit.html" },
-    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/dashboard", "destination": "/dashboard-v2.html" },
+    { "source": "/cockpit", "destination": "/dashboard-v2.html" },
     { "source": "/smartlink", "destination": "/smartlink-creator.html" },
     { "source": "/vitrine", "destination": "/business-vitrine.html" },
+    { "source": "/digital-products", "destination": "/digital-products.html" },
     { "source": "/analytics", "destination": "/analytics.html" },
     { "source": "/assistant", "destination": "/assistant-settings.html" },
     { "source": "/assistant-settings", "destination": "/assistant-settings.html" },
@@ -42,10 +44,10 @@
       {"key":"X-Frame-Options","value":"DENY"},
       {"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},
       {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},
-      {"key":"X-WhatsAfrica-Release","value":"2026-09-03-vitrine-v3"}
+      {"key":"X-WhatsAfrica-Release","value":"2026-09-03-cockpit-digital-v1"}
     ]},
-    {"source":"/(api|dashboard|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
+    {"source":"/(api|dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
-    {"source":"/(dashboard|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
+    {"source":"/(dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
   ]
 }
