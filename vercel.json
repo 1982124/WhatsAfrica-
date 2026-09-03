@@ -10,8 +10,9 @@
     { "source": "/dashboard", "destination": "/dashboard-v2.html" },
     { "source": "/cockpit", "destination": "/dashboard-v2.html" },
     { "source": "/smartlink", "destination": "/smartlink-creator.html" },
-    { "source": "/vitrine", "destination": "/business-vitrine.html" },
+    { "source": "/vitrine", "destination": "/business-vitrine-v2.html" },
     { "source": "/digital-products", "destination": "/digital-products.html" },
+    { "source": "/digital-market", "destination": "/digital-market.html" },
     { "source": "/analytics", "destination": "/analytics.html" },
     { "source": "/assistant", "destination": "/assistant-settings.html" },
     { "source": "/assistant-settings", "destination": "/assistant-settings.html" },
@@ -23,18 +24,18 @@
     { "source": "/share", "destination": "/share-center.html" },
     { "source": "/calls", "destination": "/calls-v2.html" },
     { "source": "/crm", "destination": "/crm.html" },
-    { "source": "/live", "destination": "/live.html" },
+    { "source": "/live", "destination": "/live-v2.html" },
     { "source": "/live/:id", "destination": "/live.html" },
-    { "source": "/business-live", "destination": "/live.html" },
+    { "source": "/business-live", "destination": "/live-v2.html" },
     { "source": "/business-live/:id", "destination": "/live.html" },
-    { "source": "/groups", "destination": "/groups.html" },
+    { "source": "/groups", "destination": "/groups-v2.html" },
     { "source": "/universe", "destination": "/universe.html" },
     { "source": "/market", "destination": "/marketplace.html" },
     { "source": "/commerce", "destination": "/commerce.html" },
     { "source": "/market-pricing", "destination": "/market-pricing.html" },
     { "source": "/commande/:token", "destination": "/order-tracking.html" },
     { "source": "/s/:token", "destination": "/share.html" },
-    { "source": "/:slug", "destination": "/smart-commerce-v3.html" }
+    { "source": "/:slug", "destination": "/smart-commerce-v4.html" }
   ],
   "headers": [
     {"source":"/(.*)","headers":[
@@ -44,10 +45,10 @@
       {"key":"X-Frame-Options","value":"DENY"},
       {"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},
       {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},
-      {"key":"X-WhatsAfrica-Release","value":"2026-09-03-cockpit-digital-v1"}
+      {"key":"X-WhatsAfrica-Release","value":"2026-09-03-commerce-experience-v2"}
     ]},
-    {"source":"/(api|dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
+    {"source":"/(api|dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
-    {"source":"/(dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
+    {"source":"/(dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
   ]
 }
