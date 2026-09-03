@@ -44,6 +44,8 @@
       {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},
       {"key":"X-WhatsAfrica-Release","value":"2026-09-03-market-pricing-v1"}
     ]},
-    {"source":"/(api|dashboard|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]}
+    {"source":"/(api|dashboard|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
+    {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
+    {"source":"/(dashboard|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
   ]
 }
