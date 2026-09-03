@@ -28,6 +28,7 @@
     { "source": "/groups", "destination": "/groups.html" },
     { "source": "/universe", "destination": "/universe.html" },
     { "source": "/market", "destination": "/marketplace.html" },
+    { "source": "/commerce", "destination": "/commerce.html" },
     { "source": "/commande/:token", "destination": "/order-tracking.html" },
     { "source": "/s/:token", "destination": "/share.html" },
     { "source": "/:slug", "destination": "/smart-commerce-v2.html" }
@@ -40,7 +41,7 @@
       {"key":"X-Frame-Options","value":"DENY"},
       {"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},
       {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},
-      {"key":"X-WhatsAfrica-Release","value":"2026-09-02-vitrine-live-v1"}
+      {"key":"X-WhatsAfrica-Release","value":"2026-09-03-commerce-hub-v1"}
     ]},
     {"source":"/(api|dashboard|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]}
   ]
