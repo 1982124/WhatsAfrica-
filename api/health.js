@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('X-WhatsAfrica-Health', 'v3');
+  res.setHeader('X-WhatsAfrica-Health', 'v4');
 
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -63,9 +63,11 @@ module.exports = async function handler(req, res) {
     };
 
     try {
+      // Keep these probes aligned with the actual production schema:
+      // products uses is_published (not status).
       const [businesses, products, services] = await Promise.all([
         timedFetch(`${url}/rest/v1/businesses?select=id&limit=1`, { headers }),
-        timedFetch(`${url}/rest/v1/products?select=id&status=eq.published&limit=1`, { headers }),
+        timedFetch(`${url}/rest/v1/products?select=id&is_published=eq.true&limit=1`, { headers }),
         timedFetch(`${url}/rest/v1/marketplace_services?select=id&status=eq.published&limit=1`, { headers }),
       ]);
 
@@ -93,7 +95,7 @@ module.exports = async function handler(req, res) {
   return res.status(status).json({
     status: status === 200 ? 'ok' : 'degraded',
     service: 'whatsafrica',
-    version: 'health-v3',
+    version: 'health-v4',
     checks,
     configuration_source: usingFallback ? 'publishable_fallback' : 'vercel_environment',
     checks_note: 'storage/realtime nécessitent des probes dédiées; non vérifiés par cette sonde publique.',
