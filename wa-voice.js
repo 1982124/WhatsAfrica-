@@ -35,3 +35,14 @@ const observer=new MutationObserver(()=>{installHeader();sync().catch(()=>{})});
 observer.observe(document.body,{subtree:true,childList:true});
 setTimeout(()=>sync().catch(()=>{}),1000);setInterval(()=>sync().catch(()=>{}),6000);
 })();
+
+/* Conversational microphone: speech-to-text input, distinct from encrypted voice messages. */
+(function(){'use strict';
+if(location.pathname!=='/inbox')return;
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+let recognition=null,listening=false,finalText='';
+function status(t,kind){const el=document.getElementById('status');if(!el)return;el.textContent=t;el.className='status '+(kind||'muted')}
+function language(){const l=(document.documentElement.lang||navigator.language||'fr').toLowerCase();return l.startsWith('en')?'en-US':l.startsWith('pt')?'pt-PT':l.startsWith('ar')?'ar-SA':'fr-FR'}
+function install(){const composer=document.getElementById('composer'),body=document.getElementById('body'),voice=document.getElementById('voice');if(!composer||!body||!voice||composer.querySelector('.wa-speech-btn'))return;if(!SpeechRecognition){voice.title='Message vocal';return}const btn=document.createElement('button');btn.type='button';btn.className='btn ghost wa-speech-btn';btn.textContent='🗣️';btn.title='Parler pour écrire';btn.setAttribute('aria-label','Parler pour écrire un message');composer.insertBefore(btn,voice);btn.addEventListener('click',()=>{if(listening){recognition?.stop();return}recognition=new SpeechRecognition();recognition.lang=language();recognition.interimResults=true;recognition.continuous=false;recognition.maxAlternatives=1;finalText=body.value.trim();listening=true;btn.textContent='⏹️';btn.classList.add('gold');status('🎙️ Je vous écoute…','ok');recognition.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const text=e.results[i][0]?.transcript||'';if(e.results[i].isFinal)finalText=(finalText?finalText+' ':'')+text.trim();else interim+=text}body.value=(finalText+(interim?' '+interim:'')).trim();body.dispatchEvent(new Event('input',{bubbles:true}))};recognition.onerror=e=>{listening=false;btn.textContent='🗣️';btn.classList.remove('gold');status(e.error==='not-allowed'?'Autorisez le microphone pour utiliser la saisie vocale.':'Saisie vocale indisponible : '+e.error,'err')};recognition.onend=()=>{listening=false;btn.textContent='🗣️';btn.classList.remove('gold');body.focus();if(body.value.trim())status('Voix convertie en message. Appuyez sur ➤ pour envoyer.','ok');else status('Prêt.','muted')};recognition.start()});}
+const observer=new MutationObserver(install);observer.observe(document.body,{subtree:true,childList:true});setTimeout(install,500);
+})();
