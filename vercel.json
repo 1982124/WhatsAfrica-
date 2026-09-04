@@ -20,7 +20,7 @@
     { "source": "/payment-links", "destination": "/payment-links.html" },
     { "source": "/group-manager", "destination": "/group-manager.html" },
     { "source": "/invite", "destination": "/invite.html" },
-    { "source": "/inbox", "destination": "/messaging-v2.html" },
+    { "source": "/inbox", "destination": "/messaging-whatsapp.html" },
     { "source": "/share", "destination": "/share-center.html" },
     { "source": "/calls", "destination": "/calls-v2.html" },
     { "source": "/crm", "destination": "/crm.html" },
