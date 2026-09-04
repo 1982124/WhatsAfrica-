@@ -20,22 +20,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f vercel.json
-          test -f calls-v2.html
-          test -f wa-calls-v2.js
-          test -f share.html
-          test -f share-center.html
-          test -f group-manager.html
-          test -f inbox.html
-          test -f admin-cockpit.html
+          for file in vercel.json messaging-whatsapp.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html; do
+            test -f "$file"
+          done
 
       - name: Validate critical routes are declared
         shell: bash
         run: |
           set -euo pipefail
-          for route in '"/share"' '"/calls"' '"/inbox"' '"/s/:token"' '"/invite"' '"/admin"'; do
+          for route in '"/share"' '"/calls"' '"/inbox"' '"/product"' '"/product/:id"' '"/s/:token"' '"/invite"' '"/admin"' '"/meeting"'; do
             grep -Fq "$route" vercel.json
           done
+          grep -Fq 'messaging-whatsapp.html' vercel.json
 
       - name: Validate security headers
         shell: bash
@@ -46,10 +42,13 @@ jobs:
           grep -Fq 'X-Frame-Options' vercel.json
           grep -Fq 'Permissions-Policy' vercel.json
 
-      - name: Validate WebRTC and SmartLink primitives
+      - name: Validate messaging, WebRTC and SmartLink primitives
         shell: bash
         run: |
           set -euo pipefail
+          grep -Fq 'sendEncryptedMessage' messaging-whatsapp.html
+          grep -Fq 'startRecording' messaging-whatsapp.html
+          grep -Fq 'WA_CALLS.start' messaging-whatsapp.html
           grep -Fq 'RTCPeerConnection' wa-calls-v2.js
           grep -Fq 'getUserMedia' wa-calls-v2.js
           grep -Fq 'create_share_link' wa-calls-v2.js
@@ -64,8 +63,46 @@ jobs:
             exit 1
           fi
 
-      - name: Validate JavaScript syntax for standalone engines
+      - name: Validate JavaScript syntax
         shell: bash
         run: |
           set -euo pipefail
           node --check wa-calls-v2.js
+          node --check wa-voice.js
+          node --check e2ee.js
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess, tempfile
+
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.in_script=False; self.buf=[]; self.scripts=[]
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script': self.in_script=True; self.buf=[]
+              def handle_endtag(self, tag):
+                  if tag == 'script' and self.in_script:
+                      self.scripts.append(''.join(self.buf)); self.in_script=False
+              def handle_data(self, data):
+                  if self.in_script: self.buf.append(data)
+
+          for name in ['messaging-whatsapp.html','calls-v2.html']:
+              p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
+              for i, code in enumerate(p.scripts):
+                  if not code.strip() or code.lstrip().startswith('http'): continue
+                  with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
+                      f.write(code); tmp=f.name
+                  r=subprocess.run(['node','--check',tmp],capture_output=True,text=True)
+                  if r.returncode:
+                      print(r.stderr); raise SystemExit(f'Inline JavaScript syntax error: {name} script #{i+1}')
+          print('JavaScript syntax certification passed.')
+          PY
+
+      - name: Reject hardcoded single-country phone defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIn --exclude-dir=.git --exclude='*.md' -E 'value="\+223|value=.\+223' join.html 2>/dev/null; then
+            echo 'Hardcoded Mali phone default detected in signup UI.'
+            exit 1
+          fi
