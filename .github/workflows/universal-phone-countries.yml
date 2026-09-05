@@ -1,4 +1,5 @@
 # CTO trigger: regenerate worldwide phone country data on main updates.
+# Global selector certification: keep auth-v2.html and auth.html synchronized with libphonenumber-js.
 name: WhatsAfrica Universal Phone Countries
 
 on:
