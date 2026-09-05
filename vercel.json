@@ -38,7 +38,7 @@
     { "source": "/market-pricing", "destination": "/market-pricing.html" },
     { "source": "/commande/:token", "destination": "/order-tracking.html" },
     { "source": "/s/:token", "destination": "/share.html" },
-    { "source": "/:slug", "destination": "/smartlink-public.html" }
+    { "source": "/:slug", "destination": "/smartlink-public-v2.html" }
   ],
   "headers": [
     {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},{"key":"X-WhatsAfrica-Release","value":"2026-09-04-otp-hardened"}]},
