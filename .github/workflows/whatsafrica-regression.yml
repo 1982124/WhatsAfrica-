@@ -30,3 +30,10 @@ jobs:
       - name: Scan for accidental duplicate assistant_name fields
         run: |
           if grep -RIn --include='*.html' --include='*.js' 'assistant_name:assistantName,assistant_name:assistantName' .; then exit 1; fi
+      - name: Protect commercial price and import-route privacy
+        run: |
+          grep -Fq "const price=a.market_sale_price??a.price" api/assistant.js
+          grep -Fq "Les coûts internes" api/assistant.js
+          grep -Fq "ne doivent jamais être révélés au client" api/assistant.js
+          grep -Fq "Ne révèle jamais le pays, la route, le fournisseur, le marché source ou l'origine d'importation" api/assistant.js
+          grep -Fq "sauf si le vendeur a explicitement publié cette information comme contenu commercial public" api/assistant.js
