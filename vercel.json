@@ -9,6 +9,7 @@
     { "source": "/admin", "destination": "/admin-cockpit.html" },
     { "source": "/dashboard", "destination": "/dashboard-v2.html" },
     { "source": "/cockpit", "destination": "/dashboard-v2.html" },
+    { "source": "/design-settings", "destination": "/design-settings.html" },
     { "source": "/smartlink", "destination": "/smartlink-creator.html" },
     { "source": "/vitrine", "destination": "/business-vitrine-v2.html" },
     { "source": "/digital-products", "destination": "/digital-products.html" },
@@ -42,8 +43,8 @@
   ],
   "headers": [
     {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},{"key":"X-WhatsAfrica-Release","value":"2026-09-05-global-auth"}]},
-    {"source":"/(api|dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
+    {"source":"/(api|dashboard|cockpit|design-settings|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
-    {"source":"/(dashboard|cockpit|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|digital-market|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
+    {"source":"/(dashboard|cockpit|design-settings|smartlink|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|group-manager|vitrine|digital-products|digital-market|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
   ]
 }
