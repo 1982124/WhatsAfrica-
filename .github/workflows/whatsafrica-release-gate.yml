@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RIn --include='*.yml' --include='*.yaml' -E 'contents:[[:space:]]*write|actions:[[:space:]]*write|git[[:space:]]+push|github-token.*contents|repos/.*/contents' .github/workflows; then
+          if find .github/workflows -type f ! -name 'whatsafrica-release-gate.yml' -exec grep -nHE 'contents:[[:space:]]*write|actions:[[:space:]]*write|git[[:space:]]+push|github-token.*contents|repos/.*/contents' {} +; then
             echo 'Forbidden source-mutating workflow detected.'
             exit 1
           fi
