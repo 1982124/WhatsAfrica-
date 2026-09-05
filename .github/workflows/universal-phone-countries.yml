@@ -53,10 +53,18 @@ jobs:
           grep -q '"FR"' auth-v2.html
           grep -q '"US"' auth.html
           grep -q '"ML"' auth.html
-          echo 'Global phone selector data verified.'
+          grep -q '🇺🇸' auth-v2.html
+          grep -q '🇲🇱' auth-v2.html
+          grep -q '🇫🇷' auth-v2.html
+          grep -q '🇺🇸' auth.html
+          grep -q '🇲🇱' auth.html
+          grep -q '🇫🇷' auth.html
+          echo 'Global phone selector data and flags verified.'
 
       - name: Commit and push
+        shell: bash
         run: |
+          set -e
           if git diff --quiet -- auth-v2.html auth.html; then
             echo 'No changes needed.'
             exit 0
@@ -65,4 +73,17 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add auth-v2.html auth.html
           git commit -m 'feat(auth): support worldwide phone calling codes'
-          git push
+          for attempt in 1 2 3; do
+            git fetch origin main
+            if git rebase origin/main; then
+              if git push origin HEAD:main; then
+                echo "Worldwide phone dataset pushed successfully on attempt ${attempt}."
+                exit 0
+              fi
+            fi
+            echo "Push attempt ${attempt} lost a race; retrying after refetch."
+            git rebase --abort 2>/dev/null || true
+            sleep 2
+          done
+          echo 'Unable to push worldwide phone dataset after 3 attempts.'
+          exit 1
