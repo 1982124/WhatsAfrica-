@@ -26,6 +26,7 @@ jobs:
           print('vercel.json valid')
           PY
           node --check api/assistant.js
+          node --check api/auth-health.js
           node --check wa-calls-v2.js
           node --check wa-voice.js
           node --check e2ee.js
@@ -51,6 +52,17 @@ jobs:
             echo 'Duplicate assistant_name payload detected.'
             exit 1
           fi
+
+      - name: Enforce auth resilience architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "provider_isolation: true" api/auth-health.js
+          grep -Fq "secondary_failure_does_not_block_auth: true" api/auth-health.js
+          grep -Fq "secrets_exposed: false" api/auth-health.js
+          grep -Fq "certification_rule: 'infrastructure_healthy_does_not_equal_provider_certified'" api/auth-health.js
+          grep -Fq "const PROD_ORIGIN='https://whatsafrica.vercel.app'" auth-v3.html
+          grep -Fq "emailRedirectTo:redirectUri()" auth-v3.html
 
       - name: Enforce grounded local pricing and source privacy
         shell: bash
@@ -84,7 +96,7 @@ jobs:
         run: |
           set -euo pipefail
           base='https://whatsafrica.vercel.app'
-          for path in / /auth /inbox /groups /market /invite /share /calls; do
+          for path in / /auth /inbox /groups /market /invite /share /calls /api/auth-health; do
             code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$base$path")
             echo "$path -> $code"
             case "$code" in 200|204|301|302|303) ;; *) exit 1 ;; esac
