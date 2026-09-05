@@ -1,0 +1,97 @@
+name: WhatsAfrica — Final Release Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate repository JSON and critical JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          json.load(open('vercel.json', encoding='utf-8'))
+          print('vercel.json valid')
+          PY
+          node --check api/assistant.js
+          node --check wa-calls-v2.js
+          node --check wa-voice.js
+          node --check e2ee.js
+
+      - name: Enforce immutable source governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIn --include='*.yml' --include='*.yaml' -E 'contents:[[:space:]]*write|actions:[[:space:]]*write|git[[:space:]]+push|github-token.*contents|repos/.*/contents' .github/workflows; then
+            echo 'Forbidden source-mutating workflow detected.'
+            exit 1
+          fi
+          for f in .github/workflows/cto-assistant-name.yml .github/workflows/cto-enhancements.yml .github/workflows/whatsafrica-enhance.yml .github/workflows/universal-phone-countries.yml; do
+            test ! -e "$f"
+          done
+
+      - name: Enforce assistant canonicality
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -c '^function assistantIntro' api/assistant.js)" -eq 1
+          if grep -Fq 'assistant_name:assistantName,assistant_name:assistantName' . --include='*.js' --include='*.html'; then
+            exit 1
+          fi
+
+      - name: Protect profile preferences from auth regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'maybeSingle()' auth-v3.html
+          grep -Fq 'if(existing)return' auth-v3.html
+          grep -Fq "from('profiles').insert" auth-v3.html
+          if grep -Fq "from('profiles').upsert" auth-v3.html; then
+            echo 'Auth profile upsert can overwrite user preferences.'
+            exit 1
+          fi
+
+      - name: Validate critical production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://whatsafrica.vercel.app'
+          for path in / /auth /inbox /groups /market /invite /share /calls; do
+            code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$base$path")
+            echo "$path -> $code"
+            case "$code" in 200|204|301|302|303) ;; *) exit 1 ;; esac
+          done
+
+      - name: Block committed service-role secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIn --exclude-dir=.git --exclude='*.md' -E 'service_role|SUPABASE_SERVICE_ROLE_KEY' .; then
+            echo 'Potential service-role secret exposure detected.'
+            exit 1
+          fi
+
+      - name: Verify security headers in production
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers=$(curl -L -sS -D - -o /dev/null --max-time 20 https://whatsafrica.vercel.app/auth)
+          printf '%s\n' "$headers" | grep -qi '^strict-transport-security:'
+          printf '%s\n' "$headers" | grep -qi '^x-content-type-options:'
+          printf '%s\n' "$headers" | grep -qi '^x-frame-options:'
+          printf '%s\n' "$headers" | grep -qi '^permissions-policy:'
+
+      - name: Final release rule
+        run: echo 'WhatsAfrica release gate passed.'
