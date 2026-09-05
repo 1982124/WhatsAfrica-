@@ -1,0 +1,49 @@
+name: WhatsAfrica Delivery Governance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  no-autonomous-source-writes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject workflows with repository write permission
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIn --include='*.yml' --include='*.yaml' -E 'contents:[[:space:]]*write|actions:[[:space:]]*write' .github/workflows; then
+            echo 'Governance failure: autonomous workflow write permission detected.'
+            exit 1
+          fi
+
+      - name: Reject workflow source pushes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIn --include='*.yml' --include='*.yaml' -E 'git[[:space:]]+push|gh[[:space:]]+.*(pr|repo|api).*--method[[:space:]]+(POST|PUT|PATCH|DELETE)' .github/workflows; then
+            echo 'Governance failure: workflow source mutation/push command detected.'
+            exit 1
+          fi
+
+      - name: Reject direct assistant self-healing patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIn --include='*.yml' --include='*.yaml' -E 'api/assistant\.js|assistantIntro' .github/workflows; then
+            echo 'Governance failure: workflow directly targets assistant source.'
+            exit 1
+          fi
+
+      - name: Confirm assistant source remains singular
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -c '^function assistantIntro' api/assistant.js)" -eq 1
