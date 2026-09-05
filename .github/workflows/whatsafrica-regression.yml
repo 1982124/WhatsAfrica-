@@ -7,60 +7,26 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   core-regression:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Auto-heal known duplicate assistant regressions
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          changed = False
-          p = Path('api/assistant.js')
-          if p.exists():
-              s = p.read_text()
-              s2 = re.sub(r'(function assistantIntro\([^\n]+\n)(function assistantIntro\([^\n]+\n)+', r'\1', s)
-              s2 = re.sub(r'(const ap=await db\.from\(\'profiles\'\)\.select\(\'assistant_name\'\)\.eq\(\'user_id\',link\.owner_id\)\.maybeSingle\(\);assistantName=\(ap\.data\?\.assistant_name\|\|\'Votre assistant\'\)\.trim\(\)\|\|\'Votre assistant\';\n)+', r'\1', s2)
-              if s2 != s:
-                  p.write_text(s2)
-                  changed = True
-          p = Path('messaging-whatsapp.html')
-          if p.exists():
-              s = p.read_text()
-              s2 = re.sub(r'(assistant_name:assistantName,)(?:assistant_name:assistantName,)+', r'\1', s)
-              if s2 != s:
-                  p.write_text(s2)
-                  changed = True
-          if changed:
-              print('Known regression auto-healed.')
-          else:
-              print('No known regression detected.')
-          PY
-          if ! git diff --quiet; then
-            git config user.name 'WhatsAfrica Regression Guard'
-            git config user.email 'cto@whatsafrica.local'
-            git add api/assistant.js messaging-whatsapp.html
-            git commit -m 'ci: auto-heal known assistant regressions'
-            git push origin HEAD:main
-          fi
       - name: Validate assistant API syntax
         run: node --check api/assistant.js
       - name: Prevent duplicate assistant declaration
-        run: |
-          test "$(grep -c '^function assistantIntro' api/assistant.js)" -eq 1
+        run: test "$(grep -c '^function assistantIntro' api/assistant.js)" -eq 1
       - name: Prevent null assistant fallback regression
-        run: |
-          ! grep -Fq 'if(!result)return res.status(200).json(result)' api/assistant.js
+        run: '! grep -Fq "if(!result)return res.status(200).json(result)" api/assistant.js'
       - name: Validate auth production origin guard
         run: |
           grep -Fq "const PROD_ORIGIN='https://whatsafrica.vercel.app'" auth-v3.html
           grep -Fq "h==='localhost'||h==='127.0.0.1'||h==='::1'?PROD_ORIGIN:location.origin" auth-v3.html
+      - name: Scan for accidental duplicate assistant_name fields
+        run: |
+          if grep -RIn --include='*.html' --include='*.js' 'assistant_name:assistantName,assistant_name:assistantName' .; then exit 1; fi
