@@ -1,0 +1,66 @@
+name: WhatsAfrica Universal Phone Countries
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-country-data:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate global calling-code dataset
+        shell: bash
+        run: |
+          npm install --no-save --no-package-lock libphonenumber-js@latest
+          node <<'NODE'
+          const fs = require('fs');
+          const { getCountries, getCountryCallingCode } = require('libphonenumber-js');
+          const africa = new Set([
+            'DZ','AO','BJ','BW','BF','BI','CV','CM','CF','TD','KM','CG','CD','CI','DJ','EG','GQ','ER','SZ','ET','GA','GM','GH','GN','GW','KE','LS','LR','LY','MG','MW','ML','MR','MU','MA','MZ','NA','NE','NG','RW','ST','SN','SC','SL','SO','ZA','SS','SD','TZ','TG','TN','UG','ZM','ZW'
+          ]);
+          const displayNames = new Intl.DisplayNames(['fr'], { type: 'region' });
+          const flag = iso => iso.replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
+          const countries = getCountries()
+            .filter(iso => /^[A-Z]{2}$/.test(iso))
+            .map(iso => ({ iso, name: displayNames.of(iso) || iso, code: '+' + getCountryCallingCode(iso), priority: africa.has(iso) ? 0 : 1 }))
+            .sort((a,b) => a.priority - b.priority || a.name.localeCompare(b.name, 'fr'));
+          const rows = countries.map(x => `[${JSON.stringify(flag(x.iso))},${JSON.stringify(x.name)},${JSON.stringify(x.code)},${JSON.stringify(x.iso)}]`).join(',');
+          const replacement = `const COUNTRIES=[${rows}];`;
+          for (const file of ['auth-v2.html','auth.html']) {
+            if (!fs.existsSync(file)) { console.log(`${file}: missing, skipped`); continue; }
+            let text = fs.readFileSync(file, 'utf8');
+            const re = /const COUNTRIES=\[[\s\S]*?\];/;
+            if (!re.test(text)) throw new Error(`${file}: COUNTRIES declaration not found`);
+            text = text.replace(re, replacement);
+            fs.writeFileSync(file, text);
+            console.log(`${file}: ${countries.length} international regions installed`);
+          }
+          NODE
+
+      - name: Verify generated files
+        shell: bash
+        run: |
+          grep -q '"US"' auth-v2.html
+          grep -q '"ML"' auth-v2.html
+          grep -q '"FR"' auth-v2.html
+          grep -q '"US"' auth.html
+          grep -q '"ML"' auth.html
+          echo 'Global phone selector data verified.'
+
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- auth-v2.html auth.html; then
+            echo 'No changes needed.'
+            exit 0
+          fi
+          git config user.name 'whatsafrica-cto-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add auth-v2.html auth.html
+          git commit -m 'feat(auth): support worldwide phone calling codes'
+          git push
