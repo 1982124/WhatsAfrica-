@@ -1,3 +1,4 @@
+# CTO trigger: regenerate worldwide phone country data on main updates.
 name: WhatsAfrica Universal Phone Countries
 
 on:
