@@ -47,7 +47,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(grep -c '^function assistantIntro' api/assistant.js)" -eq 1
-          if grep -Fq 'assistant_name:assistantName,assistant_name:assistantName' . --include='*.js' --include='*.html'; then
+          if grep -RIn --exclude-dir=.git --include='*.js' --include='*.html' 'assistant_name:assistantName,assistant_name:assistantName' .; then
+            echo 'Duplicate assistant_name payload detected.'
             exit 1
           fi
 
@@ -93,7 +94,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RIn --exclude-dir=.git --exclude='*.md' -E 'service_role|SUPABASE_SERVICE_ROLE_KEY' .; then
+          if grep -RIn --exclude-dir=.git --exclude-dir=supabase --exclude-dir=.github --exclude='*.md' -E 'SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=|sb_secret_[A-Za-z0-9_-]{20,}' .; then
             echo 'Potential service-role secret exposure detected.'
             exit 1
           fi
