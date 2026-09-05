@@ -1,0 +1,35 @@
+name: WhatsAfrica Auth Health
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for production propagation
+        run: sleep 20
+      - name: Probe production auth health
+        env:
+          HEALTH_URL: https://whatsafrica.vercel.app/api/auth-health
+        run: |
+          set -euo pipefail
+          body="$(curl -fsSL --max-time 15 "$HEALTH_URL")"
+          echo "$body"
+          echo "$body" | grep -q '"environment":"production"'
+          echo "$body" | grep -q '"google":"not_certified"'
+          echo "$body" | grep -q '"email":"not_certified"'
+          echo "$body" | grep -q '"phone":"not_certified"'
+      - name: Verify no localhost production redirect is introduced
+        run: |
+          set -euo pipefail
+          page="$(curl -fsSL --max-time 15 https://whatsafrica.vercel.app/auth)"
+          if echo "$page" | grep -Eiq 'localhost:3000|127\.0\.0\.1:3000'; then
+            echo 'Forbidden development redirect detected in production auth page.'
+            exit 1
+          fi
