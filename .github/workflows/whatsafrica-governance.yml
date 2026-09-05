@@ -28,8 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          files=$(find .github/workflows -type f ! -name 'whatsafrica-governance.yml' -print0)
-          if printf '%s' "$files" | xargs -0 -r grep -InE 'git[[:space:]]+push|gh[[:space:]]+.*(pr|repo|api).*--method[[:space:]]+(POST|PUT|PATCH|DELETE)'; then
+          if find .github/workflows -type f ! -name 'whatsafrica-governance.yml' -exec grep -nHE 'git[[:space:]]+push|gh[[:space:]]+.*(pr|repo|api).*--method[[:space:]]+(POST|PUT|PATCH|DELETE)' {} +; then
             echo 'Governance failure: workflow source mutation/push command detected.'
             exit 1
           fi
