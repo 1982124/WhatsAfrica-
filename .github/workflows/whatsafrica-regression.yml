@@ -1,0 +1,28 @@
+name: WhatsAfrica Continuous Regression
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  core-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate assistant API syntax
+        run: node --check api/assistant.js
+      - name: Prevent duplicate assistant declaration
+        run: |
+          test "$(grep -c '^function assistantIntro' api/assistant.js)" -eq 1
+      - name: Prevent null assistant fallback regression
+        run: |
+          ! grep -Fq 'if(!result)return res.status(200).json(result)' api/assistant.js
+      - name: Validate auth production origin guard
+        run: |
+          grep -Fq "const PROD_ORIGIN='https://whatsafrica.vercel.app'" auth-v3.html
+          grep -Fq "h==='localhost'||h==='127.0.0.1'||h==='::1'?PROD_ORIGIN:location.origin" auth-v3.html
