@@ -51,6 +51,21 @@ jobs:
             exit 1
           fi
 
+      - name: Enforce grounded local pricing and source privacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'market_sale_price' api/assistant.js
+          grep -Fq 'Les coûts internes' api/assistant.js
+          grep -Fq 'ne doivent jamais être révélés au client' api/assistant.js
+          grep -Fq 'Ne révèle jamais le pays, la route, le fournisseur, le marché source ou l’origine d’importation' api/assistant.js
+          grep -Fq 'ne transforme pas un prix source en prix local' api/assistant.js
+          grep -Fq 'price=a.market_sale_price??a.price' api/assistant.js
+          if grep -Fq 'Produit importé du Togo' api/assistant.js; then
+            echo 'Hard-coded import-origin marketing text detected.'
+            exit 1
+          fi
+
       - name: Protect profile preferences from auth regression
         shell: bash
         run: |
