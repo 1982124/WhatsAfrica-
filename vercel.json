@@ -1,7 +1,7 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/launch-v1.html" },
-    { "source": "/auth", "destination": "/auth-v3.html" },
+    { "source": "/auth", "destination": "/auth-v4.html" },
     { "source": "/forgot-password", "destination": "/forgot-password.html" },
     { "source": "/reset-password", "destination": "/reset-password.html" },
     { "source": "/confirm-email", "destination": "/confirm-email.html" },
