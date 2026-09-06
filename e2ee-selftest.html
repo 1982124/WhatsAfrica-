@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WhatsAfrica — E2EE Self-Test</title>
+<style>body{font:16px system-ui;max-width:900px;margin:40px auto;padding:0 16px;background:#090d17;color:#f8f5eb}pre{white-space:pre-wrap;background:#111827;border:1px solid #26334c;border-radius:14px;padding:16px}.ok{color:#57d39b}.warn{color:#e8a83c}</style>
+</head>
+<body>
+<h1>WhatsAfrica E2EE — Browser Self-Test</h1>
+<p>Ce test vérifie la primitive cryptographique locale sans créer de données de production.</p>
+<pre id="out">Exécution…</pre>
+<script src="/e2ee.js"></script>
+<script>
+(async()=>{
+ const out=document.getElementById('out'); const lines=[];
+ const pass=(name)=>lines.push('🟢 '+name);
+ const fail=(name,e)=>lines.push('🔴 '+name+' — '+String(e?.message||e));
+ try{
+   const c=window.WhatsAfricaCrypto;
+   if(!c) throw new Error('WhatsAfricaCrypto indisponible');
+   const key=c.generateConversationKey();
+   const text='WhatsAfrica E2EE self-test '+crypto.randomUUID();
+   const messageId=crypto.randomUUID();
+   const conversationId=crypto.randomUUID();
+   const env=await c.createEncryptedMessageEnvelope(text,conversationId,key,messageId);
+   if(!env.ciphertext || env.encryption_version!==1 || env.id!==messageId) throw new Error('envelope invalide');
+   if(env.ciphertext.includes(text)) throw new Error('plaintext détecté dans ciphertext');
+   pass('AES-256-GCM : chiffrement');
+   const row={id:messageId,encryption_version:1,ciphertext:env.ciphertext,encryption_metadata:env.encryption_metadata};
+   const clear=await c.decryptMessageEnvelope(row,key);
+   if(clear!==text) throw new Error('texte déchiffré différent');
+   pass('AES-256-GCM : déchiffrement');
+   let wrongKeyRejected=false;
+   try{await c.decryptMessageEnvelope(row,c.generateConversationKey())}catch{wrongKeyRejected=true}
+   if(!wrongKeyRejected) throw new Error('une mauvaise clé a été acceptée');
+   pass('AES-256-GCM : mauvaise clé rejetée');
+   const identityA=await c.generateIdentity();
+   const identityB=await c.generateIdentity();
+   const pubB=await c.exportJwk(identityB.publicKey);
+   const wrapped=await c.wrapKey(key,pubB);
+   const unwrapped=await c.unwrapKey(wrapped,identityB.privateKey);
+   if(Array.from(unwrapped).join(',')!==Array.from(key).join(',')) throw new Error('clé RSA enveloppée différente');
+   pass('RSA-OAEP-2048-SHA256 : enveloppe de clé');
+   let aadRejected=false;
+   try{await c.decryptMessageEnvelope(row,key, 'unused')}catch{aadRejected=true}
+   // The helper derives AAD from metadata; explicitly validate by tampering message_id instead.
+   const tampered={...row,encryption_metadata:{...row.encryption_metadata,message_id:crypto.randomUUID()}};
+   try{await c.decryptMessageEnvelope(tampered,key)}catch{aadRejected=true}
+   if(!aadRejected) throw new Error('AAD tampering acceptée');
+   pass('AES-GCM AAD : altération rejetée');
+   lines.push('');
+   lines.push('🟢 SELF-TEST LOCAL RÉUSSI');
+   lines.push('⚠️ Ce résultat ne certifie PAS encore A↔B avec deux sessions authentifiées.');
+ }catch(e){fail('Self-test global',e)}
+ out.textContent=lines.join('\n');
+})().catch(e=>document.getElementById('out').textContent='🔴 '+String(e?.message||e));
+</script>
+</body>
+</html>
