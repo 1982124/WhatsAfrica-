@@ -60,16 +60,6 @@ Deno.serve(async (req: Request) => {
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const payloadHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
 
-  const { data: event, error: eventError } = await db.from("payment_events").insert({
-    provider, provider_event_id: providerEventId, event_type: eventType, transaction_id: transactionId,
-    status, payload_hash: hex(payloadHash), received_at: new Date().toISOString(),
-  }).select("id").single();
-  if (eventError) {
-    if (eventError.code === "23505") return json({ ok: true, duplicate: true });
-    console.error("payment event insert failed", eventError);
-    return json({ error: "event_record_failed" }, 500);
-  }
-
   let intent: any = null;
   if (intentId) {
     const result = await db.from("payment_intents").select("id,buyer_id,business_id,order_id,provider,method,currency,amount,status,provider_reference").eq("id", intentId).maybeSingle();
@@ -81,14 +71,33 @@ Deno.serve(async (req: Request) => {
     if (result.error) return json({ error: "intent_lookup_failed" }, 500);
     intent = result.data;
   }
+
+  if (intent) {
+    if (provider !== String(intent.provider).toLowerCase()) return json({ error: "provider_mismatch" }, 409);
+    if (amount !== null && Number(intent.amount) !== amount) return json({ error: "amount_mismatch" }, 409);
+    if (currency !== null && String(intent.currency).toUpperCase() !== currency) return json({ error: "currency_mismatch" }, 409);
+  }
+
+  const { data: event, error: eventError } = await db.from("payment_events").insert({
+    order_id: intent?.order_id ?? null,
+    provider,
+    provider_event_id: providerEventId,
+    event_type: eventType,
+    transaction_id: transactionId,
+    status,
+    payload_hash: hex(payloadHash),
+    received_at: new Date().toISOString(),
+  }).select("id").single();
+  if (eventError) {
+    if (eventError.code === "23505") return json({ ok: true, duplicate: true });
+    console.error("payment event insert failed", eventError);
+    return json({ error: "event_record_failed" }, 500);
+  }
+
   if (!intent) {
     await db.from("payment_events").update({ processed_at: new Date().toISOString() }).eq("id", event.id);
     return json({ ok: true, recorded: true, matched: false });
   }
-
-  if (provider !== String(intent.provider).toLowerCase()) return json({ error: "provider_mismatch" }, 409);
-  if (amount !== null && Number(intent.amount) !== amount) return json({ error: "amount_mismatch" }, 409);
-  if (currency !== null && String(intent.currency).toUpperCase() !== currency) return json({ error: "currency_mismatch" }, 409);
 
   const intentUpdate: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (providerReference) intentUpdate.provider_reference = providerReference;
@@ -96,17 +105,25 @@ Deno.serve(async (req: Request) => {
   if (intentUpdateError) return json({ error: "intent_update_failed" }, 500);
 
   let transaction: any = null;
-  if (["paid", "failed", "cancelled"].includes(status)) {
+  // A cancelled intent does not represent a financial transaction.
+  // Only terminal financial outcomes create a transaction record.
+  if (status === "paid" || status === "failed") {
     const tx = await db.from("payment_transactions").upsert({
-      business_id: intent.business_id, user_id: intent.buyer_id, amount: intent.amount, currency: intent.currency,
-      provider: intent.provider, provider_transaction_id: transactionId, status: status === "paid" ? "paid" : status,
-      direction: "in", kind: "purchase",
+      business_id: intent.business_id,
+      user_id: intent.buyer_id,
+      amount: intent.amount,
+      currency: intent.currency,
+      provider: intent.provider,
+      provider_transaction_id: transactionId,
+      status,
+      direction: "in",
+      kind: "purchase",
       metadata: { source: "payment-webhook", intent_id: intent.id, provider_event_id: providerEventId },
     }, { onConflict: "provider,provider_transaction_id" }).select("id,status").single();
     if (tx.error) return json({ error: "transaction_upsert_failed" }, 500);
     transaction = tx.data;
-    await db.from("payment_events").update({ processed_at: new Date().toISOString(), transaction_id: transactionId }).eq("id", event.id);
   }
 
+  await db.from("payment_events").update({ processed_at: new Date().toISOString() }).eq("id", event.id);
   return json({ ok: true, recorded: true, matched: true, intent_id: intent.id, transaction });
 });
