@@ -51,3 +51,24 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 setTimeout(install,1000);
 setInterval(install,3000);
 })();
+
+/* Inbox recommendations: real visual cards, visible on the empty/home state. */
+(function(){'use strict';
+const items=[
+ {title:'Découvrir des commerces africains',text:'Boutiques, restaurants et services à découvrir.',img:'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80',href:'/market',label:'🛍️ Explorer le Marché'},
+ {title:'Rencontrer la communauté',text:'Découvrez des personnes et des communautés africaines.',img:'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',href:'/groups',label:'👥 Voir les communautés'},
+ {title:'Découvrir des activités',text:'Entreprises, créateurs et initiatives à travers l’Afrique.',img:'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=80',href:'/universe',label:'🔎 Explorer'},
+ {title:'Sorties & expériences',text:'Des lieux et expériences à découvrir autour de vous.',img:'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',href:'/universe',label:'🌍 Découvrir'}
+];
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function install(){
+ if(location.pathname!=='/inbox')return;
+ const app=document.getElementById('app'),empty=document.getElementById('empty');
+ if(!app||!empty||document.getElementById('wa-recommendations'))return;
+ const section=document.createElement('section');section.id='wa-recommendations';section.style.cssText='margin:18px 0 4px;width:100%;';
+ section.innerHTML='<div style="font-weight:900;font-size:20px;margin-bottom:10px">✨ Recommandé pour vous</div><div style="color:#98a8bd;font-size:13px;line-height:1.5;margin-bottom:13px">Découvrez des personnes, activités, commerces et expériences sur WhatsAfrica.</div><div class="wa-rec-grid">'+items.map(x=>'<article style="background:#111c2d;border:1px solid #263751;border-radius:16px;overflow:hidden;min-width:0"><img src="'+esc(x.img)+'" alt="'+esc(x.title)+'" loading="lazy" referrerpolicy="no-referrer" style="display:block;width:100%;height:150px;object-fit:cover"><div style="padding:12px"><div style="font-weight:850;font-size:15px">'+esc(x.title)+'</div><div style="color:#98a8bd;font-size:12px;line-height:1.45;margin-top:5px">'+esc(x.text)+'</div><a href="'+esc(x.href)+'" class="btn ghost" style="display:inline-flex;text-decoration:none;margin-top:10px;font-size:12px">'+esc(x.label)+'</a></div></article>').join('')+'</div><style>#wa-recommendations .wa-rec-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media(max-width:760px){#wa-recommendations .wa-rec-grid{grid-template-columns:1fr}}</style>';
+ const parent=empty.parentElement||app;parent.appendChild(section);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+setTimeout(install,1200);setInterval(install,3000);
+})();
