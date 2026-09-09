@@ -1,0 +1,39 @@
+name: Fix community navigation
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch community navigation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('community-v6.html')
+          s=p.read_text()
+          old_css='.wrap{max-width:900px;margin:auto;padding:10px}.top{background:#075e54;color:#fff}.topin{display:flex;justify-content:space-between;align-items:center}.brand{color:#fff;text-decoration:none;font-size:22px;font-weight:900}'
+          new_css='.wrap{max-width:1100px;margin:auto;padding:10px}.top{background:#075e54;color:#fff}.topin{display:flex;align-items:center;gap:12px;min-width:0}.brand{color:#fff;text-decoration:none;font-size:22px;font-weight:900;flex:none}.mainnav{margin-left:auto;display:flex;align-items:center;gap:4px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-width:0}.mainnav::-webkit-scrollbar{display:none}.mainnav a{color:#fff;text-decoration:none;padding:8px 10px;border-radius:999px;font-weight:800;white-space:nowrap;flex:0 0 auto;font-size:13px}.headtools{display:flex;align-items:center;gap:6px;flex:none}'
+          if old_css not in s: raise SystemExit('expected CSS anchor not found')
+          s=s.replace(old_css,new_css,1)
+          old_header='<header class="top"><div class="wrap topin"><a class="brand" href="/">WhatsAfrica</a><div><button id="bell" class="btn">🔔 <span id="badge" class="badge" style="display:none">0</span></button> <a class="btn" href="/groups">← Communautés</a></div></div></header>'
+          new_header='<header class="top"><div class="wrap topin"><a class="brand" href="/">WhatsAfrica</a><nav class="mainnav" aria-label="Navigation principale"><a href="/inbox">💬 Discussions</a><a href="/universe">🌍 Explorer</a><a href="/groups">👥 Communautés</a><a href="/market">🛒 Marché</a><a href="/dashboard">👤 Moi</a></nav><div class="headtools"><button id="bell" class="btn" aria-label="Notifications">🔔 <span id="badge" class="badge" style="display:none">0</span></button></div></div></header>'
+          if old_header not in s: raise SystemExit('expected header anchor not found')
+          s=s.replace(old_header,new_header,1)
+          marker='</style></head>'
+          responsive='<style>@media(max-width:760px){.topin{align-items:stretch;flex-wrap:wrap}.brand{width:100%}.mainnav{order:3;width:100%;margin-left:0;padding-bottom:2px}.headtools{position:absolute;right:10px;top:10px}.top{position:relative}}</style>'
+          if marker not in s: raise SystemExit('style marker not found')
+          s=s.replace(marker,responsive+marker,1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add community-v6.html
+          git diff --cached --quiet || git commit -m 'fix: show full community navigation on mobile'
+          git push
