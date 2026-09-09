@@ -1,0 +1,48 @@
+name: Repair direct messaging identifiers
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch inbox identifier lookup UX
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('messaging-v4.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_input = '<input id="phone" class="input" inputmode="tel" autocomplete="tel" placeholder="Numéro +223…"><button id="start" class="btn primary">Rechercher</button>'
+          new_input = '<input id="phone" class="input" inputmode="text" autocomplete="off" placeholder="Téléphone +223…, email ou ID WhatsAfrica"><button id="start" class="btn primary">Rechercher</button>'
+          s = s.replace(old_input, new_input)
+
+          old_norm = "const norm=v=>{let x=String(v||'').trim().replace(/[\\s().-]/g,'');if(x.startsWith('00'))x='+'+x.slice(2);return /^\\+[1-9][0-9]{7,14}$/.test(x)?x:null}"
+          new_norm = "const norm=v=>{const raw=String(v||'').trim();if(!raw)return null;let x=raw.replace(/[\\s().-]/g,'');if(x.startsWith('00'))x='+'+x.slice(2);if(/^\\+[1-9][0-9]{7,14}$/.test(x))return x;if(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(raw))return raw.toLowerCase();if(/^[0-9]{4,20}$/.test(raw))return raw;return null}"
+          if old_norm not in s:
+              raise SystemExit('expected norm function not found')
+          s = s.replace(old_norm, new_norm, 1)
+
+          old_start = "if(!p)return status('Utilisez un numéro international, par exemple +223…');"
+          new_start = "if(!p)return status('Entrez un téléphone international, un email ou un ID WhatsAfrica.');"
+          s = s.replace(old_start, new_start, 1)
+
+          old_invite = "if(String(e.message).includes('CONTACT_NOT_FOUND')){$('invite').classList.add('on');status('Ce numéro n’a pas encore de compte WhatsAfrica.')}"
+          new_invite = "if(String(e.message).includes('CONTACT_NOT_FOUND')){$('invite').classList.add('on');status('Aucun compte WhatsAfrica trouvé pour cet identifiant.')}"
+          s = s.replace(old_invite, new_invite, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit patched inbox
+        run: |
+          git config user.name "WhatsAfrica CTO"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add messaging-v4.html
+          git diff --cached --quiet || git commit -m "fix(messaging): accept email and WhatsAfrica ID identifiers"
+          git push
