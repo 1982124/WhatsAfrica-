@@ -12,11 +12,14 @@
     { "source": "/digital-market", "destination": "/market-v4.html" },
     { "source": "/inbox", "destination": "/messaging-v4.html" },
     { "source": "/groups", "destination": "/groups-v5.html" },
+    { "source": "/groups/:id", "destination": "/group-detail-v1.html" },
     { "source": "/universe", "destination": "/universe-v3.html" },
     { "source": "/market", "destination": "/market-v4.html" },
     { "source": "/commerce", "destination": "/market-v4.html" },
     { "source": "/product", "destination": "/market-v4.html" },
     { "source": "/product/:id", "destination": "/product.html?id=:id" },
+    { "source": "/service/:id", "destination": "/service-detail-v1.html?id=:id" },
+    { "source": "/contact-seller", "destination": "/seller-contact-v1.html" },
     { "source": "/market-pricing", "destination": "/market-pricing.html" },
     { "source": "/forgot-password", "destination": "/forgot-password.html" },
     { "source": "/reset-password", "destination": "/reset-password.html" },
@@ -49,7 +52,7 @@
     { "source": "/:slug", "destination": "/smartlink-public-v2.html" }
   ],
   "headers": [
-    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WhatsAfrica-Release","value":"2026-09-09-cto-smartlink-v2"}]},
+    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WhatsAfrica-Release","value":"2026-09-09-cto-p0-commercial-v1"}]},
     {"source":"/(api|dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
     {"source":"/(dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|vitrine|digital-products|digital-market|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
