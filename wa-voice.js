@@ -43,11 +43,25 @@ function installSendGuard(){
    send.setAttribute('aria-busy','true');
    setTimeout(()=>send.removeAttribute('aria-busy'),1500);
  },true);
- form.addEventListener('submit',()=>{
-   if(!body.value.trim()){send.blur();return;}
- },true);
+ form.addEventListener('submit',()=>{if(!body.value.trim()){send.blur();return;}},true);
 }
-function install(){installDictation();installSendGuard()}
+function installVisibleActions(){
+ if(location.pathname!=='/inbox'||document.getElementById('wa-visible-actions'))return;
+ const main=document.getElementById('main'),chat=document.querySelector('.chat');
+ if(!main||!chat)return;
+ const style=document.createElement('style');style.id='wa-visible-actions-style';style.textContent='#wa-visible-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px 10px;background:#fff;border-bottom:1px solid #d9e1dd;position:sticky;top:58px;z-index:25}#wa-visible-actions .wa-action{border:1px solid #cbd8d3;background:#f7faf9;border-radius:11px;padding:9px 10px;font-weight:850;cursor:pointer;white-space:nowrap;color:#17211b}#wa-visible-actions .wa-action:active{transform:scale(.98)}#wa-visible-actions .wa-action[disabled]{opacity:.55;cursor:not-allowed}@media(max-width:760px){#wa-visible-actions{top:56px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding:7px 8px}#wa-visible-actions::-webkit-scrollbar{display:none}#wa-visible-actions .wa-action{padding:8px 10px;font-size:13px;flex:none}}';document.head.appendChild(style);
+ const bar=document.createElement('div');bar.id='wa-visible-actions';bar.setAttribute('aria-label','Actions de messagerie');
+ const actions=[['➕ Nouvelle discussion','new'],['🖼️ Image','image'],['🎬 Vidéo','video'],['🎙️ Vocal','voice'],['📎 Fichier','file'],['📞 Appel audio','audio'],['📹 Appel vidéo','callvideo'],['👥 Membres','members']];
+ const noChat=()=>{const h=document.getElementById('chathead');return !h||h.classList.contains('hide')};
+ const needChat=(action)=>{if(!noChat())return true;const input=document.getElementById('phoneMobile')||document.getElementById('phone');input?.focus();const s=document.getElementById('statusMobile')||document.getElementById('statusSide');if(s)s.textContent='Choisissez ou démarrez une discussion pour utiliser « '+action+' ». Le bouton reste disponible ici.';return false};
+ actions.forEach(([label,type])=>{const b=document.createElement('button');b.className='wa-action';b.type='button';b.textContent=label;b.title=label;b.onclick=()=>{
+   if(type==='new'){const input=document.getElementById('phoneMobile')||document.getElementById('phone');input?.focus();return;}
+   if(!needChat(label))return;
+   const map={image:'pickImage',video:'pickVideo',file:'pickFile',voice:'voice',audio:'audio',callvideo:'video',members:'membersBtn'};const target=document.getElementById(map[type]);if(target)target.click();
+ };bar.appendChild(b)});
+ chat.insertBefore(bar,chat.firstChild);
+}
+function install(){installDictation();installSendGuard();installVisibleActions()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 setTimeout(install,500);setInterval(install,3000);
 function getUrl(storage,path){return storage.from('private-voice').createSignedUrl(path,300).then(r=>{if(r.error)throw r.error;return r.data.signedUrl})}
