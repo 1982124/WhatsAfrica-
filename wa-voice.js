@@ -13,7 +13,7 @@ async function startRecording(){if(!navigator.mediaDevices?.getUserMedia)throw n
 async function send({db,storage,conversationId,senderId,rawKey,messageId,blob,durationMs,mime}){storage=storage||db?.storage;if(!db||!storage||!conversationId||!senderId||!rawKey||!blob)throw new Error('Message vocal invalide');if(blob.size>8*1024*1024)throw new Error('Message vocal trop volumineux (8 Mo maximum).');const id=messageId||crypto.randomUUID(),actualMime=mimeBase(mime||blob.type),aad=`whatsafrica:voice:v1:${conversationId}:${id}`,bytes=new Uint8Array(await blob.arrayBuffer()),enc=await encryptBytes(bytes,rawKey,aad),path=`${senderId}/${conversationId}/${id}.bin`,upload=await storage.from('private-voice').upload(path,new Blob([enc.ciphertext],{type:'application/octet-stream'}),{contentType:'application/octet-stream',upsert:false});if(upload.error)throw upload.error;const payload={id,conversation_id:conversationId,sender_id:senderId,body:null,message_type:'voice',audio_url:null,encryption_version:1,ciphertext:null,encryption_metadata:{v:1,kind:'voice',alg:'AES-256-GCM',iv:b64(enc.iv),aad,media_path:path,media_mime:actualMime,media_duration_ms:Math.round(durationMs||0),key_version:1},media_path:path,media_mime:actualMime,media_duration_ms:Math.round(durationMs||0)};const ins=await db.from('messages_v2').insert(payload).select('id,conversation_id,sender_id,message_type,created_at,encryption_version,ciphertext,encryption_metadata,media_path,media_mime,media_duration_ms').single();if(ins.error){await storage.from('private-voice').remove([path]).catch(()=>{});throw ins.error}return ins.data}
 function installDictation(){
  if(location.pathname!=='/inbox')return;
- const composer=document.getElementById('composer'),body=document.getElementById('body'),voice=document.getElementById('voice');
+ const composer=document.getElementById('composer'),body=document.getElementById('body'),voice=document.getElementById('voice'),send=document.getElementById('send');
  if(!composer||!body||!voice||document.getElementById('wa-dictate'))return;
  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
  const btn=document.createElement('button');btn.id='wa-dictate';btn.type='button';btn.className='btn ghost';btn.textContent='🎙️';btn.title='Dicter un message';btn.setAttribute('aria-label','Activer le microphone pour dicter un message');btn.style.cssText='width:46px;height:44px;padding:0;border-radius:22px;font-size:21px;cursor:pointer!important;pointer-events:auto!important;opacity:1!important;flex:none;position:relative;z-index:20;';
@@ -30,8 +30,26 @@ function installDictation(){
    try{recognition.start()}catch(e){listening=false;btn.textContent='🎙️';btn.title='Dicter un message';btn.style.background='';setStatus('Impossible d’activer le microphone. Réessayez.');}
  });
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installDictation,{once:true});else installDictation();
-setTimeout(installDictation,500);setInterval(installDictation,3000);
+function installSendGuard(){
+ if(location.pathname!=='/inbox')return;
+ const form=document.getElementById('composer'),body=document.getElementById('body'),send=document.getElementById('send');
+ if(!form||!body||!send||send.dataset.waSendGuard)return;
+ send.dataset.waSendGuard='1';
+ send.addEventListener('click',()=>{
+   const text=body.value.trim();
+   const status=document.getElementById('status');
+   if(!text){status&&(status.textContent='Écrivez ou dictez un message avant d’envoyer.');return;}
+   if(!window.current&&form.classList.contains('disabled')){status&&(status.textContent='Choisissez une discussion avant d’envoyer.');return;}
+   send.setAttribute('aria-busy','true');
+   setTimeout(()=>send.removeAttribute('aria-busy'),1500);
+ },true);
+ form.addEventListener('submit',()=>{
+   if(!body.value.trim()){send.blur();return;}
+ },true);
+}
+function install(){installDictation();installSendGuard()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+setTimeout(install,500);setInterval(install,3000);
 function getUrl(storage,path){return storage.from('private-voice').createSignedUrl(path,300).then(r=>{if(r.error)throw r.error;return r.data.signedUrl})}
 async function loadAndDecrypt(storage,path,rawKey,ivB64,aad,expectedMime){const r=await storage.from('private-voice').download(path);if(r.error)throw r.error;const bytes=new Uint8Array(await r.data.arrayBuffer()),plain=await decryptBytes(bytes,rawKey,unb64(ivB64),aad),mime=detectAudioMime(plain,expectedMime);return new Blob([plain],{type:mime})}
 global.WhatsAfricaVoice={preferredMime,startRecording,send,getUrl,loadAndDecrypt};
