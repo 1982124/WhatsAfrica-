@@ -1,9 +1,40 @@
-/* WhatsAfrica — 1:1 WebRTC calls with Supabase signaling. No phone dialer fallback is used. */
+/* WhatsAfrica — 1:1 WebRTC calls with Supabase signaling. */
 (function(){'use strict';
 const S={db:null,user:null,inboxChannel:null,signalChannel:null,sessionChannel:null,pc:null,callId:null,peerId:null,mode:'audio',local:null,remoteVideo:null,remoteAudio:null,modal:null,accepted:false,offerSent:false,iceQueue:[]};
-/* Defensive cleanup: older cached builds injected #waMobileActions. Remove it even if that legacy code is still cached. */
-function removeLegacyMobileActionBar(){const remove=()=>document.getElementById('waMobileActions')?.remove();remove();if(document.documentElement){new MutationObserver(remove).observe(document.documentElement,{childList:true,subtree:true})}}
+function removeLegacyMobileActionBar(){const remove=()=>document.getElementById('waMobileActions')?.remove();remove();if(document.documentElement)new MutationObserver(remove).observe(document.documentElement,{childList:true,subtree:true})}
+function normalizeMessagingMobileUI(){
+ const run=()=>{
+  const chat=document.querySelector('.chat'); if(!chat)return;
+  document.getElementById('waMobileActions')?.remove();
+  document.getElementById('waUnifiedMobileActions')?.remove();
+  if(!document.getElementById('waUnifiedMobileActions')){
+   const bar=document.createElement('div'); bar.id='waUnifiedMobileActions'; bar.setAttribute('aria-label','Actions de messagerie');
+   bar.innerHTML='<button data-wa-action="new" type="button">➕ Nouveau</button><button data-wa-action="search" type="button">🔎 Rechercher</button><button data-wa-action="image" type="button">🖼️ Image</button><button data-wa-action="video" type="button">🎬 Vidéo</button><button data-wa-action="voice" type="button">🎙️ Vocal</button><button data-wa-action="file" type="button">📎 Fichier</button><button data-wa-action="audio" type="button">📞 Audio</button><button data-wa-action="callvideo" type="button">📹 Appel vidéo</button><button data-wa-action="members" type="button">👥 Membres</button>';
+   Object.assign(bar.style,{display:'flex',gap:'6px',overflowX:'auto',padding:'7px 8px',background:'#f0f2f5',borderBottom:'1px solid #d9e1dd',scrollbarWidth:'thin',WebkitOverflowScrolling:'touch'});
+   bar.querySelectorAll('button').forEach(b=>Object.assign(b.style,{flex:'0 0 auto',border:'1px solid #cfd9d5',background:'#fff',borderRadius:'10px',padding:'8px 10px',fontWeight:'800',fontSize:'13px',cursor:'pointer',whiteSpace:'nowrap'}));
+   chat.insertBefore(bar,chat.firstElementChild?.nextElementSibling||chat.firstChild);
+   const q=s=>document.querySelector(s);
+   const click=id=>{const e=document.getElementById(id);if(e)e.click()};
+   bar.querySelector('[data-wa-action="new"]').onclick=()=>{const e=q('#phoneMobile');if(e){e.scrollIntoView({behavior:'smooth',block:'center'});e.focus()}else{q('.side')?.classList.add('wa-mobile-side-open')}};
+   bar.querySelector('[data-wa-action="search"]').onclick=()=>{const e=q('#filter');if(e){e.focus();e.scrollIntoView({behavior:'smooth',block:'center'})}else{alert('Recherche indisponible')}};
+   bar.querySelector('[data-wa-action="image"]').onclick=()=>click('pickImage');
+   bar.querySelector('[data-wa-action="video"]').onclick=()=>click('pickVideo');
+   bar.querySelector('[data-wa-action="voice"]').onclick=()=>click('voice');
+   bar.querySelector('[data-wa-action="file"]').onclick=()=>click('pickFile');
+   bar.querySelector('[data-wa-action="audio"]').onclick=()=>click('audio');
+   bar.querySelector('[data-wa-action="callvideo"]').onclick=()=>click('video');
+   bar.querySelector('[data-wa-action="members"]').onclick=()=>click('membersBtn');
+  }
+  /* The composer attachment icon duplicates the dedicated file/media actions. Keep one source of truth. */
+  document.getElementById('attach')?.remove();
+  const style=document.getElementById('waUnifiedMobileStyle')||document.createElement('style'); style.id='waUnifiedMobileStyle'; style.textContent='@media(max-width:760px){#waUnifiedMobileActions{display:flex!important;position:sticky;top:114px;z-index:25}.chathead .actions{display:none!important}.toolbar{display:none!important}.composer{bottom:62px!important}.messages{min-height:calc(100vh - 300px)!important}}@media(min-width:761px){#waUnifiedMobileActions{display:none!important}}'; if(!style.parentNode)document.head.appendChild(style);
+  /* On mobile the unified strip replaces the separate toolbar and call icons. Desktop keeps the original controls. */
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
+ new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+}
 removeLegacyMobileActionBar();
+normalizeMessagingMobileUI();
 const STUN=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}];
 function cleanupChannel(ch){if(ch)S.db?.removeChannel(ch).catch(()=>{});return null}
 function ensureModal(){if(S.modal)return S.modal;const d=document.createElement('div');d.id='waCallModal';d.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;padding:16px;font-family:system-ui,-apple-system,sans-serif';d.innerHTML='<div style="width:min(720px,100%);background:#111c2d;color:#f8f5eb;border:1px solid #263751;border-radius:18px;padding:14px;box-shadow:0 20px 70px rgba(0,0,0,.5)"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><b id="waCallTitle">Appel WhatsAfrica</b><span id="waCallStatus" style="color:#98a8bd;font-size:13px;flex:1"></span></div><div style="position:relative;background:#050a10;border-radius:14px;overflow:hidden;min-height:220px"><video id="waCallRemoteVideo" autoplay playsinline style="width:100%;max-height:62vh;object-fit:contain;background:#050a10"></video><audio id="waCallRemoteAudio" autoplay></audio><video id="waCallLocalVideo" autoplay muted playsinline style="position:absolute;right:10px;bottom:10px;width:28%;max-height:28%;object-fit:cover;border-radius:10px;border:1px solid #52627a;background:#0b1220"></video></div><div id="waIncomingActions" style="display:none;gap:8px;justify-content:center;margin-top:12px"><button id="waAccept" style="border:0;border-radius:12px;padding:11px 16px;font-weight:800;background:#35c98b;color:#07130d">Accepter</button><button id="waReject" style="border:0;border-radius:12px;padding:11px 16px;font-weight:800;background:#ef6b67;color:#220d0d">Refuser</button></div><div id="waCallActions" style="display:flex;gap:8px;justify-content:center;margin-top:12px"><button id="waMute" style="border:1px solid #263751;background:transparent;color:inherit;border-radius:12px;padding:10px 13px">🎙️ Muet</button><button id="waCam" style="border:1px solid #263751;background:transparent;color:inherit;border-radius:12px;padding:10px 13px">📹 Caméra</button><button id="waHangup" style="border:0;background:#ef6b67;color:#220d0d;border-radius:12px;padding:10px 16px;font-weight:850">Raccrocher</button></div></div>';document.body.appendChild(d);S.modal=d;d.querySelector('#waAccept').onclick=()=>acceptIncoming().catch(showError);d.querySelector('#waReject').onclick=()=>rejectIncoming().catch(showError);d.querySelector('#waHangup').onclick=()=>end().catch(showError);d.querySelector('#waMute').onclick=toggleMic;d.querySelector('#waCam').onclick=toggleCam;return d}
