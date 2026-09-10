@@ -34,3 +34,24 @@ function imageViewer(blob,name){const u=URL.createObjectURL(blob),w=document.cre
 async function decorate(){const c=getDb(),id=cid(),box=$('messages');if(!c||!id||!box||box.classList.contains('hide'))return;const r=await c.from('messages_v2').select('id,conversation_id,sender_id,message_type,created_at,encryption_metadata,media_path,media_mime').eq('conversation_id',id).order('created_at',{ascending:true}).limit(200);if(r.error)return;const rows=r.data||[],nodes=[...box.children];rows.forEach((row,i)=>{const n=nodes[i];if(!n||n.dataset.waMediaUi||!['image','video','file'].includes(row.message_type)||!row.media_path)return;n.dataset.waMediaUi='1';n.textContent='';const m=row.encryption_metadata||{};if(row.message_type==='image'){const img=document.createElement('img');img.alt=m.media_name||'Photo';img.style.cssText='width:min(280px,78vw);max-height:320px;object-fit:cover;border-radius:10px;display:block;background:#d9e8e4';open(row).then(blob=>{const u=URL.createObjectURL(blob);img.src=u;img.onclick=()=>imageViewer(blob,m.media_name)}).catch(e=>{img.alt='Image indisponible';msgStatus('Média indisponible : '+(e.message||e),true)});n.appendChild(img)}else if(row.message_type==='video'){const v=document.createElement('video');v.controls=true;v.playsInline=true;v.preload='metadata';v.style.cssText='width:min(300px,82vw);max-height:340px;border-radius:10px;display:block;background:#111';open(row).then(blob=>{v.src=URL.createObjectURL(blob)}).catch(e=>msgStatus('Vidéo indisponible : '+(e.message||e),true));n.appendChild(v)}else{const card=document.createElement('div');card.style.cssText='display:flex;align-items:center;gap:9px;min-width:220px';const icon=document.createElement('div');icon.textContent='📄';icon.style.fontSize='28px';const info=document.createElement('div');info.style.flex='1';const name=document.createElement('div');name.textContent=m.media_name||'Fichier';name.style.fontWeight='800';const size=document.createElement('div');size.textContent=((m.media_size||0)/1024/1024).toFixed(2)+' Mo';size.style.cssText='font-size:12px;color:#66756e';const b=document.createElement('button');b.type='button';b.className='btn ghost';b.textContent='Ouvrir';b.onclick=async()=>{try{msgStatus('🔓 Déchiffrement…');const blob=await open(row),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=m.media_name||'fichier';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000);msgStatus('✓ Fichier prêt.');setTimeout(()=>msgStatus(''),1600)}catch(e){msgStatus('Fichier indisponible : '+(e.message||e),true)}};info.append(name,size);card.append(icon,info,b);n.appendChild(card)}})}
 function loop(){wirePicker();decorate().catch(()=>{})}function start(){if(started)return;started=true;new MutationObserver(loop).observe(document.body,{subtree:true,childList:true});setTimeout(loop,500);setInterval(loop,2500)}start();
 })();
+
+/* WhatsAfrica — secure external invitation bridge. It never forwards the sender session/token. */
+(()=>{'use strict';
+if(location.pathname!=='/inbox')return;
+const S='https://dzifpwqrqnvssfhwjccj.supabase.co',K='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+const c=window.supabase?.createClient?.(S,K);if(!c)return;
+const phoneOnly=v=>{let x=String(v||'').trim().replace(/[\\s().-]/g,'');if(x.startsWith('00'))x='+'+x.slice(2);return /^\\+[1-9][0-9]{7,14}$/.test(x)?x:null};
+const inviteUrl=token=>location.origin+'/auth?invite='+encodeURIComponent(token);
+async function upgradeInviteLink(el,inputValue){
+  const p=phoneOnly(inputValue);if(!p||el.dataset.waSecureInvite==='1')return;
+  const a=el.querySelector('a[href*="/auth"]');if(!a)return;
+  const s=await c.auth.getSession();const u=s.data?.session?.user;if(!u)return;
+  const r=await c.rpc('create_conversation_invite',{p_target_phone:p});
+  if(r.error){console.warn('WhatsAfrica secure invite',r.error);return;}
+  const token=r.data?.token;if(!token)return;
+  a.href=inviteUrl(token);a.textContent='🟢 Inviter via WhatsApp';a.title='Invitation sécurisée — aucune session WhatsAfrica transmise';a.target='_blank';a.rel='noopener noreferrer';el.dataset.waSecureInvite='1';
+  const note=document.createElement('div');note.textContent='L’invitation contient uniquement un jeton à usage limité. L’authentification de l’expéditeur n’est jamais transmise.';note.style.cssText='margin-top:5px;font-size:11px;color:#66756e';el.appendChild(note);
+}
+function scan(){for(const id of ['statusSide','statusMobile']){const el=document.getElementById(id);if(!el)continue;const input=id==='statusSide'?document.getElementById('phone'):document.getElementById('phoneMobile');if(el.querySelector('a[href*="/auth"]'))upgradeInviteLink(el,input?.value).catch(e=>console.warn('invite bridge',e))}}
+new MutationObserver(scan).observe(document.body,{subtree:true,childList:true});setInterval(scan,1200);setTimeout(scan,500);
+})();
