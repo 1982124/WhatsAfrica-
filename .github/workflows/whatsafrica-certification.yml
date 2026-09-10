@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json messaging-whatsapp.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html; do
+          for file in vercel.json messaging-v6.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html; do
             test -f "$file"
           done
 
@@ -31,7 +31,7 @@ jobs:
           for route in '"/share"' '"/calls"' '"/inbox"' '"/product"' '"/product/:id"' '"/s/:token"' '"/invite"' '"/admin"' '"/meeting"'; do
             grep -Fq "$route" vercel.json
           done
-          grep -Fq 'messaging-whatsapp.html' vercel.json
+          grep -Fq 'messaging-v6.html' vercel.json
 
       - name: Validate security headers
         shell: bash
@@ -46,9 +46,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'sendEncryptedMessage' messaging-whatsapp.html
-          grep -Fq 'startRecording' messaging-whatsapp.html
-          grep -Fq 'WA_CALLS.start' messaging-whatsapp.html
+          grep -Fq 'sendEncryptedMessage' messaging-v6.html
+          grep -Fq 'startRecording' messaging-v6.html
+          grep -Fq 'WA_CALLS.start' messaging-v6.html
           grep -Fq 'RTCPeerConnection' wa-calls-v2.js
           grep -Fq 'getUserMedia' wa-calls-v2.js
           grep -Fq 'create_share_link' wa-calls-v2.js
@@ -86,7 +86,7 @@ jobs:
               def handle_data(self, data):
                   if self.in_script: self.buf.append(data)
 
-          for name in ['messaging-whatsapp.html','calls-v2.html']:
+          for name in ['messaging-v6.html','calls-v2.html']:
               p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
               for i, code in enumerate(p.scripts):
                   if not code.strip() or code.lstrip().startswith('http'): continue
