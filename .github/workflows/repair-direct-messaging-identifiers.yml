@@ -12,58 +12,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch inbox identifier UX
+      - name: Patch routed inbox identifier UX
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('messaging-v4.html')
-          s = p.read_text(encoding='utf-8')
-
-          old_input = '<input id="phone" class="input" inputmode="tel" autocomplete="tel" placeholder="+223…"><button id="start" class="btn primary">Démarrer</button>'
-          new_input = '<input id="phone" class="input" inputmode="text" autocomplete="off" placeholder="Téléphone +223…, email ou ID WhatsAfrica"><button id="start" class="btn primary">Rechercher</button>'
-          if old_input in s:
-              s = s.replace(old_input, new_input, 1)
-
-          old_norm = "const norm=v=>{let x=String(v||'').trim().replace(/[\\s().-]/g,'');if(x.startsWith('00'))x='+'+x.slice(2);return /^\\+[1-9][0-9]{7,14}$/.test(x)?x:null}"
-          new_norm = "const norm=v=>{const raw=String(v||'').trim();if(!raw)return null;let x=raw.replace(/[\\s().-]/g,'');if(x.startsWith('00'))x='+'+x.slice(2);if(/^\\+[1-9][0-9]{7,14}$/.test(x))return x;if(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(raw))return raw.toLowerCase();if(/^[0-9]{4,20}$/.test(raw))return raw;return null}"
-          if old_norm in s:
-              s = s.replace(old_norm, new_norm, 1)
-
-          s = s.replace("if(!p)return status('Utilisez un numéro international, par exemple +223…');", "if(!p)return status('Entrez un téléphone international, un email ou un ID WhatsAfrica.');", 1)
-          s = s.replace("Ce numéro n’a pas encore de compte WhatsAfrica.", "Aucun compte WhatsAfrica trouvé pour cet identifiant.", 1)
-          p.write_text(s, encoding='utf-8')
+          for name in ('messaging-v4.html','messaging-v6.html'):
+              p = Path(name)
+              if not p.exists():
+                  continue
+              s = p.read_text(encoding='utf-8')
+              s = s.replace('Utilisez le numéro international du correspondant.', 'Téléphone, e-mail ou ID WhatsAfrica — un seul champ.', 1)
+              s = s.replace('placeholder="+223…"', 'placeholder="Téléphone +223…, e-mail ou ID WhatsAfrica"', 2)
+              s = s.replace('inputmode="tel"', 'inputmode="text"', 2)
+              s = s.replace("if(!p)return status('Numéro international requis, exemple +223…');", "if(!p)return status('Entrez un téléphone international, un e-mail ou un ID WhatsAfrica.');", 1)
+              p.write_text(s, encoding='utf-8')
           PY
 
-      - name: Patch authentication device bootstrap
+      - name: Patch routed authentication device bootstrap
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('auth-v2.html')
-          s = p.read_text(encoding='utf-8')
-
-          marker = '<script src="/e2ee.js"></script><script id="wa-e2ee-bootstrap">'
-          if marker not in s:
-              s = s.replace('</body></html>', marker + """
-          (()=>{'use strict';
-            const boot=async()=>{
-              try{
-                const s=await db.auth.getSession();
-                const u=s.data?.session?.user;
-                if(u && window.WhatsAfricaCrypto) await window.WhatsAfricaCrypto.registerDevice(db,u.id,'Web');
-              }catch(e){ console.warn('WhatsAfrica E2EE device bootstrap deferred',e); }
-            };
-            boot();
-            db.auth.onAuthStateChange((event,session)=>{
-              if(session?.user && ['SIGNED_IN','TOKEN_REFRESHED'].includes(event)) setTimeout(boot,0);
-            });
-          })();</script></body></html>""", 1)
-          p.write_text(s, encoding='utf-8')
+          p = Path('auth-v5.html')
+          if p.exists():
+              s = p.read_text(encoding='utf-8')
+              if 'id="wa-e2ee-bootstrap"' not in s:
+                  inject = '''<script src="/e2ee.js"></script><script id="wa-e2ee-bootstrap">(()=>{'use strict';const boot=async()=>{try{const s=await db.auth.getSession();const u=s.data?.session?.user;if(u&&window.WhatsAfricaCrypto)await window.WhatsAfricaCrypto.registerDevice(db,u.id,'Web')}catch(e){console.warn('WhatsAfrica E2EE device bootstrap deferred',e)}};boot();db.auth.onAuthStateChange((event,session)=>{if(session?.user&&['SIGNED_IN','TOKEN_REFRESHED'].includes(event))setTimeout(boot,0)})})();</script>'''
+                  s = s.replace('</body></html>', inject + '</body></html>', 1)
+                  p.write_text(s, encoding='utf-8')
           PY
 
-      - name: Commit patched messaging and auth
+      - name: Commit routed messaging and auth patches
         run: |
           git config user.name "WhatsAfrica CTO"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add messaging-v4.html auth-v2.html
-          git diff --cached --quiet || git commit -m "fix(messaging): bootstrap E2EE device at authentication"
+          git add messaging-v4.html messaging-v6.html auth-v5.html
+          git diff --cached --quiet || git commit -m "fix(messaging): patch routed inbox and auth surfaces"
           git push
