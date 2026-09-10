@@ -1,0 +1,42 @@
+name: Patch messaging first-send E2EE UX
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch messaging
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('messaging-v6.html')
+          s=p.read_text()
+          old="if(k)return k;"
+          new="""if(k){try{await syncConversationKeyEnvelopes(k)}catch(e){console.warn('E2EE envelope sync',e)}return k;}"""
+          if old not in s:
+            raise SystemExit('load-key anchor not found')
+          s=s.replace(old,new,1)
+          anchor="async function ensureKey(){"
+          helper="""async function syncConversationKeyEnvelopes(rawKey){if(!current||!rawKey)return;const mem=await db.from('conversation_members').select('user_id').eq('conversation_id',current.id);if(mem.error)throw mem.error;const ids=[...new Set((mem.data||[]).map(x=>x.user_id))];const devs=await db.from('user_devices').select('id,user_id,identity_public_key').in('user_id',ids).is('revoked_at',null);if(devs.error)throw devs.error;const valid=(devs.data||[]).filter(x=>x.identity_public_key);if(valid.length)await WhatsAfricaCrypto.createKeyEnvelopes(db,current.id,1,rawKey,valid.map(x=>x.id));}"""
+          if helper not in s:
+            if anchor not in s: raise SystemExit('ensureKey anchor not found')
+            s=s.replace(anchor,helper+anchor,1)
+          old2="if(valid.length<2)throw Error('Le chiffrement attend encore un appareil sécurisé du correspondant.');await WhatsAfricaCrypto.createKeyEnvelopes(db,current.id,1,raw,valid.map(x=>x.id));"
+          new2="if(valid.length<1)throw Error('Aucun appareil sécurisé disponible.');await WhatsAfricaCrypto.createKeyEnvelopes(db,current.id,1,raw,valid.map(x=>x.id));"
+          if old2 not in s:
+            raise SystemExit('first-device gate not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+      - name: Commit patch
+        run: |
+          git config user.name 'WhatsAfrica CTO Bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add messaging-v6.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(messaging): allow secure first send before recipient device is online'
+          git push
