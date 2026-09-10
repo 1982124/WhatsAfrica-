@@ -12,10 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch routed inbox identifier UX
+      - name: Patch routed inbox identifier UX and first-send recovery
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           for name in ('messaging-v4.html','messaging-v6.html'):
               p = Path(name)
               if not p.exists():
@@ -25,6 +26,8 @@ jobs:
               s = s.replace('placeholder="+223…"', 'placeholder="Téléphone +223…, e-mail ou ID WhatsAfrica"', 2)
               s = s.replace('inputmode="tel"', 'inputmode="text"', 2)
               s = s.replace("if(!p)return status('Numéro international requis, exemple +223…');", "if(!p)return status('Entrez un téléphone international, un e-mail ou un ID WhatsAfrica.');", 1)
+              s = s.replace("status('🔐 Chiffrement pas encore prêt. Ouvrez WhatsAfrica sur le correspondant.');return", "status('🔐 Préparation sécurisée de la conversation…');try{key=await ensureKey()}catch(e){status('⏳ Envoi en attente : WhatsAfrica finalisera automatiquement le chiffrement dès que le compte correspondant sera prêt.');return}", 1)
+              s = s.replace("(e.message||'Le correspondant doit ouvrir WhatsAfrica une première fois.')", "(e.message||'Le chiffrement de cette conversation est en cours de préparation.')", 1)
               p.write_text(s, encoding='utf-8')
           PY
 
@@ -46,5 +49,5 @@ jobs:
           git config user.name "WhatsAfrica CTO"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add messaging-v4.html messaging-v6.html auth-v5.html
-          git diff --cached --quiet || git commit -m "fix(messaging): patch routed inbox and auth surfaces"
+          git diff --cached --quiet || git commit -m "fix(messaging): make first-send recovery automatic"
           git push
