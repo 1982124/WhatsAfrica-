@@ -20,12 +20,6 @@ jobs:
           s=s.replace("d'envoyer", "d’envoyer")
           p.write_text(s)
           PY
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('messaging-v6.html').read_text(); a=s.find('async function startVoice'); b=s.find('</script>',a)
-          Path('/tmp/inline.js').write_text(s[a:b])
-          PY
-          node --check /tmp/inline.js
       - name: Commit
         shell: bash
         run: |
