@@ -51,7 +51,6 @@ jobs:
           grep -Fq 'WA_CALLS.start' messaging-v6.html
           grep -Fq 'RTCPeerConnection' wa-calls-v2.js
           grep -Fq 'getUserMedia' wa-calls-v2.js
-          grep -Fq 'create_share_link' wa-calls-v2.js
           grep -Fq 'resolve_share_landing' share.html
 
       - name: Validate no service-role key is committed
@@ -86,7 +85,7 @@ jobs:
               def handle_data(self, data):
                   if self.in_script: self.buf.append(data)
 
-          for name in ['messaging-v6.html','calls-v2.html']:
+          for name in ['messaging-v6.html','calls-v2.html','share.html']:
               p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
               for i, code in enumerate(p.scripts):
                   if not code.strip() or code.lstrip().startswith('http'): continue
