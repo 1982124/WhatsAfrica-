@@ -1,0 +1,1 @@
+CTO deployment gate: deploy the already-committed messaging first-send reliability fix (39a881693dfcb031a50fddee81ad8272c10ab388) to production for real-user verification.
