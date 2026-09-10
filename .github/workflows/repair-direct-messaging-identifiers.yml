@@ -59,10 +59,39 @@ jobs:
                   p.write_text(s, encoding='utf-8')
           PY
 
+      - name: Activate encrypted offline outbox and automatic retry
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          for name in ('messaging-v4.html', 'messaging-v6.html'):
+              p = Path(name)
+              if not p.exists():
+                  continue
+              s = p.read_text(encoding='utf-8')
+
+              old_boot = "await register();await list();WA_CALLS.init(db,user)"
+              new_boot = "await register();await list();try{await WhatsAfricaCrypto.flushEncryptedOutbox(db,{onItem:()=>{}})}catch(e){console.warn('WhatsAfrica outbox flush deferred',e)};window.addEventListener('online',()=>{WhatsAfricaCrypto.flushEncryptedOutbox(db,{onItem:()=>{}}).catch(e=>console.warn('WhatsAfrica outbox retry deferred',e))});WA_CALLS.init(db,user)"
+              if old_boot in s:
+                  s = s.replace(old_boot, new_boot, 1)
+
+              old_open = "await subscribe(c.id);try{key=await ensureKey();await loadMessages();status('🟢 Conversation prête.')}"
+              new_open = "await subscribe(c.id);try{key=await ensureKey();try{await WhatsAfricaCrypto.flushEncryptedOutbox(db,{conversationId:c.id,onItem:()=>{}})}catch(e){console.warn('WhatsAfrica conversation outbox flush deferred',e)}await loadMessages();status('🟢 Conversation prête.')}"
+              if old_open in s:
+                  s = s.replace(old_open, new_open, 1)
+
+              old_send = "async function sendText(){const body=$('body'),text=body.value.trim();if(!text||!current)return;if(!key){status('🔐 Préparation sécurisée de la conversation…');try{key=await ensureKey()}catch(e){status('⏳ Envoi en attente : WhatsAfrica finalisera automatiquement le chiffrement dès que le compte correspondant sera prêt.');return}}const btn=$('send');btn.disabled=true;try{await WhatsAfricaCrypto.sendEncryptedMessage(db,{conversationId:current.id,senderId:user.id,text,rawKey:key,messageType:'text'});body.value='';await loadMessages();status('Message envoyé.')}catch(e){status('Échec de l’envoi : '+(e.message||e))}finally{btn.disabled=false}}"
+              new_send = "async function sendText(){const body=$('body'),text=body.value.trim();if(!text||!current)return;if(!key){status('🔐 Préparation sécurisée de la conversation…');try{key=await ensureKey()}catch(e){status('⏳ Envoi en attente : WhatsAfrica finalisera automatiquement le chiffrement dès que le compte correspondant sera prêt.');return}}const btn=$('send');btn.disabled=true;try{const messageId=crypto.randomUUID();await WhatsAfricaCrypto.sendEncryptedMessage(db,{conversationId:current.id,senderId:user.id,text,rawKey:key,messageType:'text',messageId});body.value='';await loadMessages();status('Message envoyé.')}catch(e){try{await WhatsAfricaCrypto.queueEncryptedMessage({conversationId:current.id,senderId:user.id,text,rawKey:key,messageType:'text',messageId});body.value='';status('⏳ Message sécurisé mis en attente. Il sera envoyé automatiquement dès que la connexion sera rétablie.')}catch(queueError){status('Échec de l’envoi : '+(queueError.message||e.message||e))}}finally{btn.disabled=false}}"
+              if old_send in s:
+                  s = s.replace(old_send, new_send, 1)
+
+              p.write_text(s, encoding='utf-8')
+          PY
+
       - name: Commit routed messaging and auth patches
         run: |
           git config user.name "WhatsAfrica CTO"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add messaging-v4.html messaging-v6.html auth-v5.html
-          git diff --cached --quiet || git commit -m "fix(messaging): add WhatsApp invitation fallback"
+          git diff --cached --quiet || git commit -m "feat(messaging): activate encrypted offline outbox"
           git push
