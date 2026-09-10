@@ -1,0 +1,57 @@
+name: Fix auth to inbox session handoff
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch auth and inbox session handoff
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # Auth: make the session persistence explicit and verify it before leaving auth.
+          p=Path('auth-v6.html')
+          s=p.read_text()
+          s=s.replace(
+            "db=supabase.createClient(URL,KEY)",
+            "db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}})"
+          )
+          old="""const r=await db.from('profiles').update({first_name:first,last_name:last,country,display_name:first+' '+last,public_display_name:first+' '+last,...(image?{profile_image_url:image}:{}),...(phone?{public_phone:phone}:{})}).eq('user_id',user.id);if(r.error)throw r.error;location.replace(NEXT)"""
+          new="""const r=await db.from('profiles').update({first_name:first,last_name:last,country,display_name:first+' '+last,public_display_name:first+' '+last,...(image?{profile_image_url:image}:{}),...(phone?{public_phone:phone}:{})}).eq('user_id',user.id);if(r.error)throw r.error;const sessionCheck=await db.auth.getSession();if(!sessionCheck.data?.session)throw Error('La session WhatsAfrica n’est pas encore prête. Réessayez dans un instant.');await new Promise(resolve=>setTimeout(resolve,200));location.replace(NEXT)"""
+          if old in s:
+            s=s.replace(old,new,1)
+          p.write_text(s)
+
+          # Inbox: tolerate the initial Supabase session hydration race instead of
+          # presenting the login screen while a valid session is still loading.
+          p=Path('messaging-v6.html')
+          s=p.read_text()
+          s=s.replace(
+            "const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV')",
+            "const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}})"
+          )
+          old="""async function getSession(){let r=await db.auth.getSession();return r.data.session||null}"""
+          new="""async function getSession(){for(let i=0;i<6;i++){let r=await db.auth.getSession();if(r.data?.session)return r.data.session;if(i<5)await new Promise(resolve=>setTimeout(resolve,350));}return null}"""
+          if old not in s: raise SystemExit('getSession anchor not found')
+          s=s.replace(old,new,1)
+          old="""async function boot(){const s=await getSession();if(!s)return;$('login').classList.add('hide');$('main').classList.remove('hide');user=s.user;await register();await list();"""
+          new="""async function boot(){const s=await getSession();if(!s){$('login').classList.remove('hide');$('main').classList.add('hide');return;}$('login').classList.add('hide');$('main').classList.remove('hide');user=s.user;await register();await list();"""
+          if old not in s: raise SystemExit('boot anchor not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          print('auth/inbox session handoff patched')
+      - name: Commit patch
+        run: |
+          git config user.name 'WhatsAfrica CTO Bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add auth-v6.html messaging-v6.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(auth): stabilize session handoff into inbox'
+          git push
