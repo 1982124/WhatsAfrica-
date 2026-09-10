@@ -1,0 +1,84 @@
+name: CTO Deep Auth Loop Fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch auth session persistence and deterministic handoff
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('auth-v6.html')
+          s=p.read_text()
+          s=s.replace("db=supabase.createClient(URL,KEY)", "db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}})")
+          s=s.replace("async function save(){if(!user)return;", "async function save(){if(!user)return;")
+          old="if(r.error)throw r.error;location.replace(NEXT)}catch(e){pnote(err(e),'err')}"
+          new="if(r.error)throw r.error;let ss=null;for(let i=0;i<8;i++){const sr=await db.auth.getSession();if(sr.data?.session){ss=sr.data.session;break}await new Promise(r=>setTimeout(r,250))}if(!ss){throw Error('Votre session doit être renouvelée.')}await new Promise(r=>setTimeout(r,150));location.replace(NEXT)}catch(e){pnote(err(e),'err')}"
+          if old not in s: raise SystemExit('auth save anchor not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('messaging-v6.html')
+          s=p.read_text()
+          s=s.replace("supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV')", "supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}})")
+          old="async function getSession(){let r=await db.auth.getSession();return r.data.session||null}"
+          new="async function getSession(){for(let i=0;i<7;i++){const r=await db.auth.getSession();if(r.data?.session)return r.data.session;await new Promise(r=>setTimeout(r,300))}return null}"
+          if old not in s: raise SystemExit('messaging getSession anchor not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+
+      - name: Repair stale certification route assertion
+        shell: bash
+        run: |
+          found=0
+          while IFS= read -r f; do
+            if grep -q 'messaging-whatsapp.html' "$f"; then
+              sed -i 's/messaging-whatsapp\.html/messaging-v6.html/g' "$f"
+              found=1
+            fi
+          done < <(find .github/workflows -type f -name '*.yml' -o -name '*.yaml')
+          echo "certification files patched: $found"
+
+      - name: Add anti-loop static invariant
+        shell: bash
+        run: |
+          cat > /tmp/check-auth-loop.py <<'PY'
+          from pathlib import Path
+          a=Path('auth-v6.html').read_text()
+          m=Path('messaging-v6.html').read_text()
+          v=Path('vercel.json').read_text()
+          assert 'persistSession:true' in a
+          assert 'autoRefreshToken:true' in a
+          assert 'detectSessionInUrl:true' in a
+          assert 'persistSession:true' in m
+          assert 'messaging-v6.html' in v
+          assert '"/inbox"' in v
+          assert '"/auth"' in v
+          print('AUTH_LOOP_STATIC_INVARIANTS=PASS')
+          PY
+          python3 /tmp/check-auth-loop.py
+
+      - name: Commit corrections
+        shell: bash
+        run: |
+          git config user.name 'whatsafrica-cto-bot'
+          git config user.email 'cto-bot@whatsafrica.local'
+          git add auth-v6.html messaging-v6.html .github/workflows
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+          else
+            git commit -m 'fix(auth): deterministic session handoff and anti-loop certification'
+            git push
+          fi
