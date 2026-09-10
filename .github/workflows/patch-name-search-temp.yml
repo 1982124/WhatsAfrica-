@@ -1,5 +1,8 @@
 name: CTO temporary name search patch
 on:
+  push:
+    branches: [main]
+    paths: [messaging-v6.html]
   workflow_dispatch:
 permissions:
   contents: write
@@ -25,5 +28,5 @@ jobs:
           git config user.name "whatsafrica-cto"
           git config user.email "cto@users.noreply.github.com"
           git add messaging-v6.html
-          git commit -m "fix(messaging): support member search by name"
+          git commit -m "fix(messaging): support member search by name [skip ci]"
           git push
