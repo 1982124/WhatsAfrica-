@@ -1,0 +1,18 @@
+(()=>{'use strict';
+const SUPABASE_URL='https://dzifpwqrqnvssfhwjccj.supabase.co';
+const SUPABASE_KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+const db=window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY);
+if(!db)return;
+let user=null,currentConversationId=null,msgChannel=null,receiptChannel=null,refreshTimer=null;
+const fmt=t=>t?new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(t)):'—';
+const ensureUi=()=>{let el=document.getElementById('wa-receipt-status');if(el)return el;el=document.createElement('div');el.id='wa-receipt-status';el.style.cssText='display:none;padding:6px 12px;background:#f8fbfa;border-bottom:1px solid #d9e1dd;font-size:12px;color:#66756e;line-height:1.35';const m=document.getElementById('messages');if(m?.parentNode)m.parentNode.insertBefore(el,m);return el};
+const setUi=t=>{const el=ensureUi();el.style.display='block';el.textContent=t};
+async function markDelivered(id){try{await db.rpc('mark_message_delivered',{p_message_id:id})}catch(e){console.warn('receipt delivered',e)}}
+async function markRead(id){try{await db.rpc('mark_message_read',{p_message_id:id})}catch(e){console.warn('receipt read',e)}}
+async function syncOpenConversation(){if(!currentConversationId||!user)return;const q=await db.from('messages_v2').select('id,sender_id,created_at').eq('conversation_id',currentConversationId).order('created_at',{ascending:false}).limit(200);if(q.error)return;for(const m of q.data||[]){if(m.sender_id!==user.id){await markDelivered(m.id);await markRead(m.id)}}await refreshStatus()}
+async function refreshStatus(){if(!currentConversationId||!user)return;const q=await db.from('messages_v2').select('id,sender_id,created_at').eq('conversation_id',currentConversationId).eq('sender_id',user.id).order('created_at',{ascending:false}).limit(1);if(q.error||!q.data?.length){const el=document.getElementById('wa-receipt-status');if(el)el.style.display='none';return}const m=q.data[0];const r=await db.from('message_receipts').select('delivered_at,read_at').eq('message_id',m.id).limit(20);if(r.error)return;const receipt=(r.data||[])[0];let s='✓ Envoyé '+fmt(m.created_at);if(receipt?.delivered_at)s+=' · ✓✓ Reçu '+fmt(receipt.delivered_at);else s+=' · ⏳ Pas encore reçu';if(receipt?.read_at)s+=' · ✓✓ Ouvert '+fmt(receipt.read_at);else if(receipt?.delivered_at)s+=' · 👁 Pas encore ouvert';setUi('Dernier message : '+s)}
+function subscribeGlobal(){if(msgChannel||!user)return;msgChannel=db.channel('wa-receipts-messages-'+user.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages_v2'},async payload=>{const m=payload.new;if(m.sender_id===user.id)return;await markDelivered(m.id);if(currentConversationId===m.conversation_id)await markRead(m.id);if(currentConversationId===m.conversation_id)refreshStatus()}).subscribe();receiptChannel=db.channel('wa-receipts-status-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'message_receipts'},()=>{if(currentConversationId)refreshStatus()}).subscribe()}
+async function init(){const s=await db.auth.getSession();user=s.data?.session?.user||null;if(!user){db.auth.onAuthStateChange((_e,session)=>{user=session?.user||null;if(user)subscribeGlobal()});return}subscribeGlobal()}
+window.WA_RECEIPTS={setConversation:async id=>{currentConversationId=id;ensureUi();await syncOpenConversation();clearInterval(refreshTimer);refreshTimer=setInterval(refreshStatus,5000)},clearConversation:()=>{currentConversationId=null;const el=document.getElementById('wa-receipt-status');if(el)el.style.display='none';clearInterval(refreshTimer)}};
+init().catch(e=>console.warn('WhatsAfrica receipts init',e));
+})();
