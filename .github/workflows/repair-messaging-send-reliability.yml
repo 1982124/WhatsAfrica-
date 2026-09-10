@@ -1,0 +1,38 @@
+name: Repair messaging send reliability
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Harden E2EE key bootstrap before first send
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for name in ('messaging-v4.html','messaging-v6.html'):
+              p=Path(name)
+              if not p.exists():
+                  continue
+              s=p.read_text(encoding='utf-8')
+              old="""async function ensureKey(){if(!current)throw Error('Conversation introuvable');let k=await WhatsAfricaCrypto.loadConversationKey(current.id,1);if(k)return k;k=await WhatsAfricaCrypto.fetchConversationKey(db,current.id,device.deviceId,device.privateKey,1);if(k)return k;const claim=await db.rpc('claim_conversation_key_initializer',{p_conversation_id:current.id,p_key_version:1,p_device_id:device.deviceId});if(claim.error)throw claim.error;if(claim.data===true){const raw=await WhatsAfricaCrypto.generateConversationKey();const mem=await db.from('conversation_members').select('user_id').eq('conversation_id',current.id);if(mem.error)throw mem.error;const ids=(mem.data||[]).map(x=>x.user_id);const devs=await db.from('user_devices').select('id,user_id,identity_public_key').in('user_id',ids).is('revoked_at',null);if(devs.error)throw devs.error;const valid=(devs.data||[]).filter(x=>x.identity_public_key);if(valid.length<2)throw Error('Le correspondant doit ouvrir WhatsAfrica une première fois.');await WhatsAfricaCrypto.createKeyEnvelopes(db,current.id,1,raw,valid.map(x=>x.id));return await WhatsAfricaCrypto.fetchConversationKey(db,current.id,device.deviceId,device.privateKey,1)}throw Error('Conversation chiffrée non prête.')}"""
+              new="""async function ensureKey(){if(!current)throw Error('Conversation introuvable');if(!device)device=await register();if(!device?.deviceId||!device?.privateKey)throw Error('Appareil sécurisé indisponible.');let k=await WhatsAfricaCrypto.loadConversationKey(current.id,1);if(k)return k;k=await WhatsAfricaCrypto.fetchConversationKey(db,current.id,device.deviceId,device.privateKey,1);if(k)return k;let claim=await db.rpc('claim_conversation_key_initializer',{p_conversation_id:current.id,p_key_version:1,p_device_id:device.deviceId});if(claim.error){device=await register();claim=await db.rpc('claim_conversation_key_initializer',{p_conversation_id:current.id,p_key_version:1,p_device_id:device.deviceId})}if(claim.error)throw claim.error;const claimed=claim.data===true||claim.data?.[0]===true||claim.data?.data===true;if(claimed){const raw=await WhatsAfricaCrypto.generateConversationKey();const mem=await db.from('conversation_members').select('user_id').eq('conversation_id',current.id);if(mem.error)throw mem.error;const ids=[...new Set((mem.data||[]).map(x=>x.user_id))];const devs=await db.from('user_devices').select('id,user_id,identity_public_key').in('user_id',ids).is('revoked_at',null);if(devs.error)throw devs.error;const valid=[...new Map((devs.data||[]).filter(x=>x.identity_public_key).map(x=>[x.id,x])).values()];if(!valid.some(x=>x.id===device.deviceId))valid.push({id:device.deviceId,user_id:user.id,identity_public_key:(await WhatsAfricaCrypto.getOrCreateIdentity()).publicJwk});if(valid.length<2)throw Error('Le chiffrement attend encore un appareil sécurisé du correspondant.');await WhatsAfricaCrypto.createKeyEnvelopes(db,current.id,1,raw,valid.map(x=>x.id));const ready=await WhatsAfricaCrypto.fetchConversationKey(db,current.id,device.deviceId,device.privateKey,1);if(!ready)throw Error('Clé de conversation créée mais indisponible sur cet appareil.');return ready}throw Error('Conversation chiffrée non prête.')}"""
+              if old in s:
+                  s=s.replace(old,new,1)
+              p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Commit hardening patch
+        run: |
+          git config user.name "WhatsAfrica CTO"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add messaging-v4.html messaging-v6.html
+          git diff --cached --quiet || git commit -m "fix(messaging): harden first-send E2EE bootstrap"
+          git push
