@@ -17,6 +17,7 @@ jobs:
           from pathlib import Path
           p=Path('messaging-v6.html')
           s=p.read_text()
+          s=s.replace("d&#39;envoyer", "d’envoyer")
           s=s.replace("d'envoyer", "d’envoyer")
           p.write_text(s)
           PY
