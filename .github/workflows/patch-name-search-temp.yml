@@ -2,7 +2,6 @@ name: CTO temporary name search patch
 on:
   push:
     branches: [main]
-    paths: [messaging-v6.html]
   workflow_dispatch:
 permissions:
   contents: write
