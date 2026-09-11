@@ -1,0 +1,63 @@
+name: WASSAFRICA global brand normalization
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.html'
+      - '.github/workflows/wassafrica-global-brand.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Normalize visible brand in HTML
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          replacements = [
+              (re.compile(r'Whats<b>Africa</b>', re.I), 'WASSAFRICA'),
+              (re.compile(r'Whats\s+Africa', re.I), 'WASSAFRICA'),
+              (re.compile(r'WhatsAfrica', re.I), 'WASSAFRICA'),
+          ]
+
+          def normalize_html(text):
+              parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
+              for i in range(0, len(parts), 2):
+                  for pattern, replacement in replacements:
+                      parts[i] = pattern.sub(replacement, parts[i])
+              return ''.join(parts)
+
+          changed = []
+          for path in Path('.').rglob('*.html'):
+              if any(part in {'.git', 'node_modules'} for part in path.parts):
+                  continue
+              old = path.read_text(encoding='utf-8')
+              new = normalize_html(old)
+              if new != old:
+                  path.write_text(new, encoding='utf-8')
+                  changed.append(str(path))
+
+          print(f'Normalized {len(changed)} HTML files')
+          for p in changed:
+              print(p)
+
+      - name: Commit normalization
+        shell: bash
+        run: |
+          git config user.name "WASSAFRICA CTO Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add '*.html'
+          if git diff --cached --quiet; then
+            echo "No HTML brand changes required."
+            exit 0
+          fi
+          git commit -m "chore(brand): normalize visible WASSAFRICA across pages"
+          git push
