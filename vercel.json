@@ -31,7 +31,7 @@
     { "source": "/account-security", "destination": "/account-security.html" },
     { "source": "/admin", "destination": "/admin-cockpit.html" },
     { "source": "/design-settings", "destination": "/design-settings.html" },
-    { "source": "/analytics", "destination": "/analytics.html" },
+    { "source": "/analytics", "destination": "/analytics-shell.html" },
     { "source": "/assistant", "destination": "/assistant-settings.html" },
     { "source": "/assistant-settings", "destination": "/assistant-settings.html" },
     { "source": "/broadcast-admin", "destination": "/broadcast-admin.html" },
