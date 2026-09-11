@@ -3,7 +3,9 @@
     { "source": "/whatsafrica", "destination": "/inbox", "permanent": true },
     { "source": "/whatsafrica/", "destination": "/inbox", "permanent": true },
     { "source": "/public-message.html", "destination": "/inbox", "permanent": true },
-    { "source": "/public-message", "destination": "/inbox", "permanent": true }
+    { "source": "/public-message", "destination": "/inbox", "permanent": true },
+    { "source": "/inbox.html", "destination": "/inbox", "permanent": true },
+    { "source": "/inbox-v2.html", "destination": "/inbox", "permanent": true }
   ],
   "rewrites": [
     { "source": "/", "destination": "/launch-shell.html" },
