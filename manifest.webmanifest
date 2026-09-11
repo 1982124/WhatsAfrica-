@@ -1,16 +1,19 @@
 {
   "name": "WASSAFRICA",
   "short_name": "WASSAFRICA",
-  "description": "Trouve. Parle. Fais affaire.",
+  "id": "/",
+  "description": "WASSAFRICA — Trouve. Parle. Fais affaire.",
   "lang": "fr",
-  "start_url": "/inbox",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "portrait-primary",
-  "theme_color": "#1B4332",
-  "background_color": "#FDFBF7",
+  "theme_color": "#163A72",
+  "background_color": "#F5F7FB",
+  "prefer_related_applications": false,
   "icons": [
-    {"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {"src":"/icon-192.svg","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"},
+    {"src":"/icon-512.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}
   ]
 }
