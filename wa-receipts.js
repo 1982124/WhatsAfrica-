@@ -11,7 +11,8 @@ const normalizeCode=script=>{
  let code=script.textContent||'';
  code=code.replace(/<\/?script\b[^>]*>/gi,'');
  code=code.replace("storage:window.localStorage}})","storage:window.localStorage,storageKey:'"+KEY+"'}})");
- code=code.replaceAll('WhatsAfrica','WASSAFRICA');
+ // Replace only the visible brand; never touch identifiers such as WhatsAfricaCrypto/Voice.
+ code=code.replace(/WhatsAfrica(?![A-Za-z])/g,'WASSAFRICA');
  code=code.replaceAll('🔐 Préparation sécurisée de la conversation…','Envoi en cours…');
  code=code.replaceAll('🔐 Préparation sécurisée en cours','Envoi en cours…');
  code=code.replaceAll('🔐 Préparation sécurisée','Envoi en cours…');
@@ -25,7 +26,7 @@ const normalizeCode=script=>{
  code=code.replaceAll('Échec vocal :','Impossible d’envoyer le vocal :');
  return code;
 };
-const replaceBrand=value=>String(value??'').replaceAll('WhatsAfrica','WASSAFRICA').replaceAll('Whats Africa','WASSAFRICA');
+const replaceBrand=value=>String(value??'').replace(/WhatsAfrica(?![A-Za-z])/g,'WASSAFRICA').replace(/Whats Africa/g,'WASSAFRICA');
 const paintBrand=()=>{
  document.title=replaceBrand(document.title);
  if(!document.body)return;
