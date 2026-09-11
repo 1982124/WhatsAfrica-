@@ -36,3 +36,5 @@ Une interface, une route, une table, un endpoint ou une Edge Function ne constit
 ## Exécution
 
 `Audit → changement minimal nécessaire → tests → commit → déploiement → vérification production → correction des régressions → certification avec preuve.`
+
+<!-- production redeploy trigger: Android PWA icon verification -->
