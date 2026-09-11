@@ -10,7 +10,7 @@
     { "source": "/offer-create", "destination": "/offer-create-v4.html" },
     { "source": "/digital-products", "destination": "/offer-create-v4.html?type=digital" },
     { "source": "/digital-market", "destination": "/market-v4.html" },
-    { "source": "/inbox", "destination": "/discussions-phase1.html" },
+    { "source": "/inbox", "destination": "/inbox.html" },
     { "source": "/groups", "destination": "/groups-v5.html" },
     { "source": "/groups/:id", "destination": "/community-v7.html" },
     { "source": "/groups/:id/admin", "destination": "/group-admin-v1.html" },
@@ -56,7 +56,7 @@
     { "source": "/:slug", "destination": "/smartlink-public-v2.html" }
   ],
   "headers": [
-    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WASSAFRICA-Release","value":"2026-09-11-brand-phase1"}]},
+    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WASSAFRICA-Release","value":"2026-09-11-brand-phase1"}]},
     {"source":"/(api|dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
     {"source":"/(dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
