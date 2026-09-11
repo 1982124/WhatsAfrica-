@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '**/*.html'
+      - 'brand-observer.js'
       - '.github/workflows/wassafrica-global-brand.yml'
 
 permissions:
@@ -16,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Normalize visible brand in HTML
+      - name: Normalize visible brand and inject observer
         shell: python
         run: |
           from pathlib import Path
@@ -27,13 +28,17 @@ jobs:
               (re.compile(r'Whats\s+Africa', re.I), 'WASSAFRICA'),
               (re.compile(r'WhatsAfrica', re.I), 'WASSAFRICA'),
           ]
+          observer = '<script src="/brand-observer.js"></script>'
 
           def normalize_html(text):
               parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
               for i in range(0, len(parts), 2):
                   for pattern, replacement in replacements:
                       parts[i] = pattern.sub(replacement, parts[i])
-              return ''.join(parts)
+              html = ''.join(parts)
+              if observer not in html and re.search(r'</head>', html, re.I):
+                  html = re.sub(r'</head>', observer + '</head>', html, count=1, flags=re.I)
+              return html
 
           changed = []
           for path in Path('.').rglob('*.html'):
@@ -45,7 +50,7 @@ jobs:
                   path.write_text(new, encoding='utf-8')
                   changed.append(str(path))
 
-          print(f'Normalized {len(changed)} HTML files')
+          print(f'Normalized/instrumented {len(changed)} HTML files')
           for p in changed:
               print(p)
 
@@ -59,5 +64,5 @@ jobs:
             echo "No HTML brand changes required."
             exit 0
           fi
-          git commit -m "chore(brand): normalize visible WASSAFRICA across pages"
+          git commit -m "chore(brand): enforce WASSAFRICA across all pages"
           git push
