@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Normalize visible brand in application pages
+      - name: Normalize visible brand in every application page
         shell: python
         run: |
           from pathlib import Path
@@ -27,29 +27,37 @@ jobs:
           injector = '<script src="/brand-normalizer.js"></script>'
           changed = []
 
-          # Inject the runtime normalizer into every HTML page without touching
-          # application JavaScript identifiers or database/RPC names.
+          def normalize_visible_html(text):
+              # Replace brand copy in HTML while deliberately leaving executable
+              # JavaScript and CSS untouched (storage keys, RPC names, etc.).
+              parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
+              for i in range(0, len(parts), 2):
+                  parts[i] = (parts[i]
+                      .replace('WhatsAfrica', 'WASSAFRICA')
+                      .replace('Whats Africa', 'WASSAFRICA')
+                      .replace('WHATS AFRICA', 'WASSAFRICA'))
+              return ''.join(parts)
+
           for path in root.rglob('*.html'):
               if any(part in {'.git', 'node_modules'} for part in path.parts):
                   continue
               text = path.read_text(encoding='utf-8', errors='ignore')
-              if '/brand-normalizer.js' not in text:
-                  if re.search(r'</head>', text, flags=re.I):
-                      text = re.sub(r'</head>', injector + '\n</head>', text, count=1, flags=re.I)
-                  elif re.search(r'</body>', text, flags=re.I):
-                      text = re.sub(r'</body>', injector + '\n</body>', text, count=1, flags=re.I)
+              new = normalize_visible_html(text)
+              if '/brand-normalizer.js' not in new:
+                  if re.search(r'</head>', new, flags=re.I):
+                      new = re.sub(r'</head>', injector + '\n</head>', new, count=1, flags=re.I)
+                  elif re.search(r'</body>', new, flags=re.I):
+                      new = re.sub(r'</body>', injector + '\n</body>', new, count=1, flags=re.I)
                   else:
-                      text += '\n' + injector + '\n'
-                  path.write_text(text, encoding='utf-8')
+                      new += '\n' + injector + '\n'
+              if new != text:
+                  path.write_text(new, encoding='utf-8')
                   changed.append(str(path))
 
-          # Static human-facing project metadata. Do not mass-replace source
-          # identifiers such as storage keys, RPC names, function names, or URLs
-          # embedded in executable code.
           for path in [root / 'README.md', root / 'manifest.json']:
               if path.exists():
                   text = path.read_text(encoding='utf-8')
-                  new = text.replace('WhatsAfrica', 'WASSAFRICA').replace('WHATS AFRICA', 'WASSAFRICA')
+                  new = text.replace('WhatsAfrica', 'WASSAFRICA').replace('Whats Africa', 'WASSAFRICA').replace('WHATS AFRICA', 'WASSAFRICA')
                   if new != text:
                       path.write_text(new, encoding='utf-8')
                       changed.append(str(path))
@@ -68,5 +76,5 @@ jobs:
             echo 'No brand normalization changes required.'
             exit 0
           fi
-          git commit -m 'chore(brand): normalize visible brand to WASSAFRICA'
+          git commit -m 'chore(brand): normalize visible copy to WASSAFRICA'
           git push
