@@ -35,10 +35,9 @@ jobs:
             'Échec de l’envoi :':'Impossible d’envoyer pour le moment. Réessayez.',
             'Échec média :':'Impossible d’envoyer ce média pour le moment. Réessayez.'
           }
-          for a,b in replacements.items():
-            s=s.replace(a,b)
+          for a,b in replacements.items(): s=s.replace(a,b)
           p.write_text(s,encoding='utf-8')
-      - name: Verify exact user-facing legacy messages are gone
+      - name: Verify legacy user-facing messages are gone
         run: |
           ! grep -Fq '⏳ Envoi en attente : WhatsAfrica finalisera automatiquement le chiffrement dès que le compte correspondant sera prêt.' messaging-v6.html
           ! grep -Fq 'Envoi en attente : WhatsAfrica finalisera automatiquement le chiffrement dès que le compte correspondant sera prêt.' messaging-v6.html
@@ -49,5 +48,5 @@ jobs:
           git config user.email 'cto-bot@whatsafrica.local'
           git add messaging-v6.html
           git diff --cached --quiet && exit 0
-          git commit -m 'fix(ux): make messaging security invisible [skip ci]'
+          git commit -m 'fix(ux): make messaging security invisible'
           git push
