@@ -1,10 +1,10 @@
-# WhatsAfrica-
+# WASSAFRICA-
 
-WhatsAfrica évolue d'une application de messagerie vers une **infrastructure relationnelle, commerciale et numérique panafricaine**.
+WASSAFRICA évolue d'une application de messagerie vers une **infrastructure relationnelle, commerciale et numérique panafricaine**.
 
 ## Positionnement
 
-**WhatsAfrica = la couche relationnelle et commerciale africaine qui connecte personnes, entreprises, communautés, services et paiements.**
+**WASSAFRICA = la couche relationnelle et commerciale africaine qui connecte personnes, entreprises, communautés, services et paiements.**
 
 - Messaging = moteur d'adoption
 - Smart Links = moteur de viralité
@@ -29,7 +29,7 @@ Voir aussi : `docs/whatsafrica-strategy-2026.md`.
 
 ## Règle CTO
 
-> **WHATS AFRICA DOIT ÊTRE VRAI AVANT D'ÊTRE GRAND.**
+> **WASSAFRICA DOIT ÊTRE VRAI AVANT D'ÊTRE GRAND.**
 
 Une interface, une route, une table, un endpoint ou une Edge Function ne constitue pas à lui seul une certification. Toute fonctionnalité critique doit être vérifiée de bout en bout avant d'être marquée comme certifiée.
 
