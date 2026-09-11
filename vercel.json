@@ -1,4 +1,10 @@
 {
+  "redirects": [
+    { "source": "/whatsafrica", "destination": "/inbox", "permanent": true },
+    { "source": "/whatsafrica/", "destination": "/inbox", "permanent": true },
+    { "source": "/public-message.html", "destination": "/inbox", "permanent": true },
+    { "source": "/public-message", "destination": "/inbox", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/", "destination": "/launch-shell.html" },
     { "source": "/auth", "destination": "/auth-v6.html" },
