@@ -1,5 +1,5 @@
 window.WhatsAfricaAuthResilience = (() => {
-  const PROD_ORIGIN = 'https://whatsafrica.vercel.app';
+  const PROD_ORIGIN = 'https://wassafrica.vercel.app';
   const PROVIDER_MESSAGES = {
     google: 'Google rencontre actuellement un problème de connexion. Votre compte WhatsAfrica n’est pas perdu.',
     phone: 'La réception SMS rencontre actuellement un problème. Votre compte WhatsAfrica n’est pas perdu.',
@@ -16,7 +16,7 @@ window.WhatsAfricaAuthResilience = (() => {
 
   function classify(error) {
     const text = String(error?.message || error || '').toLowerCase();
-    if (/google|oauth|external code|invalid_client|invalid_grant|redirect_uri/.test(text)) return 'google';
+    if (/google|oauth|external code|invalid_client|invalid_grant|redirect_uri|bad_oauth_state|oauth state/.test(text)) return 'google';
     if (/phone|sms|otp|hook|twilio|esms/.test(text)) return 'phone';
     if (/email|magic|otp/.test(text)) return 'email';
     return 'unknown';
