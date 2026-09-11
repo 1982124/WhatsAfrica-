@@ -10,7 +10,6 @@ permissions:
 jobs:
   patch:
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, 'fix(cto): align inbox auth session with canonical auth') }}
     steps:
       - uses: actions/checkout@v4
       - name: Patch inbox auth/session gate
@@ -19,14 +18,19 @@ jobs:
           from pathlib import Path
           p=Path('inbox.html')
           s=p.read_text()
+          if "storageKey:'whatsafrica-auth'" in s:
+              print('Inbox auth session already aligned; nothing to do.')
+              raise SystemExit(0)
           old="db=supabase.createClient(URL,KEY),$=id=>document.getElementById(id);"
           new="db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}}),$=id=>document.getElementById(id);"
-          if old in s:
-              s=s.replace(old,new,1)
+          if old not in s:
+              raise SystemExit('Expected inbox Supabase client initializer not found')
+          s=s.replace(old,new,1)
           old_boot="async function boot(){const s=await db.auth.getSession();if(!s.data.session)return;"
           new_boot="async function boot(){const s=await db.auth.getSession();if(!s.data.session){location.replace('/auth?next='+encodeURIComponent('/inbox'));return;}"
-          if old_boot in s:
-              s=s.replace(old_boot,new_boot,1)
+          if old_boot not in s:
+              raise SystemExit('Expected inbox boot auth gate not found')
+          s=s.replace(old_boot,new_boot,1)
           s=s.replace('<title>WhatsAfrica — Messages</title>','<title>WASSAFRICA — Messages</title>',1)
           s=s.replace('<div class=\"brand\">Whats<b>Africa</b> <span class=\"hint\">/ Messages</span></div>','<div class=\"brand\">WASSAFRICA <span class=\"hint\">/ Messages</span></div>',1)
           p.write_text(s)
@@ -36,5 +40,6 @@ jobs:
           git config user.name 'WASSAFRICA CTO'
           git config user.email 'cto@wassafrica.local'
           git add inbox.html
-          git diff --cached --quiet || git commit -m 'fix(cto): align inbox auth session with canonical auth'
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(cto): align inbox auth session with canonical auth'
           git push
