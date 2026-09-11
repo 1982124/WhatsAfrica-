@@ -1,9 +1,38 @@
-/* WhatsAfrica receipts/media compatibility loader + secure WhatsApp invitation hotfix. */
+/* WhatsAfrica messaging compatibility + runtime recovery. */
 (()=>{'use strict';
-const BASE='https://raw.githubusercontent.com/1982124/WhatsAfrica-/60b60fb0c75681de4ab6669644d07f07a3ab4047/wa-receipts.js';
-const load=()=>new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=BASE;s.async=false;s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});
-const phoneOnly=v=>{let x=String(v||'').trim().replace(/[\s().-]/g,'');if(x.startsWith('00'))x='+'+x.slice(2);return /^\+[1-9][0-9]{7,14}$/.test(x)?x:null};
-const authInviteToken=href=>{try{const u=new URL(href,location.origin);return u.searchParams.get('invite')||''}catch{return''}};
-const wire=()=>{if(location.pathname!=='/inbox')return;for(const id of ['statusSide','statusMobile']){const el=document.getElementById(id);if(!el)continue;const a=el.querySelector('a[href*="/auth?invite="]');if(!a||a.dataset.waWhatsAppInvite==='1')continue;const token=authInviteToken(a.href);const input=document.getElementById(id==='statusSide'?'phone':'phoneMobile');const p=phoneOnly(input?.value);if(!token||!p)continue;const join=location.origin+'/auth?invite='+encodeURIComponent(token)+'&next='+encodeURIComponent('/inbox');const text='Bonjour 👋 Je t’invite à continuer cette discussion sur WhatsAfrica. Inscris-toi gratuitement ici : '+join;const wa='https://wa.me/'+p.slice(1)+'?text='+encodeURIComponent(text);a.href=wa;a.textContent='🟢 Inviter via WhatsApp';a.title='WhatsApp — le lien contient uniquement une invitation à rejoindre la discussion';a.target='_blank';a.rel='noopener noreferrer';a.dataset.waWhatsAppInvite='1';const n=document.createElement('div');n.textContent='🔒 Seul un jeton d’invitation est transmis. Aucune session ou authentification de l’expéditeur.';n.style.cssText='margin-top:5px;font-size:11px;color:#66756e';el.appendChild(n)}};
-load().then(()=>{wire();new MutationObserver(wire).observe(document.body,{subtree:true,childList:true});setInterval(wire,1200)}).catch(e=>console.warn('WhatsAfrica receipts base deferred',e));
+const recover=()=>{
+  if(location.pathname!=='/inbox'||window.__WA_MESSAGING_RECOVERED__)return;
+  const inline=[...document.scripts].find(s=>s.textContent.includes("const db=supabase.createClient")&&s.textContent.includes("async function boot"));
+  if(!inline)return;
+  let code=inline.textContent;
+  if(!code.includes("<script>"))return;
+  code=code.replace(/\n<script>[\s\S]*?<\/script>\n<\/script>\s*$/,'\n');
+  code=code.replace("storage:window.localStorage}})","storage:window.localStorage,storageKey:'whatsafrica-auth'}})");
+  code=code.replaceAll('🔐 Préparation sécurisée de la conversation…','Envoi en cours…');
+  code=code.replaceAll('🔐 Préparation sécurisée en cours','Envoi en cours…');
+  code=code.replaceAll('🔐 ','');
+  code=code.replaceAll('⏳ Message sécurisé mis en attente. Il sera envoyé automatiquement dès que la connexion sera rétablie.','Message en attente…');
+  code=code.replaceAll('Téléversement chiffré depuis votre appareil…','Envoi en cours…');
+  code=code.replaceAll('Préparation sécurisée en cours','Envoi en cours…');
+  try{
+    const s=document.createElement('script');
+    s.textContent=code;
+    document.head.appendChild(s);
+    window.__WA_MESSAGING_RECOVERED__=true;
+    const body=document.getElementById('body'),composer=document.getElementById('composer');
+    if(body&&composer&&!body.dataset.enterSendReady){
+      body.dataset.enterSendReady='1';
+      body.addEventListener('keydown',event=>{
+        if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){
+          event.preventDefault();
+          if(typeof composer.requestSubmit==='function')composer.requestSubmit();
+        }
+      });
+    }
+  }catch(error){console.error('WhatsAfrica messaging recovery failed',error)}
+};
+window.addEventListener('error',event=>{
+  if(String(event?.message||'').includes('Unexpected token')||String(event?.message||'').includes('Unexpected identifier'))setTimeout(recover,0);
+});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',recover,{once:true});else recover();
 })();
