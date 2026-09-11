@@ -1,0 +1,38 @@
+name: Deep auth loop repair
+on:
+  push:
+    branches: [main]
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repair persistent auth handoff
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('auth-v6.html')
+          s=p.read_text()
+          old="db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}})"
+          new="db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}})"
+          if old not in s: raise SystemExit('auth client pattern not found')
+          s=s.replace(old,new,1)
+          old_finish="user=s.data.session.user;const p=await ensureProfile();if(inviteToken)await acceptInvite();$('authStep').classList.remove('on');$('profileStep').classList.add('on');$('first').value=p.first_name||'';$('last').value=p.last_name||'';$('country').value=p.country||'';$('profilePhone').value=user.phone||'';if(p.profile_image_url)$('preview').src=p.profile_image_url"
+          new_finish="user=s.data.session.user;const p=await ensureProfile();if(inviteToken)await acceptInvite();const complete=!!(p.first_name&&p.last_name&&p.country);if(complete){location.replace(NEXT);return;}$('authStep').classList.remove('on');$('profileStep').classList.add('on');$('first').value=p.first_name||'';$('last').value=p.last_name||'';$('country').value=p.country||'';$('profilePhone').value=user.phone||'';if(p.profile_image_url)$('preview').src=p.profile_image_url"
+          if old_finish not in s: raise SystemExit('finish pattern not found')
+          s=s.replace(old_finish,new_finish,1)
+          p.write_text(s)
+          PY
+      - name: Commit repair
+        run: |
+          git config user.name 'whatsafrica-cto-bot'
+          git config user.email 'cto-bot@whatsafrica.local'
+          git add auth-v6.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(auth): make authenticated handoff loop-proof [skip ci]'
+          git push
