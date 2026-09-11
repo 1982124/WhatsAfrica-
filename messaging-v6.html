@@ -22,4 +22,21 @@ async function subscribe(id){if(realtime)await db.removeChannel(realtime);realti
 async function boot(){const s=await getSession();if(!s){$('login').classList.remove('hide');$('main').classList.add('hide');return;}$('login').classList.add('hide');$('main').classList.remove('hide');user=s.user;await register();await list();try{await WhatsAfricaCrypto.flushEncryptedOutbox(db,{onItem:()=>{}})}catch(e){console.warn('WhatsAfrica outbox flush deferred',e)};window.addEventListener('online',()=>{WhatsAfricaCrypto.flushEncryptedOutbox(db,{onItem:()=>{}}).catch(e=>console.warn('WhatsAfrica outbox retry deferred',e))});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&current){ensureKey().then(k=>{key=k;return WhatsAfricaCrypto.flushEncryptedOutbox(db,{conversationId:current.id,onItem:()=>{}})}).catch(e=>console.warn('WhatsAfrica secure retry deferred',e))}});WA_CALLS.init(db,user)}
 $('start').onclick=()=>startByPhone($('phone').value);$('startMobile').onclick=()=>startByPhone($('phoneMobile').value);$('back').onclick=()=>{$('chathead').classList.add('hide');$('toolbar').classList.add('hide');$('composer').classList.add('hide');$('messages').classList.add('hide');$('empty').classList.remove('hide')};$('composer').onsubmit=e=>{e.preventDefault();sendText()};$('voice').onclick=startVoice;$('cancelVoice').onclick=()=>{recording=null;$('voicebar').classList.remove('on')};$('sendVoice').onclick=sendVoice;$('pickImage').onclick=()=>$('imageInput').click();$('pickVideo').onclick=()=>$('videoInput').click();$('pickFile').onclick=()=>$('fileInput').click();$('attach').onclick=()=>$('pickImage').click();$('imageInput').onchange=e=>sendMedia(e.target.files?.[0],'image');$('videoInput').onchange=e=>sendMedia(e.target.files?.[0],'video');$('fileInput').onchange=e=>sendMedia(e.target.files?.[0],'file');$('audio').onclick=()=>{if(current?.peer_id)WA_CALLS.start(current.id,current.peer_id,'audio').catch(e=>status(e.message||'Appel audio impossible'))};$('video').onclick=()=>{if(current?.peer_id)WA_CALLS.start(current.id,current.peer_id,'video').catch(e=>status(e.message||'Appel vidéo impossible'))};$('membersBtn').onclick=()=>{$('memberbox').classList.toggle('on')};$('closeMembers').onclick=()=>$('memberbox').classList.remove('on');$('addMember').onclick=addMember;$('filter').oninput=e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('.conv').forEach(n=>n.style.display=n.textContent.toLowerCase().includes(q)?'flex':'none')};db.auth.onAuthStateChange(()=>{setTimeout(()=>boot().catch(e=>status(e.message||'Erreur de session')),0)});boot().catch(e=>status(e.message||'Erreur de session'));
 })();
+
+<script>
+(()=>{
+  const body=document.getElementById('body');
+  const composer=document.getElementById('composer');
+  if(!body||!composer||body.dataset.enterSendReady==='1') return;
+  body.dataset.enterSendReady='1';
+  body.addEventListener('keydown',(event)=>{
+    if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){
+      event.preventDefault();
+      event.stopPropagation();
+      if(typeof composer.requestSubmit==='function') composer.requestSubmit(document.getElementById('send'));
+      else composer.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+    }
+  },true);
+})();
+</script>
 </script></body></html>
