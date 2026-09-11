@@ -11,7 +11,7 @@
     { "source": "/digital-products", "destination": "/offer-create-v4.html?type=digital" },
     { "source": "/services", "destination": "/offer-create-v4.html?type=service" },
     { "source": "/digital-market", "destination": "/market-v4.html" },
-    { "source": "/inbox", "destination": "/inbox-shell.html" },
+    { "source": "/inbox", "destination": "/inbox.html" },
     { "source": "/groups", "destination": "/brand-shell.html" },
     { "source": "/groups/:id", "destination": "/community-v7.html" },
     { "source": "/groups/:id/admin", "destination": "/group-admin-v1.html" },
