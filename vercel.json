@@ -12,7 +12,6 @@
     { "source": "/services", "destination": "/brand-shell.html" },
     { "source": "/digital-market", "destination": "/brand-shell.html" },
     { "source": "/inbox", "destination": "/inbox.html" },
-    { "source": "/message/:slug", "destination": "/public-message.html?slug=:slug" },
     { "source": "/groups", "destination": "/brand-shell.html" },
     { "source": "/groups/:id", "destination": "/community-v7.html" },
     { "source": "/groups/:id/admin", "destination": "/group-admin-v1.html" },
@@ -58,9 +57,9 @@
     { "source": "/:slug", "destination": "/smartlink-public-v2.html" }
   ],
   "headers": [
-    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WASSAFRICA-Release","value":"2026-09-11-public-lead-messaging"}]},
-    {"source":"/(api|dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|message|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
-    {"source":"/(api|commande|s|message)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
-    {"source":"/(dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|message|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
+    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WASSAFRICA-Release","value":"2026-09-11-messaging-auth-core"}]},
+    {"source":"/(api|dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
+    {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
+    {"source":"/(dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
   ]
 }
