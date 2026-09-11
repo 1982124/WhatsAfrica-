@@ -50,11 +50,14 @@
     { "source": "/commande/:token", "destination": "/order-tracking.html" },
     { "source": "/s/:token", "destination": "/share.html" },
     { "source": "/network", "destination": "/africa-network.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/seller-rules", "destination": "/seller-rules.html" },
     { "source": "/:slug", "destination": "/smartlink-public-v2.html" }
   ],
   "headers": [
-    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WhatsAfrica-Release","value":"2026-09-10-secure-conversation-invites"}]},
-    {"source":"/(api|dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security|market-pricing)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
+    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=()"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WASSAFRICA-Release","value":"2026-09-11-brand-legal-inbox"}]},
+    {"source":"/(api|dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
     {"source":"/(dashboard|cockpit|design-settings|smartlink|smartlink-pro|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
   ]
