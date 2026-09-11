@@ -1,0 +1,72 @@
+name: WASSAFRICA brand normalization
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  normalize-brand:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Normalize visible brand in application pages
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+          injector = '<script src="/brand-normalizer.js"></script>'
+          changed = []
+
+          # Inject the runtime normalizer into every HTML page without touching
+          # application JavaScript identifiers or database/RPC names.
+          for path in root.rglob('*.html'):
+              if any(part in {'.git', 'node_modules'} for part in path.parts):
+                  continue
+              text = path.read_text(encoding='utf-8', errors='ignore')
+              if '/brand-normalizer.js' not in text:
+                  if re.search(r'</head>', text, flags=re.I):
+                      text = re.sub(r'</head>', injector + '\n</head>', text, count=1, flags=re.I)
+                  elif re.search(r'</body>', text, flags=re.I):
+                      text = re.sub(r'</body>', injector + '\n</body>', text, count=1, flags=re.I)
+                  else:
+                      text += '\n' + injector + '\n'
+                  path.write_text(text, encoding='utf-8')
+                  changed.append(str(path))
+
+          # Static human-facing project metadata. Do not mass-replace source
+          # identifiers such as storage keys, RPC names, function names, or URLs
+          # embedded in executable code.
+          for path in [root / 'README.md', root / 'manifest.json']:
+              if path.exists():
+                  text = path.read_text(encoding='utf-8')
+                  new = text.replace('WhatsAfrica', 'WASSAFRICA').replace('WHATS AFRICA', 'WASSAFRICA')
+                  if new != text:
+                      path.write_text(new, encoding='utf-8')
+                      changed.append(str(path))
+
+          print(f'Changed {len(changed)} files')
+          for item in changed:
+              print(item)
+
+      - name: Commit normalization
+        shell: bash
+        run: |
+          git config user.name 'WASSAFRICA CTO'
+          git config user.email 'cto@wassafrica.local'
+          git add '*.html' README.md manifest.json
+          if git diff --cached --quiet; then
+            echo 'No brand normalization changes required.'
+            exit 0
+          fi
+          git commit -m 'chore(brand): normalize visible brand to WASSAFRICA'
+          git push
