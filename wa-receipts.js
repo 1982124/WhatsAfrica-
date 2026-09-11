@@ -1,16 +1,17 @@
 /* WASSAFRICA messaging runtime recovery — authenticated inbox boot. */
 (()=>{'use strict';
 const PATH='/inbox';
-const KEY='whatsafrica-auth';
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+// Reuse the exact Supabase auth storage used by the inbox source. A different storageKey
+// would make an already-authenticated member appear logged out to the recovery layer.
 const SUPABASE_URL='https://dzifpwqrqnvssfhwjccj.supabase.co';
 const SUPABASE_KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
-const wait=ms=>new Promise(r=>setTimeout(r,ms));
-const getClient=()=>window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:KEY}});
+const getClient=()=>window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
 const findInline=()=>[...document.scripts].find(s=>s.textContent.includes("const db=supabase.createClient")&&s.textContent.includes('async function boot'));
 const normalizeCode=script=>{
  let code=script.textContent||'';
  code=code.replace(/<\/?script\b[^>]*>/gi,'');
- code=code.replace("storage:window.localStorage}})","storage:window.localStorage,storageKey:'"+KEY+"'}})");
+ // Keep the original Supabase storage key so the recovery layer and the inbox share one session.
  // Replace only the visible brand; never touch identifiers such as WhatsAfricaCrypto/Voice.
  code=code.replace(/WhatsAfrica(?![A-Za-z])/g,'WASSAFRICA');
  code=code.replaceAll('🔐 Préparation sécurisée de la conversation…','Envoi en cours…');
