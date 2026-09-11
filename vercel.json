@@ -12,7 +12,7 @@
     { "source": "/services", "destination": "/brand-shell.html" },
     { "source": "/digital-market", "destination": "/brand-shell.html" },
     { "source": "/inbox", "destination": "/inbox.html" },
-    { "source": "/inbox/leads", "destination": "/public-leads.html" },
+    { "source": "/leads", "destination": "/public-leads.html" },
     { "source": "/message/:slug", "destination": "/public-message.html?slug=:slug" },
     { "source": "/groups", "destination": "/brand-shell.html" },
     { "source": "/groups/:id", "destination": "/community-v7.html" },
