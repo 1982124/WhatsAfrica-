@@ -2,8 +2,10 @@
 (()=>{'use strict';
 const PATH='/inbox';
 const KEY='whatsafrica-auth';
+const SUPABASE_URL='https://dzifpwqrqnvssfhwjccj.supabase.co';
+const SUPABASE_KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
-const getClient=()=>window.supabase?.createClient?.('https://dzifpwqrqnvssfhwjccj','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:KEY}});
+const getClient=()=>window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:KEY}});
 const findInline=()=>[...document.scripts].find(s=>s.textContent.includes("const db=supabase.createClient")&&s.textContent.includes('async function boot'));
 const normalizeCode=script=>{
  let code=script.textContent||'';
@@ -23,11 +25,12 @@ const normalizeCode=script=>{
  code=code.replaceAll('Échec vocal :','Impossible d’envoyer le vocal :');
  return code;
 };
-const replaceBrand=(value)=>String(value??'').replaceAll('WhatsAfrica','WASSAFRICA').replaceAll('Whats Africa','WASSAFRICA');
+const replaceBrand=value=>String(value??'').replaceAll('WhatsAfrica','WASSAFRICA').replaceAll('Whats Africa','WASSAFRICA');
 const paintBrand=()=>{
  document.title=replaceBrand(document.title);
- const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
- const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+ if(!document.body)return;
+ const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];
+ while(walker.nextNode())nodes.push(walker.currentNode);
  nodes.forEach(n=>{const v=replaceBrand(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v});
  document.body.querySelectorAll('[title],[aria-label],[placeholder]').forEach(el=>['title','aria-label','placeholder'].forEach(a=>{if(el.hasAttribute(a)){const v=replaceBrand(el.getAttribute(a));if(v!==el.getAttribute(a))el.setAttribute(a,v)}}));
 };
@@ -35,13 +38,7 @@ const enterFix=()=>{
  const body=document.getElementById('body'),composer=document.getElementById('composer');
  if(!body||!composer||body.dataset.enterSendReady==='1')return;
  body.dataset.enterSendReady='1';
- body.addEventListener('keydown',event=>{
-   if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){
-     event.preventDefault();event.stopPropagation();
-     if(typeof composer.requestSubmit==='function')composer.requestSubmit(document.getElementById('send'));
-     else composer.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
-   }
- },true);
+ body.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();event.stopPropagation();if(typeof composer.requestSubmit==='function')composer.requestSubmit(document.getElementById('send'));else composer.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))}},true);
 };
 const restartIfAuthenticated=async()=>{
  if(location.pathname!==PATH||window.__WA_MESSAGING_BOOT_RECOVERED__)return;
@@ -49,8 +46,7 @@ const restartIfAuthenticated=async()=>{
  let session=null;
  for(let i=0;i<10&&!session;i++){try{session=(await client.auth.getSession()).data?.session||null}catch(e){}if(!session&&i<9)await wait(300)}
  if(!session)return;
- const login=document.getElementById('login'),main=document.getElementById('main');
- if(!login||!main)return;
+ const login=document.getElementById('login'),main=document.getElementById('main');if(!login||!main)return;
  const inline=findInline();
  if(inline){try{const s=document.createElement('script');s.textContent=normalizeCode(inline);document.head.appendChild(s);window.__WA_MESSAGING_BOOT_RECOVERED__=true;await wait(400)}catch(error){console.error('WASSAFRICA inbox recovery failed',error)}}
  login.classList.add('hide');main.classList.remove('hide');enterFix();paintBrand();
