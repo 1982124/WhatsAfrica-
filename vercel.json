@@ -15,7 +15,7 @@
     { "source": "/groups/:id", "destination": "/community-v7.html" },
     { "source": "/groups/:id/admin", "destination": "/group-admin-v1.html" },
     { "source": "/universe", "destination": "/universe-v3.html" },
-    { "source": "/market", "destination": "/market-v4.html" },
+    { "source": "/market", "destination": "/market-shell.html" },
     { "source": "/commerce", "destination": "/market-v4.html" },
     { "source": "/product", "destination": "/market-v4.html" },
     { "source": "/product/:id", "destination": "/product.html?id=:id" },
