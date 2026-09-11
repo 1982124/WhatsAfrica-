@@ -9,7 +9,7 @@
   ],
   "rewrites": [
     { "source": "/", "destination": "/launch-shell.html" },
-    { "source": "/auth", "destination": "/auth-v6.html" },
+    { "source": "/auth", "destination": "/auth-v7.html" },
     { "source": "/dashboard", "destination": "/brand-shell.html" },
     { "source": "/cockpit", "destination": "/admin-cockpit.html" },
     { "source": "/smartlink", "destination": "/brand-shell.html" },
