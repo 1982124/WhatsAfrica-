@@ -10,7 +10,7 @@
     { "source": "/offer-create", "destination": "/offer-create-v4.html" },
     { "source": "/digital-products", "destination": "/offer-create-v4.html?type=digital" },
     { "source": "/digital-market", "destination": "/market-v4.html" },
-    { "source": "/inbox", "destination": "/messaging-v6.html" },
+    { "source": "/inbox", "destination": "/messaging-shell.html" },
     { "source": "/groups", "destination": "/groups-v5.html" },
     { "source": "/groups/:id", "destination": "/community-v7.html" },
     { "source": "/groups/:id/admin", "destination": "/group-admin-v1.html" },
