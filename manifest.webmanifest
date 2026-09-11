@@ -1,0 +1,16 @@
+{
+  "name": "WASSAFRICA",
+  "short_name": "WASSAFRICA",
+  "description": "Trouve. Parle. Fais affaire.",
+  "lang": "fr",
+  "start_url": "/inbox",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1B4332",
+  "background_color": "#FDFBF7",
+  "icons": [
+    {"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
