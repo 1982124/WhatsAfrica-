@@ -3,13 +3,10 @@
 const PATH='/inbox';
 const KEY='whatsafrica-auth';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
-const getClient=()=>window.supabase?.createClient?.('https://dzifpwqrqnvssfhwjccj','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:KEY}});
+const getClient=()=>window.supabase?.createClient?.('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:KEY}});
 const findInline=()=>[...document.scripts].find(s=>s.textContent.includes("const db=supabase.createClient")&&s.textContent.includes('async function boot'));
 const normalizeCode=script=>{
  let code=script.textContent||'';
- // The legacy page accidentally contains a nested <script> block. The HTML parser
- // closes the outer block at </script>, leaving <script> inside executable JS.
- // Remove any literal script tags before re-evaluating the recovered application.
  code=code.replace(/<\/?script\b[^>]*>/gi,'');
  code=code.replace("storage:window.localStorage}})","storage:window.localStorage,storageKey:'"+KEY+"'}})");
  code=code.replaceAll('WhatsAfrica','WASSAFRICA');
