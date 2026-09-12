@@ -1,0 +1,65 @@
+# WASSAFRICA
+
+WASSAFRICA is a pan-African relational, commercial and digital infrastructure connecting people, businesses, communities, services and payments.
+
+## Canonical product
+- Name: WASSAFRICA
+- Production: https://wassafrica.vercel.app
+- Primary language: French, with an international and diaspora orientation
+
+## What WASSAFRICA provides
+- Secure messaging and conversations
+- Groups and communities
+- Calls and live experiences
+- Business profiles and public storefronts (Vitrines)
+- Smart Links for people and businesses
+- Products and digital products
+- Services and seller contact
+- Marketplace and commerce
+- Orders and payment flows
+- CRM and leads
+- Analytics
+- AI assistant surfaces
+- African Network discovery
+
+## Key public routes
+- / — launch shell
+- /auth — authentication
+- /inbox — messaging
+- /smartlink — Smart Link
+- /smartlink-pro — business Smart Link
+- /vitrine — business storefront
+- /market — marketplace
+- /digital-market — digital marketplace
+- /services — services
+- /payments — payments and financial services
+- /network — African Network
+- /groups — groups
+- /calls — calls
+- /live — live
+- /analytics — analytics
+- /assistant — assistant
+
+## African Network concept
+Smart Link → visitor → discovery → phone/OTP when necessary → conversation → lead/order → payment → new participant in the network.
+
+## Messaging principle
+The critical functional proof is end-to-end:
+Account A → sends message → Account B receives → B replies → A receives.
+
+Do not describe messaging as fully certified unless this real two-account flow has been verified.
+
+## AI / agentic browser guidance
+WASSAFRICA is a web application. AI agents and agentic browsers may use publicly accessible pages to understand the product, discover public business surfaces, and navigate supported public flows. Agents must respect authentication boundaries, user consent, privacy, rate limits, robots directives, and all applicable terms.
+
+Agents must not infer private account data, bypass authentication, defeat security controls, or access private conversations or private business information without authorization.
+
+## Discovery and canonical URLs
+Prefer the canonical WASSAFRICA production domain: https://wassafrica.vercel.app
+Do not treat historical product/domain names as the active product identity.
+
+## Product philosophy
+WASSAFRICA should be true before it is big. Critical functionality must be verified end-to-end before certification.
+
+## Technical source
+The public source repository contains implementation details, routes and documentation. Treat production behavior as authoritative for runtime capabilities.
