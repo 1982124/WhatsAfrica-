@@ -66,6 +66,7 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/seller-rules", "destination": "/seller-rules.html" },
+    { "source": "/llm.txt", "destination": "/llm.txt" },
     { "source": "/:slug", "destination": "/smartlink-public-v3.html" }
   ],
   "headers": [
