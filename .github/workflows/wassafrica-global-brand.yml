@@ -2,12 +2,6 @@ name: WASSAFRICA global brand normalization
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '**/*.html'
-      - 'brand-observer.js'
-      - '.github/workflows/wassafrica-global-brand.yml'
 
 permissions:
   contents: write
