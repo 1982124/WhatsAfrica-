@@ -28,8 +28,6 @@ jobs:
           changed = []
 
           def normalize_visible_html(text):
-              # Replace brand copy in HTML while deliberately leaving executable
-              # JavaScript and CSS untouched (storage keys, RPC names, etc.).
               parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
               for i in range(0, len(parts), 2):
                   parts[i] = (parts[i]
@@ -40,6 +38,8 @@ jobs:
 
           for path in root.rglob('*.html'):
               if any(part in {'.git', 'node_modules'} for part in path.parts):
+                  continue
+              if path.name.startswith('inbox'):
                   continue
               text = path.read_text(encoding='utf-8', errors='ignore')
               new = normalize_visible_html(text)
