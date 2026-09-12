@@ -2,6 +2,9 @@ name: WASSAFRICA Android AAB
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
