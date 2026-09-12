@@ -44,6 +44,8 @@ jobs:
           for path in Path('.').rglob('*.html'):
               if any(part in {'.git', 'node_modules'} for part in path.parts):
                   continue
+              if path.name.startswith('inbox'):
+                  continue
               old = path.read_text(encoding='utf-8')
               new = normalize_html(old)
               if new != old:
