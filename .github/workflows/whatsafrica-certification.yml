@@ -1,4 +1,4 @@
-name: WhatsAfrica — Certification
+name: WASSAFRICA — Certification
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json messaging-v6.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html; do
+          for file in vercel.json inbox-v25.html messaging-v6.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html; do
             test -f "$file"
           done
 
@@ -31,7 +31,8 @@ jobs:
           for route in '"/share"' '"/calls"' '"/inbox"' '"/product"' '"/product/:id"' '"/s/:token"' '"/invite"' '"/admin"' '"/meeting"'; do
             grep -Fq "$route" vercel.json
           done
-          grep -Fq 'messaging-v6.html' vercel.json
+          grep -Fq '"/inbox"' vercel.json
+          grep -Fq 'inbox-v25.html' vercel.json
 
       - name: Validate security headers
         shell: bash
@@ -69,6 +70,10 @@ jobs:
           node --check wa-calls-v2.js
           node --check wa-voice.js
           node --check e2ee.js
+          node --check wa-experience-layer.js
+          node --check wa-smartlink-media.js
+          node --check wa-smartlink-value-loop.js
+          node --check wassafrica-viral-share.js
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
