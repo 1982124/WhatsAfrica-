@@ -25,7 +25,7 @@ Une nouvelle surface publique est disponible sur **`/network`**. Elle présente 
 
 `Smart Link → visiteur → découverte → téléphone/OTP lorsque nécessaire → conversation → lead/commande → paiement → nouveau participant au réseau`.
 
-Voir aussi : `docs/whatsafrica-strategy-2026.md`.
+Voir aussi : `docs/wassafrica-strategy-2026.md`.
 
 ## Règle CTO
 
