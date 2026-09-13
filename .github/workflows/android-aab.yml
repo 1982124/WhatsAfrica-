@@ -5,12 +5,13 @@ on:
   push:
     branches:
       - main
+      - cto/viral-android-share
 
 permissions:
   contents: read
 
 jobs:
-  build-aab:
+  build-android:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,9 +39,19 @@ jobs:
       - name: Build debug AAB
         run: gradle -p android :app:bundleDebug
 
+      - name: Build installable debug APK
+        run: gradle -p android :app:assembleDebug
+
       - name: Upload debug AAB
         uses: actions/upload-artifact@v4
         with:
           name: wassafrica-debug-aab
           path: android/app/build/outputs/bundle/debug/app-debug.aab
+          if-no-files-found: error
+
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wassafrica-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
