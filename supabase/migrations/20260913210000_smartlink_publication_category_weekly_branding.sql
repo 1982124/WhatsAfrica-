@@ -71,7 +71,7 @@ $$;
 drop trigger if exists trg_wassafrica_business_smartlink_guard on public.businesses;
 create trigger trg_wassafrica_business_smartlink_guard
 before insert or update on public.businesses
-for each row execute function public.wassafrica_business_smartlink_guard;
+for each row execute function public.wassafrica_business_smartlink_guard();
 
 update public.businesses
 set category = public.normalize_business_category(business_type)
