@@ -1,64 +1,41 @@
-name: WASSAFRICA global brand normalization
+name: WASSAFRICA global brand check
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '**/*.html'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  normalize:
+  check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Normalize visible brand and inject observer
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify canonical WASSAFRICA branding without mutating source
         shell: python
         run: |
           from pathlib import Path
           import re
 
-          replacements = [
-              (re.compile(r'Whats<b>Africa</b>', re.I), 'WASSAFRICA'),
-              (re.compile(r'Whats\s+Africa', re.I), 'WASSAFRICA'),
-              (re.compile(r'WhatsAfrica', re.I), 'WASSAFRICA'),
-          ]
-          observer = '<script src="/brand-observer.js"></script>'
+          forbidden = re.compile(r'Whats\s*Africa', re.I)
+          bad = []
 
-          def normalize_html(text):
-              parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
-              for i in range(0, len(parts), 2):
-                  for pattern, replacement in replacements:
-                      parts[i] = pattern.sub(replacement, parts[i])
-              html = ''.join(parts)
-              if observer not in html and re.search(r'</head>', html, re.I):
-                  html = re.sub(r'</head>', observer + '</head>', html, count=1, flags=re.I)
-              return html
-
-          changed = []
           for path in Path('.').rglob('*.html'):
               if any(part in {'.git', 'node_modules'} for part in path.parts):
                   continue
-              if path.name.startswith('inbox'):
-                  continue
-              old = path.read_text(encoding='utf-8')
-              new = normalize_html(old)
-              if new != old:
-                  path.write_text(new, encoding='utf-8')
-                  changed.append(str(path))
+              text = path.read_text(encoding='utf-8', errors='ignore')
+              parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
+              visible = ''.join(parts[i] for i in range(0, len(parts), 2))
+              if forbidden.search(visible):
+                  bad.append(str(path))
 
-          print(f'Normalized/instrumented {len(changed)} HTML files')
-          for p in changed:
-              print(p)
-
-      - name: Commit normalization
-        shell: bash
-        run: |
-          git config user.name "WASSAFRICA CTO Bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add '*.html'
-          if git diff --cached --quiet; then
-            echo "No HTML brand changes required."
-            exit 0
-          fi
-          git commit -m "chore(brand): enforce WASSAFRICA across all pages"
-          git push
+          if bad:
+              print('Forbidden legacy visible brand found:')
+              print('\n'.join(bad))
+              raise SystemExit(1)
+          print('Global brand check passed: no legacy visible brand detected.')
