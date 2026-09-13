@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>WASSAFRICA — Messages</title>
+<meta http-equiv="Cache-Control" content="no-store">
+</head>
+<body style="margin:0">
+<script>
+(async()=>{
+  'use strict';
+  try{
+    const r=await fetch('/inbox-v25.html?runtime=v30',{cache:'no-store'});
+    if(!r.ok)throw new Error('MESSAGING_SHELL_'+r.status);
+    const html=await r.text();
+    document.open();
+    document.write(html.replace('</body>','<script src="/wa-messaging-v30.js?runtime=v30"><\\/script></body>'));
+    document.close();
+  }catch(e){
+    document.body.innerHTML='<main style="font:16px system-ui;padding:24px;max-width:680px;margin:auto"><h1>WASSAFRICA</h1><p>La messagerie n’a pas pu être ouverte.</p><p style="color:#8a4a3d">'+String(e.message||e).replace(/[<>]/g,'')+'</p><p><a href="/inbox-v25.html">Réessayer</a></p></main>';
+  }
+})();
+</script>
+</body>
+</html>
