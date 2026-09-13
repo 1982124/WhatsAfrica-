@@ -15,7 +15,7 @@
     const r=await fetch('/inbox-v25.html?runtime=v30',{cache:'no-store'});
     if(!r.ok)throw new Error('MESSAGING_SHELL_'+r.status);
     const html=await r.text();
-    const runtime='<script src="/wa-messaging-v30.js?runtime=v30"></scr'+'ipt>';
+    const runtime='<script src="/wa-messaging-v30.js?runtime=v30"></scr'+'ipt><script src="/wa-offline-sync-v1.js?runtime=v30"></scr'+'ipt>';
     document.open();
     document.write(html.replace('</body>',runtime+'</body>'));
     document.close();
