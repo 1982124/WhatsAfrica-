@@ -1,7 +1,7 @@
-# WhatsAfrica — CTO Product Governance
+# WASSAFRICA — CTO Product Governance
 
 ## Mission
-WhatsAfrica must be simple, useful and action-oriented. Nothing visible exists merely because it can exist.
+WASSAFRICA must be simple, useful and action-oriented. Nothing visible exists merely because it can exist.
 
 ## Core navigation
 1. 💬 Discussions — messages, voice notes, audio/video calls.
@@ -17,7 +17,7 @@ WhatsAfrica must be simple, useful and action-oriented. Nothing visible exists m
 - No user-facing technical terminology when a simple business term exists.
 - Authentication must appear only when required by the action.
 - Preserve user input when authentication is required.
-- Smart Link sells the owner's activity first and grows WhatsAfrica naturally without interrupting the commercial journey.
+- Smart Link sells the owner's activity first and grows WASSAFRICA naturally without interrupting the commercial journey.
 - Private conversations are not read for CRM; CRM receives structured events only.
 - Phone is profile/contact data, not a blocking signup method.
 - Human calls/messages are separate from AI voice.
