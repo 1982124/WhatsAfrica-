@@ -6,7 +6,7 @@ returns boolean
 language sql
 security definer
 stable
-set search_path = public
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1
@@ -19,14 +19,14 @@ as $$
           where s.user_id = b.owner_id
             and s.plan_code in ('starter','business','premium')
             and s.status in ('trialing','active','past_due')
-            and (s.ends_at is null or s.ends_at > now())
+            and (s.ends_at is null or s.ends_at > pg_catalog.now())
         )
         or exists (
           select 1
           from public.whatsafrica_identities i
           where i.user_id = b.owner_id
             and b.smartlink_tier = 'free'
-            and i.free_ends_at > now()
+            and i.free_ends_at > pg_catalog.now()
         )
       )
   );
