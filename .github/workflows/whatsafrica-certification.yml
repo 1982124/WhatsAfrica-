@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json inbox-v25.html messaging-v6.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html enterprise-partners.html partner-manifest.json docs/WASSAFRICA-PARTNER-READY.md; do
+          for file in vercel.json inbox-v25.html inbox-v30-shell.html messaging-v6.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html enterprise-partners.html partner-manifest.json docs/WASSAFRICA-PARTNER-READY.md; do
             test -f "$file"
           done
 
@@ -32,7 +32,7 @@ jobs:
             grep -Fq "$route" vercel.json
           done
           grep -Fq '"/inbox"' vercel.json
-          grep -Fq 'inbox-v25.html' vercel.json
+          grep -Fq 'inbox-v30-shell.html' vercel.json
           grep -Fq 'enterprise-partners.html' vercel.json
 
       - name: Validate security headers
