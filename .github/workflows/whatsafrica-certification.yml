@@ -16,24 +16,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate HTML/JS assets exist
+      - name: Validate current runtime assets exist
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json inbox-v25.html inbox-v30-shell.html messaging-v6.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html enterprise-partners.html partner-manifest.json docs/WASSAFRICA-PARTNER-READY.md; do
+          for file in vercel.json launch-shell.html launch-v1.html inbox-v30-shell.html inbox-v25.html groups-v5.html community-v7.html calls-v1.html wa-messaging-v30.js wa-offline-sync-v1.js wa-media.js wa-media-p2p.js wa-calls-v2.js e2ee.js share.html share-center.html admin-cockpit.html enterprise-partners.html; do
             test -f "$file"
           done
 
-      - name: Validate critical routes are declared
+      - name: Validate current critical routes
         shell: bash
         run: |
           set -euo pipefail
-          for route in '"/share"' '"/calls"' '"/inbox"' '"/product"' '"/product/:id"' '"/s/:token"' '"/invite"' '"/admin"' '"/meeting"' '"/partenaires"'; do
-            grep -Fq "$route" vercel.json
-          done
-          grep -Fq '"/inbox"' vercel.json
-          grep -Fq 'inbox-v30-shell.html' vercel.json
-          grep -Fq 'enterprise-partners.html' vercel.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cfg=json.loads(Path('vercel.json').read_text(encoding='utf-8'))
+          rewrites={x['source']:x['destination'] for x in cfg.get('rewrites',[])}
+          expected={
+            '/':'/launch-shell.html',
+            '/auth':'/auth-v7.html',
+            '/inbox':'/inbox-v30-shell.html',
+            '/groups':'/groups-v5.html',
+            '/calls':'/calls-v1.html',
+            '/share':'/share-center.html',
+            '/payments':'/financial-services-v2.html',
+            '/market':'/market-shell.html',
+            '/partenaires':'/enterprise-partners.html',
+          }
+          for route,target in expected.items():
+            assert rewrites.get(route)==target, f'{route} -> {rewrites.get(route)!r}, expected {target!r}'
+          print('Current critical routes validated.')
+          PY
 
       - name: Validate security headers
         shell: bash
@@ -44,18 +58,41 @@ jobs:
           grep -Fq 'X-Frame-Options' vercel.json
           grep -Fq 'Permissions-Policy' vercel.json
 
-      - name: Validate messaging, WebRTC and SmartLink primitives
+      - name: Validate messaging, offline, WebRTC and SmartLink primitives
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'sendEncryptedMessage' messaging-v6.html
-          grep -Fq 'startRecording' messaging-v6.html
-          grep -Fq 'WA_CALLS.start' messaging-v6.html
+          grep -Fq 'outbox' wa-messaging-v30.js
+          grep -Fq 'flush' wa-offline-sync-v1.js
+          grep -Fq 'navigator.onLine' wa-offline-sync-v1.js
           grep -Fq 'RTCPeerConnection' wa-calls-v2.js
           grep -Fq 'getUserMedia' wa-calls-v2.js
           grep -Fq 'resolve_share_landing' share.html
 
-      - name: Validate no service-role key is committed
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in wa-messaging-v30.js wa-offline-sync-v1.js wa-media.js wa-media-p2p.js wa-calls-v2.js wa-voice.js e2ee.js wa-experience-layer.js wa-smartlink-media.js wa-smartlink-value-loop.js wassafrica-viral-share.js; do
+            node --check "$file"
+          done
+          python3 - <<'PY'
+          import re, subprocess, tempfile
+          from pathlib import Path
+          script_re=re.compile(r'<script(?:\s[^>]*)?>([\s\S]*?)</script\s*>',re.I)
+          for name in ['inbox-v30-shell.html','calls-v1.html','share.html','enterprise-partners.html']:
+              html=Path(name).read_text(encoding='utf-8')
+              for i,code in enumerate(script_re.findall(html),1):
+                  if not code.strip() or code.lstrip().startswith('http'): continue
+                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f:
+                      f.write(code); tmp=f.name
+                  r=subprocess.run(['node','--check',tmp],capture_output=True,text=True)
+                  if r.returncode:
+                      print(r.stderr); raise SystemExit(f'Inline JavaScript syntax error: {name} script #{i}')
+          print('Current JavaScript syntax certification passed.')
+          PY
+
+      - name: Detect committed service-role secrets
         shell: bash
         run: |
           set -euo pipefail
@@ -63,37 +100,6 @@ jobs:
             echo 'Potential service-role secret exposure detected.'
             exit 1
           fi
-
-      - name: Validate JavaScript syntax
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --check wa-calls-v2.js
-          node --check wa-voice.js
-          node --check e2ee.js
-          node --check wa-experience-layer.js
-          node --check wa-smartlink-media.js
-          node --check wa-smartlink-value-loop.js
-          node --check wassafrica-viral-share.js
-          python3 - <<'PY'
-          import re
-          from pathlib import Path
-          import subprocess, tempfile
-
-          script_re = re.compile(r'<script(?:\s[^>]*)?>([\s\S]*?)</script\s*>', re.IGNORECASE)
-
-          for name in ['messaging-v6.html','calls-v2.html','share.html','enterprise-partners.html']:
-              html = Path(name).read_text(encoding='utf-8')
-              scripts = script_re.findall(html)
-              for i, code in enumerate(scripts):
-                  if not code.strip() or code.lstrip().startswith('http'): continue
-                  with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
-                      f.write(code); tmp=f.name
-                  r=subprocess.run(['node','--check',tmp],capture_output=True,text=True)
-                  if r.returncode:
-                      print(r.stderr); raise SystemExit(f'Inline JavaScript syntax error: {name} script #{i+1}')
-          print('JavaScript syntax certification passed.')
-          PY
 
       - name: Detect hardcoded single-country signup defaults
         shell: bash
