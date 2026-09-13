@@ -1,10 +1,10 @@
-/* WhatsAfrica — central plan/feature client helper. Server-side RPC remains authoritative. */
+/* WASSAFRICA — central plan/feature client helper. Server-side RPC remains authoritative. */
 (function (global) {
   'use strict';
   const DEFAULTS = {
     free: { name: 'Free', monthly_price_xof: 0, ads_enabled: true },
-    business: { name: 'Business', monthly_price_xof: 3500, ads_enabled: false },
-    premium: { name: 'Premium', monthly_price_xof: 10000, ads_enabled: false }
+    starter: { name: 'Starter', monthly_price_xof: 2500, ads_enabled: true },
+    business: { name: 'Pro', monthly_price_xof: 7500, ads_enabled: false }
   };
   async function getPlans(db) {
     if (!db) throw new Error('Client Supabase requis');
