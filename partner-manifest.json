@@ -1,0 +1,46 @@
+{
+  "product": "WASSAFRICA",
+  "role": "distribution-discovery-conversation-service-access-layer",
+  "positioning": "partner, not replacement",
+  "core_loop": ["discover", "understand", "talk", "do_business", "return"],
+  "service_loop": ["need", "understand", "choose", "consent", "handoff_or_execute", "result", "return"],
+  "partner_outcomes": ["qualified_lead", "conversation", "handoff", "attribution", "conversion"],
+  "sectors": ["telecom", "banking", "mobile_money", "insurance", "payments", "enterprise_services", "diaspora_services", "logistics"],
+  "service_modes": ["referral", "embedded_handoff", "approved_api_orchestration"],
+  "principles": {
+    "no_invented_metrics": true,
+    "consent_aware": true,
+    "minimum_data": true,
+    "partner_compliance_remains_authoritative": true,
+    "regulated_services_are_partner_authoritative": true,
+    "no_client_funds_custody_by_default": true,
+    "availability_requires_real_integration": true,
+    "commission_requires_contractual_attribution": true
+  },
+  "pilot_shape": {
+    "country": 1,
+    "partner": 1,
+    "business_line": 1,
+    "customer_journey": 1,
+    "attribution_contract": 1
+  },
+  "events": [
+    "view",
+    "intent_started",
+    "contact_started",
+    "call_started",
+    "negotiation_started",
+    "referral_created",
+    "consent_recorded",
+    "handoff_completed",
+    "outcome_received",
+    "commission_eligible"
+  ],
+  "recommended_partner_scopes": [
+    "referral.write",
+    "referral.read",
+    "outcome.write",
+    "analytics.read",
+    "smartlink.read"
+  ]
+}

@@ -1,78 +1,44 @@
-name: WASSAFRICA brand normalization
+name: WASSAFRICA brand normalization check
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '**/*.html'
+      - 'README.md'
+      - 'manifest.json'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  normalize-brand:
+  check-brand:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Normalize visible brand in every application page
+      - name: Verify canonical WASSAFRICA branding without mutating source
         shell: python
         run: |
           from pathlib import Path
           import re
 
-          root = Path('.')
-          injector = '<script src="/brand-normalizer.js"></script>'
-          changed = []
+          forbidden = re.compile(r'Whats\s*Africa', re.I)
+          bad = []
+          files = list(Path('.').rglob('*.html')) + [Path('README.md'), Path('manifest.json')]
 
-          def normalize_visible_html(text):
-              parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
-              for i in range(0, len(parts), 2):
-                  parts[i] = (parts[i]
-                      .replace('WhatsAfrica', 'WASSAFRICA')
-                      .replace('Whats Africa', 'WASSAFRICA')
-                      .replace('WHATS AFRICA', 'WASSAFRICA'))
-              return ''.join(parts)
-
-          for path in root.rglob('*.html'):
-              if any(part in {'.git', 'node_modules'} for part in path.parts):
-                  continue
-              if path.name.startswith('inbox'):
+          for path in files:
+              if not path.exists() or any(part in {'.git', 'node_modules'} for part in path.parts):
                   continue
               text = path.read_text(encoding='utf-8', errors='ignore')
-              new = normalize_visible_html(text)
-              if '/brand-normalizer.js' not in new:
-                  if re.search(r'</head>', new, flags=re.I):
-                      new = re.sub(r'</head>', injector + '\n</head>', new, count=1, flags=re.I)
-                  elif re.search(r'</body>', new, flags=re.I):
-                      new = re.sub(r'</body>', injector + '\n</body>', new, count=1, flags=re.I)
-                  else:
-                      new += '\n' + injector + '\n'
-              if new != text:
-                  path.write_text(new, encoding='utf-8')
-                  changed.append(str(path))
+              parts = re.split(r'(<(?:script|style)\b[^>]*>.*?</(?:script|style)>)', text, flags=re.I | re.S)
+              visible = ''.join(parts[i] for i in range(0, len(parts), 2))
+              if forbidden.search(visible):
+                  bad.append(str(path))
 
-          for path in [root / 'README.md', root / 'manifest.json']:
-              if path.exists():
-                  text = path.read_text(encoding='utf-8')
-                  new = text.replace('WhatsAfrica', 'WASSAFRICA').replace('Whats Africa', 'WASSAFRICA').replace('WHATS AFRICA', 'WASSAFRICA')
-                  if new != text:
-                      path.write_text(new, encoding='utf-8')
-                      changed.append(str(path))
-
-          print(f'Changed {len(changed)} files')
-          for item in changed:
-              print(item)
-
-      - name: Commit normalization
-        shell: bash
-        run: |
-          git config user.name 'WASSAFRICA CTO'
-          git config user.email 'cto@wassafrica.local'
-          git add '*.html' README.md manifest.json
-          if git diff --cached --quiet; then
-            echo 'No brand normalization changes required.'
-            exit 0
-          fi
-          git commit -m 'chore(brand): normalize visible copy to WASSAFRICA'
-          git push
+          if bad:
+              print('Forbidden legacy visible brand found:')
+              print('\n'.join(bad))
+              raise SystemExit(1)
+          print('Brand check passed: no legacy visible brand detected.')

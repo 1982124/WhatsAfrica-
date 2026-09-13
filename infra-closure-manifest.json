@@ -1,0 +1,42 @@
+{
+  "product": "WASSAFRICA",
+  "principle": "VRAI_AVANT_GRAND",
+  "canonical_domain": "https://wassafrica.vercel.app/",
+  "status": "closure_in_progress",
+  "production_certified": false,
+  "deployment_blocker": "Vercel build-rate-limit",
+  "public_experience": ["home", "smartlink", "messaging", "calls", "market", "business", "services"],
+  "control_plane": ["admin_cockpit", "security_audit", "analytics", "crm"],
+  "commercial_assistant": {
+    "present_in_smartlink": true,
+    "owner_configuration": true,
+    "truth_rule": "answer_only_from_published_or_authorized_business_data",
+    "must_be_e2e_certified": true
+  },
+  "partner_network": {
+    "public_surface": "/services-partners",
+    "b2b_surface": "/partenaires",
+    "model": "referral_handoff_outcome_attribution",
+    "regulated_services_rule": "partner_executes_regulated_service",
+    "must_have_real_partner_before_activation": true,
+    "outreach_pack_prepared": true,
+    "outreach_tracker": "partner-outreach-tracker.json"
+  },
+  "closure_hardening": {
+    "smartlink_cellular_call_fallback_guarded": true,
+    "admin_cockpit_closure_visibility": true,
+    "truth_state_ui_rule": true
+  },
+  "closure_order": [
+    "deployment",
+    "messaging_a_to_b",
+    "calls_a_to_b",
+    "smartlink_and_assistant",
+    "commerce_and_payment",
+    "admin_cockpit",
+    "partner_network_sandbox",
+    "first_real_partner",
+    "security_final",
+    "production_certification"
+  ]
+}

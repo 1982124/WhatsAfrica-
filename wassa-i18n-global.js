@@ -1,0 +1,20 @@
+(()=>{'use strict';
+const KEY='wassa-lang';
+const LANGS={fr:'Français',en:'English',pt:'Português',es:'Español',ar:'العربية'};
+const COMMON={
+ fr:{messages:'💬 Messages',home:'Accueil',explore:'🌍 Explorer',groups:'👥 Communautés',market:'🛒 Marché',me:'👤 Moi',language:'Langue',back:'Accueil',dashboard:'Mon espace',smartlink:'Smart Link',partners:'Partenaires',services:'Services'},
+ en:{messages:'💬 Messages',home:'Home',explore:'🌍 Explore',groups:'👥 Communities',market:'🛒 Market',me:'👤 Me',language:'Language',back:'Home',dashboard:'My space',smartlink:'Smart Link',partners:'Partners',services:'Services'},
+ pt:{messages:'💬 Mensagens',home:'Início',explore:'🌍 Explorar',groups:'👥 Comunidades',market:'🛒 Mercado',me:'👤 Eu',language:'Idioma',back:'Início',dashboard:'Meu espaço',smartlink:'Smart Link',partners:'Parceiros',services:'Serviços'},
+ es:{messages:'💬 Mensajes',home:'Inicio',explore:'🌍 Explorar',groups:'👥 Comunidades',market:'🛒 Mercado',me:'👤 Yo',language:'Idioma',back:'Inicio',dashboard:'Mi espacio',smartlink:'Smart Link',partners:'Socios',services:'Servicios'},
+ ar:{messages:'💬 الرسائل',home:'الرئيسية',explore:'🌍 استكشاف',groups:'👥 المجتمعات',market:'🛒 السوق',me:'👤 أنا',language:'اللغة',back:'الرئيسية',dashboard:'مساحتي',smartlink:'Smart Link',partners:'الشركاء',services:'الخدمات'}
+};
+const detect=()=>{try{const s=localStorage.getItem(KEY);if(s&&LANGS[s])return s}catch{}const n=(navigator.language||'fr').toLowerCase();return n.startsWith('ar')?'ar':n.startsWith('pt')?'pt':n.startsWith('es')?'es':n.startsWith('en')?'en':'fr'};
+const t=(lang,key)=>COMMON[lang]?.[key]||COMMON.fr[key]||key;
+const apply=lang=>{if(!LANGS[lang])return;try{localStorage.setItem(KEY,lang)}catch{}document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.querySelectorAll('[data-wassa-i18n]').forEach(el=>{const key=el.getAttribute('data-wassa-i18n');const value=t(lang,key);if(value)el.textContent=value});document.querySelectorAll('[data-wassa-i18n-placeholder]').forEach(el=>{const key=el.getAttribute('data-wassa-i18n-placeholder');el.setAttribute('placeholder',t(lang,key))});document.querySelectorAll('[data-wassa-lang-label]').forEach(el=>el.textContent=LANGS[lang]);const sel=document.querySelector('#wassa-language-global');if(sel)sel.value=lang};
+const navItems=[['/inbox','messages'],['/','home'],['/universe','explore'],['/groups','groups'],['/market','market'],['/dashboard','me']];
+function addNavKeys(){document.querySelectorAll('nav a[href]').forEach(a=>{if(a.dataset.wassaI18n)return;const href=(a.getAttribute('href')||'').split('?')[0];const item=navItems.find(x=>x[0]===href);if(item)a.setAttribute('data-wassa-i18n',item[1]);});}
+function mount(){if(document.getElementById('wassa-language-global'))return;const host=document.querySelector('.nav')||document.querySelector('.topin nav')||document.querySelector('.top')||document.querySelector('header')||document.body;if(!host)return;const wrap=document.createElement('label');wrap.id='wassa-language-global-wrap';wrap.style.cssText='display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:12px;font-weight:800;color:inherit;white-space:nowrap';wrap.innerHTML='<span aria-hidden="true">🌐</span><span data-wassa-lang-label class="wassa-i18n-visually-hidden">Langue</span><select id="wassa-language-global" aria-label="Langue" style="border:1px solid currentColor;background:transparent;color:inherit;border-radius:999px;padding:7px 9px;font:inherit;font-weight:800"><option value="fr">Français</option><option value="en">English</option><option value="pt">Português</option><option value="es">Español</option><option value="ar">العربية</option></select></label>';host.appendChild(wrap);wrap.querySelector('select').addEventListener('change',e=>apply(e.target.value));apply(detect());}
+function boot(){addNavKeys();mount();apply(detect());}
+window.WASSAFRICA_I18N_GLOBAL={setLang:apply,getLang:detect,translate:t};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,0),{once:true});else boot();
+})();

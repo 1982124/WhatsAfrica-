@@ -1,0 +1,22 @@
+{
+  "product": "WASSAFRICA",
+  "status": "prepared_not_sent",
+  "truth_rule": "No partner is considered active until contract_or_explicit_pilot_confirmation exists.",
+  "pipeline": [
+    {"sector":"telecom_mobile_money","target":"MTN","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#1-message-mtn--mobile-money--telecom","next":"identify_partnership_contact"},
+    {"sector":"telecom_payments_network_apis","target":"Orange","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#2-message-orange--orange-money--network-apis","next":"identify_partnership_contact"},
+    {"sector":"banking","target":"Pan-African or local bank","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#3-message-banque-panafricaine--banque-commerciale","next":"select_country_and_bank"},
+    {"sector":"payments_fintech","target":"PSP / Fintech","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#4-message-psp--fintech-paiement","next":"select_provider_and_country"},
+    {"sector":"insurance","target":"Insurer","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#5-message-assurance","next":"select_product_and_country"},
+    {"sector":"logistics","target":"Logistics provider","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#6-message-logistique--livraison","next":"select_zone_and_use_case"},
+    {"sector":"diaspora_remittance","target":"Remittance / diaspora provider","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#7-message-diaspora--transfert-dargent","next":"select_corridor"},
+    {"sector":"technology_api","target":"API / infrastructure partner","status":"draft_ready","message":"docs/WASSAFRICA-PARTNER-NEGOTIATION-PACK.md#8-message-partenaire-technologique--api","next":"select_api_and_pilot"}
+  ],
+  "pilot_rule": {
+    "country": 1,
+    "partner": 1,
+    "business_line": 1,
+    "journey": 1,
+    "attribution_model": 1
+  }
+}
