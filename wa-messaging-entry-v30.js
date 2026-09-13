@@ -1,0 +1,1 @@
+(function(){'use strict';if(window.__WA_MSG_ENTRY_V30__)return;window.__WA_MSG_ENTRY_V30__=true;var s=document.createElement('script');s.src='/wa-messaging-v30.js';s.async=true;document.head.appendChild(s)})();
