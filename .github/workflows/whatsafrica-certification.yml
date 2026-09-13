@@ -80,7 +80,7 @@ jobs:
           from pathlib import Path
           import subprocess, tempfile
 
-          script_re = re.compile(r'<script(?:\s[^>]*)?>([\\s\\S]*?)</script\\s*>', re.IGNORECASE)
+          script_re = re.compile(r'<script(?:\s[^>]*)?>([\s\S]*?)</script\s*>', re.IGNORECASE)
 
           for name in ['messaging-v6.html','calls-v2.html','share.html','enterprise-partners.html']:
               html = Path(name).read_text(encoding='utf-8')
