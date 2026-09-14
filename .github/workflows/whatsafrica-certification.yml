@@ -65,7 +65,7 @@ jobs:
           from pathlib import Path
           import sys
           root=Path('.')
-          ROUTES={'/','/auth','/offer-create','/digital-products','/services','/vitrine','/smartlink','/inbox','/message-invite','/share','/calls','/groups','/market','/digital-market','/dashboard','/payments','/analytics','/crm','/live','/account-security','/product/:id','/service/:id','/invite','/admin','/meeting'}
+          ROUTES={'/','/auth','/offer-create','/digital-products','/services','/vitrine','/smartlink','/inbox','/message-invite','/share','/calls','/groups','/market','/digital-market','/dashboard','/payments','/analytics','/crm','/live','/account-security','/universe','/product/:id','/service/:id','/invite','/admin','/meeting'}
           class Assets(HTMLParser):
               def __init__(self): super().__init__(); self.refs=[]
               def handle_starttag(self,tag,attrs):
