@@ -38,20 +38,46 @@
     return true;
   }
 
-  function syncConversationContext() {
-    var id = window.__WA_CURRENT_CONVERSATION_ID;
-    if (!id || id === lastConversationId) return;
+  function syncConversation(id) {
+    if (!id) return;
+    window.__WA_CURRENT_CONVERSATION_ID = id;
     var media = window.WA_MEDIA_P2P;
-    if (!media || typeof media.setConversation !== 'function') return;
-    lastConversationId = id;
-    Promise.resolve(media.setConversation(id)).catch(function () {});
+    if (media && typeof media.setConversation === 'function' && id !== lastConversationId) {
+      lastConversationId = id;
+      Promise.resolve(media.setConversation(id)).catch(function () {});
+    }
+  }
+
+  function bindConversationClicks() {
+    var list = document.getElementById('list');
+    if (!list || list.dataset.waBridgeBound) return !!list;
+    list.dataset.waBridgeBound = '1';
+    list.addEventListener('click', function (ev) {
+      var item = ev.target && ev.target.closest ? ev.target.closest('.conv') : null;
+      var id = item && item.dataset && item.dataset.conversationId;
+      if (id) syncConversation(id);
+    }, true);
+    return true;
+  }
+
+  function syncFromDom() {
+    var id = window.__WA_CURRENT_CONVERSATION_ID;
+    if (id) return;
+    var active = document.querySelector('.conv[data-conversation-id].active, .conv[data-conversation-id][aria-selected="true"]');
+    if (active && active.dataset.conversationId) syncConversation(active.dataset.conversationId);
   }
 
   function boot() {
     bindSearch();
+    bindConversationClicks();
     initCalls();
-    syncConversationContext();
-    if (!contextTimer) contextTimer = setInterval(function () { bindSearch(); initCalls(); syncConversationContext(); }, 500);
+    syncFromDom();
+    if (!contextTimer) contextTimer = setInterval(function () {
+      bindSearch();
+      bindConversationClicks();
+      initCalls();
+      syncFromDom();
+    }, 500);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
