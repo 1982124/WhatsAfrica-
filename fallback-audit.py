@@ -19,7 +19,6 @@ for p in files():
     try:s=p.read_text(encoding='utf-8')
     except UnicodeDecodeError:continue
     for i,line in enumerate(s.splitlines(),1):
-        # Only classify executable redirects, not ordinary navigation links containing /inbox.
         m=re.search(r"(?:location\.(?:href|replace|assign)|window\.location\s*=|redirectTo\s*:)\s*['\"](/inbox(?:[?#][^'\"]*)?)['\"]",line,re.I)
         if m and p.name not in VOLUNTARY:
             target=m.group(1)
@@ -46,7 +45,7 @@ if a.exists():
         'redirectTo:location.origin+next',
     ]
     for x in required:
-        if not re.search(x,s):hits.append((a,1,x,'missing auth destination invariant'))
+        if x not in s: hits.append((a,1,x,'missing auth destination invariant'))
 
 print('=== WASSAFRICA GLOBAL FALLBACK AUDIT ===')
 print(f'Files scanned: {scanned}')
