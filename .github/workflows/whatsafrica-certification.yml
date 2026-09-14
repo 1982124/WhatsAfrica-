@@ -15,25 +15,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Validate active HTML/JS assets exist
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json auth-v7.html inbox-v25.html calls-v2.html wa-calls-v2.js wa-voice.js wa-media-p2p.js wa-message-invite.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html offer-create-v4.html market-shell.html; do
-            test -f "$file"
-          done
-
+          for file in vercel.json auth-v7.html inbox-v25.html calls-v2.html wa-calls-v2.js wa-voice.js wa-media-p2p.js wa-message-invite.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html offer-create-v4.html market-shell.html; do test -f "$file"; done
       - name: Validate active critical routes are declared
         shell: bash
         run: |
           set -euo pipefail
-          for route in '"/auth"' '"/offer-create"' '"/digital-products"' '"/services"' '"/vitrine"' '"/smartlink"' '"/inbox"' '"/message-invite"' '"/share"' '"/calls"' '"/groups"' '"/market"' '"/product/:id"' '"/service/:id"' '"/invite"' '"/admin"' '"/meeting"'; do
-            grep -Fq "$route" vercel.json
-          done
-          grep -Fq '"/inbox"' vercel.json
+          for route in '"/auth"' '"/offer-create"' '"/digital-products"' '"/services"' '"/vitrine"' '"/smartlink"' '"/inbox"' '"/message-invite"' '"/share"' '"/calls"' '"/groups"' '"/market"' '"/product/:id"' '"/service/:id"' '"/invite"' '"/admin"' '"/meeting"'; do grep -Fq "$route" vercel.json; done
           grep -Fq '"/inbox-v25.html"' vercel.json
-
       - name: Validate auth destination preservation
         shell: bash
         run: |
@@ -44,7 +36,6 @@ jobs:
           grep -Fq 'u.pathname+u.search+u.hash' auth-v7.html
           grep -Fq 'redirectTo:location.origin+next' auth-v7.html
           ! grep -Fq '/auth-callback' auth-v7.html
-
       - name: Validate security headers
         shell: bash
         run: |
@@ -53,19 +44,17 @@ jobs:
           grep -Fq 'X-Content-Type-Options' vercel.json
           grep -Fq 'X-Frame-Options' vercel.json
           grep -Fq 'Permissions-Policy' vercel.json
-
       - name: Validate active messaging, WebRTC and SmartLink primitives
         shell: bash
         run: |
           set -euo pipefail
           grep -Fq 'wa-calls-v2.js' inbox-v25.html
           grep -Fq 'wa-message-invite.js' inbox-v25.html
-          grep -Fq 'sendEncryptedMessage' inbox-v25.html
-          grep -Fq 'startRecording' inbox-v25.html
+          grep -Fq 'async function send(' inbox-v25.html
+          grep -Fq 'function updateComposerState' inbox-v25.html
           grep -Fq 'RTCPeerConnection' calls-v2.html
           grep -Fq 'getUserMedia' calls-v2.html
           grep -Fq 'resolve_share_landing' share.html
-
       - name: Validate referenced local assets exist
         shell: bash
         run: |
@@ -73,38 +62,26 @@ jobs:
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
-          from urllib.parse import urlparse
           import sys
-
           root=Path('.')
           class Assets(HTMLParser):
               def __init__(self): super().__init__(); self.refs=[]
               def handle_starttag(self,tag,attrs):
-                  a=dict(attrs)
-                  for k in ('src','href'):
-                      v=a.get(k,'')
-                      if v.startswith('/') and not v.startswith('//'):
+                  for k,v in dict(attrs).items():
+                      if k in ('src','href') and v.startswith('/') and not v.startswith('//'):
                           self.refs.append(v.split('?',1)[0].split('#',1)[0])
-          files=['auth-v7.html','inbox-v25.html','calls-v2.html','share.html','offer-create-v4.html','market-shell.html','business-vitrine-v2.html','smartlink-free-v2.html']
-          for name in files:
-              p=Assets(); p.feed((root/name).read_text(encoding='utf-8'))
-              for ref in p.refs:
-                  target=root/ref.lstrip('/')
-                  if not target.exists():
-                      print(f'Missing local asset: {name} -> {ref}')
-                      sys.exit(1)
+          for name in ['auth-v7.html','inbox-v25.html','calls-v2.html','share.html','offer-create-v4.html','market-shell.html','business-vitrine-v2.html','smartlink-free-v2.html']:
+              parser=Assets(); parser.feed((root/name).read_text(encoding='utf-8'))
+              for ref in parser.refs:
+                  if not (root/ref.lstrip('/')).exists():
+                      print(f'Missing local asset: {name} -> {ref}'); sys.exit(1)
           print('Local asset reference certification passed.')
           PY
-
       - name: Validate no service-role key is committed
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RIn --exclude-dir=.git --exclude-dir=supabase --exclude-dir=.github --exclude='*.md' -E 'SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=|sb_secret_[A-Za-z0-9_-]{20,}' .; then
-            echo 'Potential service-role secret exposure detected.'
-            exit 1
-          fi
-
+          if grep -RIn --exclude-dir=.git --exclude-dir=supabase --exclude-dir=.github --exclude='*.md' -E 'SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=|sb_secret_[A-Za-z0-9_-]{20,}' .; then echo 'Potential service-role secret exposure detected.'; exit 1; fi
       - name: Validate JavaScript syntax
         shell: bash
         run: |
@@ -112,10 +89,11 @@ jobs:
           node --check wa-calls-v2.js
           node --check wa-voice.js
           node --check e2ee.js
+          node --check wa-inbox-call-bridge.js
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
-          import subprocess, tempfile
+          import subprocess,tempfile
           class Scripts(HTMLParser):
               def __init__(self): super().__init__(); self.in_script=False; self.buf=[]; self.scripts=[]
               def handle_starttag(self,tag,attrs):
@@ -127,15 +105,12 @@ jobs:
           for name in ['auth-v7.html','inbox-v25.html','calls-v2.html','share.html','offer-create-v4.html','market-shell.html']:
               p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
               for i,code in enumerate(p.scripts):
-                  if not code.strip() or code.lstrip().startswith('http'): continue
-                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f:
-                      f.write(code); tmp=f.name
+                  if not code.strip(): continue
+                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f: f.write(code); tmp=f.name
                   r=subprocess.run(['node','--check',tmp],capture_output=True,text=True)
-                  if r.returncode:
-                      print(r.stderr); raise SystemExit(f'Inline JavaScript syntax error: {name} script #{i+1}')
+                  if r.returncode: print(r.stderr); raise SystemExit(f'Inline JavaScript syntax error: {name} script #{i+1}')
           print('JavaScript syntax certification passed.')
           PY
-
       - name: Run global fallback gate
         shell: bash
         run: python3 fallback-audit.py
