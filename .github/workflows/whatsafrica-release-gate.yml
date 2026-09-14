@@ -1,4 +1,4 @@
-name: WhatsAfrica — Final Release Gate
+name: WASSAFRICA — Final Release Gate
 
 on:
   push:
@@ -61,8 +61,9 @@ jobs:
           grep -Fq "secondary_failure_does_not_block_auth: true" api/auth-health.js
           grep -Fq "secrets_exposed: false" api/auth-health.js
           grep -Fq "certification_rule: 'infrastructure_healthy_does_not_equal_provider_certified'" api/auth-health.js
-          grep -Fq "const PROD_ORIGIN='https://whatsafrica.vercel.app'" auth-v3.html
-          grep -Fq "emailRedirectTo:redirectUri()" auth-v3.html
+          grep -Fq "redirectTo:location.origin+next" auth-v7.html
+          grep -Fq "u.origin===location.origin" auth-v7.html
+          grep -Fq "emailRedirectTo" auth-v3.html
 
       - name: Enforce grounded local pricing and source privacy
         shell: bash
@@ -95,7 +96,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base='https://whatsafrica.vercel.app'
+          base='https://wassafrica.vercel.app'
           for path in / /auth /inbox /groups /market /invite /share /calls /api/auth-health; do
             code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$base$path")
             echo "$path -> $code"
@@ -115,11 +116,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          headers=$(curl -L -sS -D - -o /dev/null --max-time 20 https://whatsafrica.vercel.app/auth)
+          headers=$(curl -L -sS -D - -o /dev/null --max-time 20 https://wassafrica.vercel.app/auth)
           printf '%s\n' "$headers" | grep -qi '^strict-transport-security:'
           printf '%s\n' "$headers" | grep -qi '^x-content-type-options:'
           printf '%s\n' "$headers" | grep -qi '^x-frame-options:'
           printf '%s\n' "$headers" | grep -qi '^permissions-policy:'
 
       - name: Final release rule
-        run: echo 'WhatsAfrica release gate passed.'
+        run: echo 'WASSAFRICA release gate passed.'
