@@ -1,0 +1,1 @@
+Temporary trigger for the guarded inbox UI cleanup workflow. Safe to delete after the workflow commits the targeted change.
