@@ -1,0 +1,38 @@
+name: cleanup-inbox-generic-subtitle
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: "!contains(github.event.head_commit.message, '[inbox-ui-cleanup]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove generic conversation subtitle
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('inbox-v25.html')
+          s = p.read_text(encoding='utf-8')
+          old = "const sub=document.createElement('div');sub.className='conv-sub';sub.textContent='Conversation';main.append(name,sub);"
+          new = "const sub=document.createElement('div');sub.className='conv-sub';main.append(name);"
+          if old not in s:
+              raise SystemExit('Target render pattern not found; refusing unrelated changes.')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          git diff --check
+          git diff -- inbox-v25.html
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add inbox-v25.html
+          git commit -m 'fix inbox conversation list subtitle [inbox-ui-cleanup]'
+          git push
