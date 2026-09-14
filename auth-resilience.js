@@ -1,9 +1,8 @@
-window.WhatsAfricaAuthResilience = (() => {
+window.WassafricaAuthResilience = (() => {
   const PROD_ORIGIN = 'https://wassafrica.vercel.app';
   const PROVIDER_MESSAGES = {
     google: 'Google rencontre actuellement un problème de connexion. Votre compte WASSAFRICA n’est pas perdu.',
-    phone: 'La réception SMS rencontre actuellement un problème. Votre compte WASSAFRICA n’est pas perdu.',
-    email: 'La connexion par e-mail rencontre actuellement un problème. Votre compte WASSAFRICA n’est pas perdu.'
+    unknown: 'La connexion Google rencontre momentanément un problème. Votre compte WASSAFRICA n’est pas perdu.'
   };
 
   function safeNext(next) {
@@ -17,8 +16,6 @@ window.WhatsAfricaAuthResilience = (() => {
   function classify(error) {
     const text = String(error?.message || error || '').toLowerCase();
     if (/google|oauth|external code|invalid_client|invalid_grant|redirect_uri|bad_oauth_state|oauth state/.test(text)) return 'google';
-    if (/phone|sms|otp|hook|twilio|esms/.test(text)) return 'phone';
-    if (/email|magic|otp/.test(text)) return 'email';
     return 'unknown';
   }
 
@@ -26,8 +23,8 @@ window.WhatsAfricaAuthResilience = (() => {
     const provider = classify(error);
     return {
       provider,
-      message: PROVIDER_MESSAGES[provider] || 'La connexion rencontre momentanément un problème. Votre compte WASSAFRICA n’est pas perdu.',
-      alternatives: provider === 'google' ? ['phone', 'email'] : provider === 'phone' ? ['email', 'google'] : ['phone', 'google']
+      message: PROVIDER_MESSAGES[provider],
+      alternatives: []
     };
   }
 
