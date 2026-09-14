@@ -1,6 +1,8 @@
 name: CTO patch messaging member search
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,56 +19,36 @@ jobs:
           from pathlib import Path
           p = Path('inbox-v25.html')
           s = p.read_text(encoding='utf-8')
-          old = "let session=null,user=null,device=null,current=null,timer=null,busy=false,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}};"
-          new = "let session=null,user=null,device=null,current=null,timer=null,busy=false,searchTimer=null,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}};"
-          assert old in s, 'state declaration not found'
-          s = s.replace(old, new, 1)
-
-          old = '<button id="start">+</button>'
-          new = '<button id="start" disabled title="Rechercher un membre">+</button>'
-          assert old in s, 'start button not found'
-          s = s.replace(old, new, 1)
-
-          old = '<button id="send" class="fab" type="submit">➤</button>'
-          new = '<button id="send" class="fab" type="submit" disabled>➤</button>'
-          assert old in s, 'send button not found'
-          s = s.replace(old, new, 1)
-
-          old = "async function send(e){e.preventDefault();const text=$('body').value.trim();if(!text||!current)return;$('send').disabled=true;try{"
-          new = "function updateComposerState(){$('send').disabled=!(current&&$('body').value.trim());$('start').disabled=!$('target').value.trim()||!!busy}\\nasync function send(e){e.preventDefault();const text=$('body').value.trim();if(!text||!current)return;$('send').disabled=true;try{"
-          assert old in s, 'send function start not found'
-          s = s.replace(old, new, 1)
-
-          old = "finally{$('send').disabled=false;$('body').focus()}}"
-          new = "finally{updateComposerState();$('body').focus()}}"
-          assert old in s, 'send finally not found'
-          s = s.replace(old, new, 1)
-
-          old = "async function openConv(c){current=c;keyCache.clear();$('title').textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');$('subtitle').textContent='';$('chatAvatar').textContent=(c.title||'W').trim().charAt(0).toUpperCase();clearReply();if(timer)clearInterval(timer);await loadMessages();timer=setInterval(()=>loadMessages().catch(()=>{}),3500)}"
-          new = "async function openConv(c){current=c;keyCache.clear();$('title').textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');$('subtitle').textContent='';$('chatAvatar').textContent=(c.title||'W').trim().charAt(0).toUpperCase();clearReply();if(timer)clearInterval(timer);await loadMessages();updateComposerState();timer=setInterval(()=>loadMessages().catch(()=>{}),3500)}"
-          assert old in s, 'openConv not found'
-          s = s.replace(old, new, 1)
-
-          old = "$('start').onclick=start;$('target').addEventListener('input',renderList);$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});$('chatSearch').addEventListener('input',()=>loadMessages().catch(()=>{}));$('composer').addEventListener('submit',send);"
-          new = "$('start').onclick=start;$('target').addEventListener('input',()=>{clearTimeout(searchTimer);const v=$('target').value.trim();updateComposerState();if(!v){renderList();return}if(v.length<2)return;searchTimer=setTimeout(()=>find(v).catch(()=>{}),250)});$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});$('body').addEventListener('input',updateComposerState);$('chatSearch').addEventListener('input',()=>loadMessages().catch(()=>{}));$('composer').addEventListener('submit',send);"
-          assert old in s, 'event wiring not found'
-          s = s.replace(old, new, 1)
-
-          old = "}finally{$('start').disabled=false}}"
-          new = "}finally{busy=false;updateComposerState()}}"
-          assert old in s, 'start finally not found'
-          s = s.replace(old, new, 1)
-
-          old = "async function start(){const v=$('target').value.trim();if(!v)return;$('start').disabled=true;try{"
-          new = "async function start(){const v=$('target').value.trim();if(!v)return;$('start').disabled=true;busy=true;try{"
-          assert old in s, 'start function not found'
-          s = s.replace(old, new, 1)
-
-          p.write_text(s, encoding='utf-8')
+          replacements = [
+            ("let session=null,user=null,device=null,current=null,timer=null,busy=false,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}};",
+             "let session=null,user=null,device=null,current=null,timer=null,busy=false,searchTimer=null,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}};"),
+            ('<button id="start">+</button>', '<button id="start" disabled title="Rechercher un membre">+</button>'),
+            ('<button id="send" class="fab" type="submit">➤</button>', '<button id="send" class="fab" type="submit" disabled>➤</button>'),
+            ("async function send(e){e.preventDefault();const text=$('body').value.trim();if(!text||!current)return;$('send').disabled=true;try{",
+             "function updateComposerState(){$('send').disabled=!(current&&$('body').value.trim());$('start').disabled=!$('target').value.trim()||!!busy}\\nasync function send(e){e.preventDefault();const text=$('body').value.trim();if(!text||!current)return;$('send').disabled=true;try{"),
+            ("finally{$('send').disabled=false;$('body').focus()}}", "finally{updateComposerState();$('body').focus()}}"),
+            ("async function openConv(c){current=c;keyCache.clear();$('title').textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');$('subtitle').textContent='';$('chatAvatar').textContent=(c.title||'W').trim().charAt(0).toUpperCase();clearReply();if(timer)clearInterval(timer);await loadMessages();timer=setInterval(()=>loadMessages().catch(()=>{}),3500)}",
+             "async function openConv(c){current=c;keyCache.clear();$('title').textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');$('subtitle').textContent='';$('chatAvatar').textContent=(c.title||'W').trim().charAt(0).toUpperCase();clearReply();if(timer)clearInterval(timer);await loadMessages();updateComposerState();timer=setInterval(()=>loadMessages().catch(()=>{}),3500)}"),
+            ("$('start').onclick=start;$('target').addEventListener('input',renderList);$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});$('chatSearch').addEventListener('input',()=>loadMessages().catch(()=>{}));$('composer').addEventListener('submit',send);",
+             "$('start').onclick=start;$('target').addEventListener('input',()=>{clearTimeout(searchTimer);const v=$('target').value.trim();updateComposerState();if(!v){renderList();return}if(v.length<2)return;searchTimer=setTimeout(()=>find(v).catch(()=>{}),250)});$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});$('body').addEventListener('input',updateComposerState);$('chatSearch').addEventListener('input',()=>loadMessages().catch(()=>{}));$('composer').addEventListener('submit',send);"),
+            ("}finally{$('start').disabled=false}}", "}finally{busy=false;updateComposerState()}}"),
+            ("async function start(){const v=$('target').value.trim();if(!v)return;$('start').disabled=true;try{", "async function start(){const v=$('target').value.trim();if(!v)return;$('start').disabled=true;busy=true;try{")
+          ]
+          changed = 0
+          for old, new in replacements:
+              if old in s:
+                  s = s.replace(old, new, 1)
+                  changed += 1
+          if changed == 0:
+              print('No patch needed; inbox-v25 already contains the fix.')
+          else:
+              assert changed == len(replacements), f'Partial patch: {changed}/{len(replacements)} replacements'
+              p.write_text(s, encoding='utf-8')
           PY
           git diff --check
           git config user.name "WASSAFRICA CTO"
           git config user.email "cto@wassafrica.local"
+          if git diff --quiet -- inbox-v25.html; then exit 0; fi
           git add inbox-v25.html
           git commit -m "fix messaging member search and composer state"
           git push
