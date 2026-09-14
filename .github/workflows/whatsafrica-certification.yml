@@ -64,6 +64,7 @@ jobs:
           from pathlib import Path
           import sys
           root=Path('.')
+          ROUTES={'/','/auth','/offer-create','/digital-products','/services','/vitrine','/smartlink','/inbox','/message-invite','/share','/calls','/groups','/market','/dashboard','/payments','/analytics','/crm','/live','/account-security','/product/:id','/service/:id','/invite','/admin','/meeting'}
           class Assets(HTMLParser):
               def __init__(self): super().__init__(); self.refs=[]
               def handle_starttag(self,tag,attrs):
@@ -73,6 +74,8 @@ jobs:
           for name in ['auth-v7.html','inbox-v25.html','calls-v2.html','share.html','offer-create-v4.html','market-shell.html','business-vitrine-v2.html','smartlink-free-v2.html']:
               parser=Assets(); parser.feed((root/name).read_text(encoding='utf-8'))
               for ref in parser.refs:
+                  if ref in ROUTES: continue
+                  if ref.startswith('/api/'): continue
                   if not (root/ref.lstrip('/')).exists():
                       print(f'Missing local asset: {name} -> {ref}'); sys.exit(1)
           print('Local asset reference certification passed.')
