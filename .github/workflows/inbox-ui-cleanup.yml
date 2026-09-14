@@ -18,13 +18,21 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           p = Path('inbox-v25.html')
           s = p.read_text(encoding='utf-8')
-          old = "const sub=document.createElement('div');sub.className='conv-sub';sub.textContent='Conversation';main.append(name,sub);"
-          new = "const sub=document.createElement('div');sub.className='conv-sub';main.append(name);"
-          if old not in s:
-              raise SystemExit('Target render pattern not found; refusing unrelated changes.')
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          patterns = [
+              (r"main\.append\(name,sub\);", "main.append(name);"),
+              (r"main\.append\(name, sub\);", "main.append(name);"),
+          ]
+          for old, new in patterns:
+              s2, n = re.subn(old, new, s, count=1)
+              if n:
+                  s = s2
+                  break
+          else:
+              raise SystemExit('Target inbox list append pattern not found; refusing unrelated changes.')
+          p.write_text(s, encoding='utf-8')
           PY
           git diff --check
           git diff -- inbox-v25.html
