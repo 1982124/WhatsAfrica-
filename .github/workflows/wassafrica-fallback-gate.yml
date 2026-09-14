@@ -1,0 +1,24 @@
+name: WASSAFRICA Global Fallback Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fallback-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Audit global fallback invariants
+        run: python3 fallback-audit.py
+      - name: Validate canonical production domain in Vercel config
+        run: |
+          test -f vercel.json
+          ! grep -RIn --exclude-dir=.git --include='*.html' --include='*.js' 'https://whatsafrica.vercel.app' . || true
+          grep -Fq '"/inbox"' vercel.json
