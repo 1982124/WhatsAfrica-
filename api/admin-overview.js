@@ -35,8 +35,9 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'admin_service_unavailable' });
     }
     const out = await rpc.json();
-    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-WassAfrica-Admin-API', 'ok');
     return res.status(200).json(out);
   } catch (e) {
     console.error('admin-overview', e);
