@@ -14,10 +14,12 @@ def files():
 
 hits=[]
 scanned=0
+redirects=0
 for p in files():
     scanned+=1
     try:s=p.read_text(encoding='utf-8')
     except UnicodeDecodeError:continue
+    redirects += len(re.findall(r'(?:location\.(?:href|replace|assign)|window\.location\s*=|redirectTo\s*:)',s,re.I))
     for i,line in enumerate(s.splitlines(),1):
         m=re.search(r"(?:location\.(?:href|replace|assign)|window\.location\s*=|redirectTo\s*:)\s*['\"](/inbox(?:[?#][^'\"]*)?)['\"]",line,re.I)
         if m and p.name not in VOLUNTARY:
@@ -49,6 +51,7 @@ if a.exists():
 
 print('=== WASSAFRICA GLOBAL FALLBACK AUDIT ===')
 print(f'Files scanned: {scanned}')
+print(f'Redirect operations analyzed: {redirects}')
 print(f'Dangerous findings: {len(hits)}')
 for p,i,line,kind in hits:
     print(f'{p}:{i}: [{kind}] {line}')
