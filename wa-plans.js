@@ -3,7 +3,7 @@
   'use strict';
   const DEFAULTS = {
     free: { name: 'Free', monthly_price_xof: 0, ads_enabled: true },
-    starter: { name: 'Starter', monthly_price_xof: 3000, ads_enabled: true },
+    starter: { name: 'Starter', monthly_price_xof: 2500, ads_enabled: true },
     business: { name: 'Business', monthly_price_xof: 3500, ads_enabled: false },
     premium: { name: 'Premium', monthly_price_xof: 10000, ads_enabled: false }
   };
