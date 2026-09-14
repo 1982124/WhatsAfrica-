@@ -1,4 +1,4 @@
-name: WhatsAfrica — Certification
+name: WASSAFRICA — Certification
 
 on:
   push:
@@ -16,22 +16,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate HTML/JS assets exist
+      - name: Validate active HTML/JS assets exist
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json messaging-v6.html calls-v2.html wa-calls-v2.js wa-voice.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html; do
+          for file in vercel.json auth-v7.html inbox-v25.html calls-v2.html wa-calls-v2.js wa-voice.js wa-media-p2p.js wa-message-invite.js e2ee.js share.html share-center.html group-manager.html invite.html admin-cockpit.html offer-create-v4.html market-shell.html; do
             test -f "$file"
           done
 
-      - name: Validate critical routes are declared
+      - name: Validate active critical routes are declared
         shell: bash
         run: |
           set -euo pipefail
-          for route in '"/share"' '"/calls"' '"/inbox"' '"/product"' '"/product/:id"' '"/s/:token"' '"/invite"' '"/admin"' '"/meeting"'; do
+          for route in '"/auth"' '"/offer-create"' '"/digital-products"' '"/services"' '"/vitrine"' '"/smartlink"' '"/inbox"' '"/message-invite"' '"/share"' '"/calls"' '"/groups"' '"/market"' '"/product/:id"' '"/service/:id"' '"/invite"' '"/admin"' '"/meeting"'; do
             grep -Fq "$route" vercel.json
           done
-          grep -Fq 'messaging-v6.html' vercel.json
+          grep -Fq '"/inbox"' vercel.json
+          grep -Fq '"/inbox-v25.html"' vercel.json
+
+      - name: Validate auth destination preservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq "q[[:space:]]*=[[:space:]]*new URLSearchParams\\(location\\.search\\)" auth-v7.html
+          grep -Fq "q.get('next')||'/inbox'" auth-v7.html
+          grep -Fq 'u.origin===location.origin' auth-v7.html
+          grep -Fq 'u.pathname+u.search+u.hash' auth-v7.html
+          grep -Fq 'redirectTo:location.origin+next' auth-v7.html
+          ! grep -Fq '/auth-callback' auth-v7.html
 
       - name: Validate security headers
         shell: bash
@@ -42,16 +54,47 @@ jobs:
           grep -Fq 'X-Frame-Options' vercel.json
           grep -Fq 'Permissions-Policy' vercel.json
 
-      - name: Validate messaging, WebRTC and SmartLink primitives
+      - name: Validate active messaging, WebRTC and SmartLink primitives
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'sendEncryptedMessage' messaging-v6.html
-          grep -Fq 'startRecording' messaging-v6.html
-          grep -Fq 'WA_CALLS.start' messaging-v6.html
-          grep -Fq 'RTCPeerConnection' wa-calls-v2.js
-          grep -Fq 'getUserMedia' wa-calls-v2.js
+          grep -Fq 'wa-calls-v2.js' inbox-v25.html
+          grep -Fq 'wa-message-invite.js' inbox-v25.html
+          grep -Fq 'sendEncryptedMessage' inbox-v25.html
+          grep -Fq 'startRecording' inbox-v25.html
+          grep -Fq 'RTCPeerConnection' calls-v2.html
+          grep -Fq 'getUserMedia' calls-v2.html
           grep -Fq 'resolve_share_landing' share.html
+
+      - name: Validate referenced local assets exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urlparse
+          import sys
+
+          root=Path('.')
+          class Assets(HTMLParser):
+              def __init__(self): super().__init__(); self.refs=[]
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  for k in ('src','href'):
+                      v=a.get(k,'')
+                      if v.startswith('/') and not v.startswith('//'):
+                          self.refs.append(v.split('?',1)[0].split('#',1)[0])
+          files=['auth-v7.html','inbox-v25.html','calls-v2.html','share.html','offer-create-v4.html','market-shell.html','business-vitrine-v2.html','smartlink-free-v2.html']
+          for name in files:
+              p=Assets(); p.feed((root/name).read_text(encoding='utf-8'))
+              for ref in p.refs:
+                  target=root/ref.lstrip('/')
+                  if not target.exists():
+                      print(f'Missing local asset: {name} -> {ref}')
+                      sys.exit(1)
+          print('Local asset reference certification passed.')
+          PY
 
       - name: Validate no service-role key is committed
         shell: bash
@@ -73,23 +116,19 @@ jobs:
           from html.parser import HTMLParser
           from pathlib import Path
           import subprocess, tempfile
-
           class Scripts(HTMLParser):
-              def __init__(self):
-                  super().__init__(); self.in_script=False; self.buf=[]; self.scripts=[]
-              def handle_starttag(self, tag, attrs):
-                  if tag == 'script': self.in_script=True; self.buf=[]
-              def handle_endtag(self, tag):
-                  if tag == 'script' and self.in_script:
-                      self.scripts.append(''.join(self.buf)); self.in_script=False
-              def handle_data(self, data):
+              def __init__(self): super().__init__(); self.in_script=False; self.buf=[]; self.scripts=[]
+              def handle_starttag(self,tag,attrs):
+                  if tag=='script': self.in_script=True; self.buf=[]
+              def handle_endtag(self,tag):
+                  if tag=='script' and self.in_script: self.scripts.append(''.join(self.buf)); self.in_script=False
+              def handle_data(self,data):
                   if self.in_script: self.buf.append(data)
-
-          for name in ['messaging-v6.html','calls-v2.html','share.html']:
+          for name in ['auth-v7.html','inbox-v25.html','calls-v2.html','share.html','offer-create-v4.html','market-shell.html']:
               p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
-              for i, code in enumerate(p.scripts):
+              for i,code in enumerate(p.scripts):
                   if not code.strip() or code.lstrip().startswith('http'): continue
-                  with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
+                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f:
                       f.write(code); tmp=f.name
                   r=subprocess.run(['node','--check',tmp],capture_output=True,text=True)
                   if r.returncode:
@@ -97,12 +136,6 @@ jobs:
           print('JavaScript syntax certification passed.')
           PY
 
-      - name: Detect hardcoded single-country signup defaults
+      - name: Run global fallback gate
         shell: bash
-        run: |
-          set -euo pipefail
-          if grep -RIn --exclude-dir=.git --exclude='*.md' -E 'value="\+223|value=.\+223' join.html 2>/dev/null; then
-            echo 'WARNING: Mali is still the default country code in join.html; replace with an Africa-wide country selector before final pan-African signup certification.'
-          else
-            echo 'No hardcoded Mali signup default detected.'
-          fi
+        run: python3 fallback-audit.py
