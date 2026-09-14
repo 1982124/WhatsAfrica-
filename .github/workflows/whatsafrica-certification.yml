@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for route in '"/auth"' '"/offer-create"' '"/digital-products"' '"/services"' '"/vitrine"' '"/smartlink"' '"/inbox"' '"/message-invite"' '"/share"' '"/calls"' '"/groups"' '"/market"' '"/product/:id"' '"/service/:id"' '"/invite"' '"/admin"' '"/meeting"'; do grep -Fq "$route" vercel.json; done
+          for route in '"/auth"' '"/offer-create"' '"/digital-products"' '"/services"' '"/vitrine"' '"/smartlink"' '"/inbox"' '"/message-invite"' '"/share"' '"/calls"' '"/groups"' '"/market"' '"/universe"' '"/product/:id"' '"/service/:id"' '"/invite"' '"/admin"' '"/meeting"'; do grep -Fq "$route" vercel.json; done
           grep -Fq '"/inbox-v25.html"' vercel.json
       - name: Validate auth destination preservation
         shell: bash
@@ -35,6 +35,9 @@ jobs:
           ! grep -Fq "q.get('next')||'/inbox'" auth-v7.html
           grep -Fq 'u.origin===location.origin' auth-v7.html
           grep -Fq 'u.pathname+u.search+u.hash' auth-v7.html
+          grep -Fq 'db=supabase.createClient(URL,KEY' auth-v7.html
+          grep -Fq 'persistSession:true' auth-v7.html
+          ! grep -Fq 'storageKey:' auth-v7.html
           grep -Fq 'redirectTo:location.origin+next' auth-v7.html
           ! grep -Fq '/auth-callback' auth-v7.html
       - name: Validate security headers
@@ -45,6 +48,17 @@ jobs:
           grep -Fq 'X-Content-Type-Options' vercel.json
           grep -Fq 'X-Frame-Options' vercel.json
           grep -Fq 'Permissions-Policy' vercel.json
+      - name: Validate no automatic Vercel fallback redirects
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          with open('vercel.json', encoding='utf-8') as f: data=json.load(f)
+          if data.get('redirects'):
+              raise SystemExit('Automatic Vercel redirects are forbidden: no silent route fallback is allowed.')
+          print('No Vercel fallback redirects declared.')
+          PY
       - name: Validate active messaging, WebRTC and SmartLink primitives
         shell: bash
         run: |
