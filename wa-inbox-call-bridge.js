@@ -1,17 +1,18 @@
-/* WASSAFRICA inbox interaction bridge.
- * The active inbox page loads this asset before its inline controller is initialized.
- * We bind only after the controller exists, then make member search live without
- * replacing the existing conversation/call behavior.
- */
+/* WASSAFRICA — inbox bridge: keep messaging, media and calls inside one conversation. */
 (function () {
   'use strict';
-  var bound = false;
-  function bind() {
-    if (bound) return true;
+
+  var searchBound = false;
+  var lastConversationId = null;
+  var contextTimer = null;
+
+  function bindSearch() {
+    if (searchBound) return true;
     var target = document.getElementById('target');
     var start = document.getElementById('start');
     if (!target || !start || typeof start.click !== 'function') return false;
-    bound = true;
+
+    searchBound = true;
     var timer = null;
     target.addEventListener('input', function () {
       clearTimeout(timer);
@@ -23,11 +24,39 @@
     });
     return true;
   }
-  if (!bind()) {
-    var tries = 0;
-    var wait = setInterval(function () {
-      tries += 1;
-      if (bind() || tries >= 40) clearInterval(wait);
-    }, 100);
+
+  /*
+   * inbox-v25 already publishes the active conversation id when openConv()
+   * runs. Media P2P exposes setConversation(), and the WebRTC layer wraps
+   * that method to keep its own call context in sync. Calling it here removes
+   * the old architectural gap that left the inline call controls disabled.
+   */
+  function syncConversationContext() {
+    var id = window.__WA_CURRENT_CONVERSATION_ID;
+    if (!id || id === lastConversationId) return;
+    var media = window.WA_MEDIA_P2P;
+    if (!media || typeof media.setConversation !== 'function') return;
+
+    lastConversationId = id;
+    Promise.resolve(media.setConversation(id)).catch(function () {
+      /* The message view remains usable even if media/call context is late. */
+    });
+  }
+
+  function boot() {
+    bindSearch();
+    syncConversationContext();
+    if (!contextTimer) {
+      contextTimer = setInterval(function () {
+        bindSearch();
+        syncConversationContext();
+      }, 250);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
   }
 })();
