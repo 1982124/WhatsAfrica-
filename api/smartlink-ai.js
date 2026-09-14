@@ -1,6 +1,6 @@
 const MAX_BYTES = 180000;
 const SUPABASE_URL = 'https://dzifpwqrqnvssfhwjccj.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 
 function json(res, status, body) {
   res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -33,7 +33,7 @@ function extractJson(text) {
 async function requireUser(req) {
   const auth = String(req.headers.authorization || '');
   const token = auth.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!token || !SUPABASE_KEY) return null;
+  if (!token) return null;
   const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` } });
   if (!r.ok) return null;
   return r.json();
