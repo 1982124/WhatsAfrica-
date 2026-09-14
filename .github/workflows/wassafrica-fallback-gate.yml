@@ -17,8 +17,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Audit global fallback invariants
         run: python3 fallback-audit.py
-      - name: Validate canonical production domain in Vercel config
+      - name: Validate canonical production domain
+        shell: bash
         run: |
+          set -euo pipefail
           test -f vercel.json
-          ! grep -RIn --exclude-dir=.git --include='*.html' --include='*.js' 'https://whatsafrica.vercel.app' . || true
+          if grep -RIn --exclude-dir=.git --exclude-dir=.vercel --exclude-dir=node_modules --exclude-dir=android --include='*.html' --include='*.js' --include='*.mjs' --include='*.cjs' --include='*.json' --include='*.yml' --include='*.yaml' 'https://whatsafrica.vercel.app' .; then
+            echo 'Legacy production domain reference detected. Canonical domain is https://wassafrica.vercel.app.'
+            exit 1
+          fi
           grep -Fq '"/inbox"' vercel.json
