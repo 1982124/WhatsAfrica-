@@ -97,7 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           base='https://wassafrica.vercel.app'
-          for path in / /auth /inbox /groups /market /invite /share /calls /api/auth-health; do
+          for path in / /auth /inbox /groups /market /digital-products /invite /share /calls /api/auth-health; do
             code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$base$path")
             echo "$path -> $code"
             case "$code" in 200|204|301|302|303) ;; *) exit 1 ;; esac
