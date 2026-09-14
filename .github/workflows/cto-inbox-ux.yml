@@ -1,0 +1,52 @@
+name: CTO inbox UX
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cto-inbox-ux.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch inbox UX
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('inbox-v25.html')
+          s=p.read_text()
+          css='''\n/* WASSAFRICA CTO: native mobile conversation UX */\n.mobile-back{display:none;border:0;background:transparent;font-size:25px;line-height:1;padding:4px 6px;cursor:pointer}\n.online-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#48a868;margin-right:5px;vertical-align:middle}\n.conv .avatar.has-photo{background-size:cover;background-position:center;background-repeat:no-repeat}\n@media(max-width:820px){\n  body{overflow-x:hidden}.wrap{max-width:none;padding:0}.shell{display:block;min-height:100vh}.sidebar,.chat{min-height:100vh;border-radius:0;box-shadow:none;border-left:0;border-right:0}.chat{display:none}.shell.mobile-chat-open .sidebar{display:none}.shell.mobile-chat-open .chat{display:flex}.sidebar .list{max-height:none;overflow:auto}.new{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.new button{padding:12px 14px}.chat-top{padding:12px 14px}.mobile-back{display:block}.msgs{padding:12px}.composer-wrap{padding:9px}.composer{gap:6px}.composer input{min-width:0}.conv{padding:11px 8px;border-radius:13px}.avatar{flex:0 0 46px;width:46px;height:46px}.conv-name{font-size:15px}.conv-sub{font-size:12px}.bubble{max-width:88%}\n}\n@media(min-width:821px){.mobile-back{display:none!important}}\n'''
+          if 'WASSAFRICA CTO: native mobile conversation UX' not in s:
+              s=s.replace('</style>',css+'</style>',1)
+          if "d.className='conv';const av=document.createElement('div');" not in s:
+              raise SystemExit('conversation render anchor missing')
+          s=s.replace("d.className='conv';const av=document.createElement('div');", "d.className='conv';d.dataset.cid=c.id;const av=document.createElement('div');", 1)
+          marker='''\n/* CTO_PROFILE_UX */\nconst conversationProfileCache=new Map();\nasync function conversationProfile(c){\n  if(conversationProfileCache.has(c.id))return conversationProfileCache.get(c.id);\n  const parts=String(c.title||'').split('·').map(x=>x.trim()).filter(Boolean);\n  for(const part of parts){\n    try{\n      const rs=await rpc('search_public_profiles',{p_query:part})||[];\n      const hit=rs.find(x=>x.user_id!==user.id);\n      if(hit){conversationProfileCache.set(c.id,hit);return hit}\n    }catch{}\n  }\n  conversationProfileCache.set(c.id,null);return null\n}\nasync function decorateConversationList(){\n  const nodes=[...document.querySelectorAll('#list .conv[data-cid]')];\n  await Promise.all(nodes.map(async d=>{\n    const c=conversationCache.find(x=>String(x.id)===String(d.dataset.cid));\n    if(!c)return;const p=await conversationProfile(c);if(!p)return;\n    const av=d.querySelector('.avatar');\n    const photo=p.avatar_url||p.profile_image_url||p.profile_photo_url||'';\n    if(photo){av.classList.add('has-photo');av.style.backgroundImage='url(\\"'+String(photo).replace(/\\"/g,'&quot;')+'\\")';av.textContent=''}\n    const sub=d.querySelector('.conv-sub');\n    const status=p.status||((p.is_online||p.online)?'En ligne':(p.country||'Sur WASSAFRICA'));\n    sub.innerHTML=(p.is_online||p.online?'<span class=\\"online-dot\\"></span>':'')+esc(status);\n  }))\n}\n'''
+          if 'CTO_PROFILE_UX' not in s:
+              s=s.replace("function updateComposerState()", marker+"\nfunction updateComposerState()",1)
+          s=s.replace("if(!box.children.length)box.innerHTML='<div class=\"empty\">Aucune conversation.</div>'}", "if(!box.children.length)box.innerHTML='<div class=\"empty\">Aucune conversation.</div>';decorateConversationList()}", 1)
+          mobile='''\n/* CTO mobile navigation + contact identity */\nconst appEl=$('app');\nconst backBtn=document.createElement('button');backBtn.className='mobile-back';backBtn.type='button';backBtn.setAttribute('aria-label','Retour aux conversations');backBtn.textContent='‹';\n$('chatAvatar').parentElement.prepend(backBtn);\nbackBtn.onclick=()=>{appEl.classList.remove('mobile-chat-open');if(timer){clearInterval(timer);timer=null}};\n$('list').addEventListener('click',()=>{appEl.classList.add('mobile-chat-open')});\nconst originalOpenConv=openConv;\nopenConv=async function(c){await originalOpenConv(c);appEl.classList.add('mobile-chat-open');const p=await conversationProfile(c);if(p){const photo=p.avatar_url||p.profile_image_url||p.profile_photo_url||'';const av=$('chatAvatar');if(photo){av.classList.add('has-photo');av.style.backgroundImage='url(\\"'+String(photo).replace(/\\"/g,'&quot;')+'\\")';av.textContent=''}$('subtitle').innerHTML=(p.is_online||p.online?'<span class=\\"online-dot\\"></span>':'')+esc(p.status||((p.is_online||p.online)?'En ligne':(p.country||'Sur WASSAFRICA')))}}};\n'''
+          if 'CTO mobile navigation + contact identity' not in s:
+              s=s.replace('boot();',mobile+'\nboot();',1)
+          p.write_text(s)
+          print('patched',p.stat().st_size)
+          PY
+          node --check <(python - <<'PY'
+          from pathlib import Path
+          s=Path('inbox-v25.html').read_text()
+          a=s.split('<script>',1)[1].rsplit('</script>',1)[0]
+          print(a)
+          PY
+          )
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name 'WASSAFRICA CTO'
+          git config user.email 'cto@wassafrica.local'
+          git add inbox-v25.html
+          git commit -m 'CTO: native mobile messaging UX and contact profile identity'
+          git push origin main
+          git rm .github/workflows/cto-inbox-ux.yml
+          git commit -m 'cleanup temporary inbox UX deployment workflow'
+          git push origin main
