@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://dzifpwqrqnvssfhwjccj.supabase.co';
-const PROD_ORIGIN = 'https://whatsafrica.vercel.app';
+const PROD_ORIGIN = 'https://wassafrica.vercel.app';
 
 function timedFetch(url, options = {}, timeoutMs = 4500) {
   const controller = new AbortController();
