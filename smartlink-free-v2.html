@@ -21,12 +21,69 @@
 <div class="field"><label for="bio">Ma présentation</label><textarea id="bio" maxlength="2000" placeholder="Présentez-vous simplement : votre activité, votre savoir-faire, ce que vous proposez."></textarea></div>
 <div class="grid"><div class="field"><label for="country">Pays</label><input id="country" class="input" maxlength="80" placeholder="Mali"></div><div class="field"><label for="city">Ville</label><input id="city" class="input" maxlength="100" placeholder="Bamako"></div></div>
 <div class="preview"><strong id="previewName">Votre nom apparaîtra ici</strong><p id="previewBio">Votre présentation apparaîtra ici. Votre Smart Link pourra être partagé partout.</p></div>
-<div class="actions"><button id="save" class="btn primary" type="button">Publier mon Smart Link</button><a id="open" class="btn gold" target="_blank" rel="noopener" hidden>Ouvrir mon Smart Link</a></div><div id="status" class="status"></div>
+<div class="actions"><button id="save" class="btn primary" type="button" disabled>Chargement…</button><a id="open" class="btn gold" target="_blank" rel="noopener" hidden>Ouvrir mon Smart Link</a></div><div id="status" class="status" aria-live="polite">Vérification de votre session…</div>
 </section>
 <section class="card"><h2 class="form-title">Les offres</h2><p class="form-sub">Le modèle gratuit reste la porte d'entrée. Les fonctions commerciales avancées viennent ensuite.</p><div class="plans"><div class="plan"><strong>Free</strong><b>0 FCFA</b><span>1 Smart Link personnel · fonctions essentielles</span></div><div class="plan"><strong>Starter</strong><b>2 500 FCFA/mois</b><span>Plus de visibilité et fonctions commerciales</span></div><div class="plan"><strong>Pro</strong><b>7 500 FCFA/mois</b><span>Outils avancés pour activité et marché</span></div></div><p class="note">Les offres payantes sont présentées comme des niveaux d'évolution. Elles ne bloquent pas la création du Smart Link personnel gratuit.</p></section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(()=>{const URL='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const $=id=>document.getElementById(id);let user=null,business=null,link=null;const esc=s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));const norm=s=>String(s||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9-]+/g,'-').replace(/-+/g,'-').replace(/^-+|-+$/g,'').slice(0,48);function status(t,ok=false){$('status').innerHTML='<span class="'+(ok?'ok':'err')+'">'+esc(t)+'</span>'}function preview(){const n=$('name').value.trim();$('previewName').textContent=n||'Votre nom apparaîtra ici';$('previewBio').textContent=$('bio').value.trim()||'Votre présentation apparaîtra ici. Votre Smart Link pourra être partagé partout.'}['name','bio'].forEach(id=>$(id).addEventListener('input',preview));async function load(){try{const r=await db.auth.getSession();if(r.error)throw r.error;user=r.data?.session?.user||null;if(!user){status('Connectez-vous pour enregistrer votre Smart Link.');return}const b=await db.from('businesses').select('*').eq('owner_id',user.id).eq('smartlink_tier','free').eq('is_personal',true).order('created_at',{ascending:true}).limit(1).maybeSingle();if(b.error)throw b.error;business=b.data||null;if(business){$('name').value=business.name||'';$('slug').value=business.slug||'';$('activity').value=business.activity||'';$('bio').value=business.presentation||business.description||'';$('country').value=business.country||'';$('city').value=business.city||'';preview()}const l=await db.from('smart_links').select('*').eq('owner_id',user.id).order('created_at',{ascending:true}).limit(1).maybeSingle();if(!l.error)link=l.data||null}catch(e){status(e.message||'Connexion impossible.')}}async function save(){if(!user){location.href='/auth?next=/smartlink';return}const name=$('name').value.trim(),slug=norm($('slug').value||name),activity=$('activity').value.trim(),bio=$('bio').value.trim(),country=$('country').value.trim(),city=$('city').value.trim();if(!name||!slug){status('Nom public et identifiant public obligatoires.');return}try{$('save').disabled=true;$('save').textContent='Publication…';const payload={owner_id:user.id,name,slug,description:bio,business_type:'personal',activity,presentation:bio,country,city,smartlink_tier:'free',is_personal:true};let r=business?await db.from('businesses').update(payload).eq('id',business.id).eq('owner_id',user.id).select('*').single():await db.from('businesses').insert(payload).select('*').single();if(r.error)throw r.error;business=r.data;const sl={owner_id:user.id,business_id:business.id,slug,title:name,description:bio,is_public:true};r=link?await db.from('smart_links').update(sl).eq('id',link.id).eq('owner_id',user.id).select('*').single():await db.from('smart_links').insert(sl).select('*').single();if(r.error)throw r.error;link=r.data;$('open').href='/'+encodeURIComponent(slug);$('open').hidden=false;status('Votre Smart Link est publié : /'+slug,true)}catch(e){status(e.message||'Publication impossible.')}finally{$('save').disabled=false;$('save').textContent='Publier mon Smart Link'}}$('save').onclick=save;load();preview()})();
+(()=>{
+const URL='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+const SHARED_STORAGE_KEY='sb-dzifpwqrqnvssfhwjccj-auth-token';
+try{const legacy=localStorage.getItem('whatsafrica-auth');if(!localStorage.getItem(SHARED_STORAGE_KEY)&&legacy)localStorage.setItem(SHARED_STORAGE_KEY,legacy)}catch{}
+const db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=id=>document.getElementById(id);let user=null,business=null,link=null,sessionReady=false;
+const esc=s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
+const norm=s=>String(s||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9-]+/g,'-').replace(/-+/g,'-').replace(/^-+|-+$/g,'').slice(0,48);
+function status(t,ok=false){$('status').innerHTML='<span class="'+(ok?'ok':'err')+'">'+esc(t)+'</span>'}
+function preview(){const n=$('name').value.trim();$('previewName').textContent=n||'Votre nom apparaîtra ici';$('previewBio').textContent=$('bio').value.trim()||'Votre présentation apparaîtra ici. Votre Smart Link pourra être partagé partout.'}
+['name','bio'].forEach(id=>$(id).addEventListener('input',preview));
+async function resolveSession(){
+  const r=await db.auth.getSession();if(r.error)throw r.error;
+  user=r.data?.session?.user||null;
+  if(user)return true;
+  await new Promise(resolve=>{let done=false;const timer=setTimeout(()=>{if(!done){done=true;resolve()}},1200);const sub=db.auth.onAuthStateChange((event,s)=>{if(event==='INITIAL_SESSION'||s){user=s?.user||null;if(!done){done=true;clearTimeout(timer);sub.data.subscription.unsubscribe();resolve()}}});});
+  return !!user;
+}
+async function load(){
+ try{
+  sessionReady=await resolveSession();
+  if(!sessionReady){status('Votre session a expiré. Redirection vers la connexion…');setTimeout(()=>location.replace('/auth?next=/smartlink'),250);return}
+  const b=await db.from('businesses').select('*').eq('owner_id',user.id).eq('smartlink_tier','free').eq('is_personal',true).order('created_at',{ascending:true}).limit(1).maybeSingle();
+  if(b.error)throw b.error;business=b.data||null;
+  if(business){$('name').value=business.name||'';$('slug').value=business.slug||'';$('activity').value=business.activity||'';$('bio').value=business.presentation||business.description||'';$('country').value=business.country||'';$('city').value=business.city||'';preview()}
+  const l=await db.from('smart_links').select('*').eq('owner_id',user.id).order('created_at',{ascending:true}).limit(1).maybeSingle();
+  if(l.error)throw l.error;link=l.data||null;
+  if(link){$('open').href='/'+encodeURIComponent(link.slug);$('open').hidden=false;status('Votre Smart Link est prêt. Vous pouvez le modifier puis le republier.',true)}else status('Votre session est active. Remplissez votre identité pour publier.');
+  $('save').disabled=false;$('save').textContent=link?'Mettre à jour mon Smart Link':'Publier mon Smart Link';
+ }catch(e){status(e.message||'Impossible de charger votre Smart Link.');$('save').disabled=true}
+}
+async function ensureSlugAvailable(slug,currentLinkId,currentBusinessId){
+ const [b,l]=await Promise.all([
+  db.from('businesses').select('id').eq('slug',slug).limit(1).maybeSingle(),
+  db.from('smart_links').select('id').eq('slug',slug).limit(1).maybeSingle()
+ ]);
+ if(b.error)throw b.error;if(l.error)throw l.error;
+ const businessConflict=b.data&&b.data.id!==currentBusinessId;const linkConflict=l.data&&l.data.id!==currentLinkId;
+ return !(businessConflict||linkConflict);
+}
+async function save(){
+ if(!sessionReady||!user){location.replace('/auth?next=/smartlink');return}
+ const name=$('name').value.trim(),slug=norm($('slug').value||name),activity=$('activity').value.trim(),bio=$('bio').value.trim(),country=$('country').value.trim(),city=$('city').value.trim();
+ if(!name||!slug){status('Nom public et identifiant public obligatoires.');return}
+ try{
+  $('save').disabled=true;$('save').textContent='Publication…';
+  if(!(await ensureSlugAvailable(slug,link?.id,business?.id))){status('Cet identifiant public est déjà utilisé. Choisissez-en un autre.');return}
+  const payload={owner_id:user.id,name,slug,description:bio,business_type:'personal',activity,presentation:bio,country,city,smartlink_tier:'free',is_personal:true};
+  let r=business?await db.from('businesses').update(payload).eq('id',business.id).eq('owner_id',user.id).select('*').single():await db.from('businesses').insert(payload).select('*').single();
+  if(r.error)throw r.error;business=r.data;
+  const sl={owner_id:user.id,business_id:business.id,slug,title:name,description:bio,is_public:true};
+  r=link?await db.from('smart_links').update(sl).eq('id',link.id).eq('owner_id',user.id).select('*').single():await db.from('smart_links').insert(sl).select('*').single();
+  if(r.error)throw r.error;link=r.data;
+  $('open').href='/'+encodeURIComponent(slug);$('open').hidden=false;$('save').textContent='Mettre à jour mon Smart Link';status('Votre Smart Link est publié : /'+slug,true);
+ }catch(e){status(e.message||'Publication impossible.')}finally{$('save').disabled=false}
+}
+$('save').onclick=save;preview();load();
+})();
 </script>
 </body></html>
