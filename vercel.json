@@ -22,6 +22,7 @@
     {"source":"/services","destination":"/offer-create-v4.html?type=service"},
     {"source":"/digital-market","destination":"/market-v4.html"},
     {"source":"/inbox","destination":"/inbox-v26-bootstrap.html"},
+    {"source":"/wa-messaging-ux-v26.js","destination":"/wa-messaging-ux-v27.js"},
     {"source":"/message-invite","destination":"/message-invite.html"},
     {"source":"/groups","destination":"/groups-v5.html"},
     {"source":"/groups/:id","destination":"/community-v7.html"},
@@ -70,11 +71,11 @@
     {"source":"/:slug","destination":"/smartlink-public-v4.html"}
   ],
   "headers": [
-    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=(self)"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WASSAFRICA-Release","value":"2026-09-14-messaging-auth-stabilization"}]},
+    {"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(self), geolocation=(), microphone=(self), payment=(self)"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Strict-Transport-Security","value":"max-age=63072000; includeSubDomains; preload"},{"key":"X-WASSAFRICA-Release","value":"2026-09-14-messaging-media-controls"}]},
     {"source":"/(api|dashboard|cockpit|admin-commercial-controls|design-settings|smartlink|smartlink-ai|smartlink-pro|smartlink-theme|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|auth|forgot-password|reset-password|confirm-email|account-security|install|manifesto|message-invite)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/profile","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
     {"source":"/(dashboard|cockpit|admin-commercial-controls|design-settings|smartlink|smartlink-ai|smartlink-pro|smartlink-theme|offer-create|admin|crm|calls|inbox|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security|install|manifesto|message-invite)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
-    {"source":"/(wa-calls-webrtc\\.js|wa-calls-webrtc-v21\\.js|wa-media-p2p\\.js|wa-message-invite\\.js)(.*)","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]}
+    {"source":"/(wa-calls-webrtc\\.js|wa-calls-webrtc-v21\\.js|wa-media-p2p\\.js|wa-message-invite\\.js|wa-messaging-ux-v26\\.js|wa-messaging-ux-v27\\.js)(.*)","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]}
   ]
 }
