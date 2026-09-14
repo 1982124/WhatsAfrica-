@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://dzifpwqrqnvssfhwjccj2.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY=process.env.SUPABASE_PUBLISHABLE_KEY||'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
-const PROD_ORIGIN='https://whatsafrica.vercel.app';
+const PROD_ORIGIN='https://wassafrica.vercel.app';
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store, max-age=0');
   res.setHeader('X-Content-Type-Options','nosniff');
