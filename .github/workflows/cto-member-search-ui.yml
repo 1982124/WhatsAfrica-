@@ -1,0 +1,48 @@
+name: CTO member search UI patch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch explicit member search UX
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('inbox-v25.html')
+          s=p.read_text(encoding='utf-8')
+          old='<button id="start" disabled title="Rechercher un membre">+</button>'
+          new='<button id="start" disabled type="button" title="Rechercher un membre">Rechercher</button>'
+          if old not in s:
+              raise SystemExit('expected search button markup not found')
+          s=s.replace(old,new,1)
+          old_event="$('start').onclick=start;$('target').addEventListener('input',()=>{clearTimeout(searchTimer);const v=$('target').value.trim();updateComposerState();if(!v){renderList();return}if(v.length<2)return;searchTimer=setTimeout(()=>find(v).catch(()=>{}),250)});$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});"
+          new_event="$('start').onclick=start;$('target').addEventListener('input',()=>{clearTimeout(searchTimer);updateComposerState();if(!$('target').value.trim())renderList()});$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});"
+          if old_event not in s:
+              raise SystemExit('expected target event wiring not found')
+          s=s.replace(old_event,new_event,1)
+          old_start="async function start(){const v=$('target').value.trim();if(!v)return;$('start').disabled=true;busy=true;try{const c=v.replace(/[\\s().-]/g,'');if(/^\\+?[1-9][0-9]{7,14}$/.test(c)){const phone=c.startsWith('+')?c:'+'+c;await startPhone(phone)}else await find(v)}catch(e){$('target').focus();window.WA_MESSAGE_INVITES?.init?.();}finally{busy=false;updateComposerState()}}"
+          new_start="async function start(){const v=$('target').value.trim();if(!v)return;$('start').disabled=true;busy=true;try{await find(v)}catch(e){$('list').innerHTML='<div class=\"empty\">Recherche impossible. Réessayez.</div>';$('target').focus()}finally{busy=false;updateComposerState()}}"
+          if old_start not in s:
+              raise SystemExit('expected start function not found')
+          s=s.replace(old_start,new_start,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          git config user.name "WASSAFRICA CTO"
+          git config user.email "cto@wassafrica.local"
+          git add inbox-v25.html
+          git commit -m "fix explicit member search action"
+          git push
+          rm -f .github/workflows/cto-member-search-ui.yml
+          git add -A
+          git commit -m "chore: remove one-time search patch workflow"
+          git push
