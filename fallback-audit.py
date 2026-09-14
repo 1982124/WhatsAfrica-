@@ -4,10 +4,11 @@ ROOT=pathlib.Path('.')
 IGNORE={'.git','.vercel','node_modules','android'}
 TEXT_EXT={'.html','.js','.mjs','.cjs','.json','.yml','.yaml','.md'}
 VOLUNTARY={'inbox-v25.html','inbox-runtime.html','message-invite.html','seller-contact-v1.html','smartlink-call-bridge.js','smartlink-public-v2.html','smartlink-public-v3.html','smartlink-public-v4.html','smart-commerce.html','launch-shell.html'}
-LEGACY_REDIRECTS={'/whatsafrica','/whatsafrica/','/public-message.html','/public-message','/inbox.html','/inbox-v2.html'}
+
 def files():
     for p in ROOT.rglob('*'):
         if p.is_file() and p.suffix.lower() in TEXT_EXT and not any(x in IGNORE for x in p.parts): yield p
+
 hits=[];scanned=0;redirects=0
 for p in files():
     scanned+=1
@@ -18,23 +19,27 @@ for p in files():
         m=re.search(r"(?:location\.(?:href|replace|assign)|window\.location\s*=|redirectTo\s*:)\s*['\"](/inbox(?:[?#][^'\"]*)?)['\"]",line,re.I)
         if m and p.name not in VOLUNTARY:
             target=m.group(1)
-            if not ('auth?next=' in line or 'conversation' in target or 'business=' in target): hits.append((p,i,line.strip(),'direct Inbox redirect'))
+            if not ('auth?next=' in line or 'conversation' in target or 'business=' in target): hits.append((p,i,line.strip(),'direct Inbox fallback'))
         if p.name=='auth-v7.html' and 'auth-callback' in line: hits.append((p,i,line.strip(),'auth-v7 must not use fake callback'))
+        if re.search(r'\bstorageKey\s*:',line,re.I): hits.append((p,i,line.strip(),'custom Supabase auth storage key breaks single shared session'))
+
 v=ROOT/'vercel.json'
 if v.exists():
     data=json.loads(v.read_text(encoding='utf-8'))
     for r in data.get('redirects',[]):
-        if r.get('destination')=='/inbox' and r.get('source') not in LEGACY_REDIRECTS: hits.append((v,1,str(r),'unapproved Vercel redirect to Inbox'))
+        hits.append((v,1,str(r),'Vercel redirects are forbidden: routes must never silently fall back'))
+
 a=ROOT/'auth-v7.html'
 if a.exists():
     s=a.read_text(encoding='utf-8')
-    required=[r"q\s*=\s*new URLSearchParams\(location\.search\)",r"q\.get\('next'\)",r"document\.referrer",r"u\.origin\s*===\s*location\.origin",r"u\.pathname\s*\+\s*u\.search\s*\+\s*u\.hash",r"redirectTo\s*:\s*location\.origin\s*\+\s*next"]
+    required=[r"q\s*=\s*new URLSearchParams\(location\.search\)",r"q\.get\('next'\)",r"document\.referrer",r"u\.origin\s*===\s*location\.origin",r"u\.pathname\s*\+\s*u\.search\s*\+\s*u\.hash",r"db=supabase\.createClient\(URL,KEY,",r"persistSession\s*:\s*true",r"redirectTo\s*:\s*location\.origin\s*\+\s*'/auth\?next='\s*\+\s*encodeURIComponent\(next\)"]
     for x in required:
-        if not re.search(x,s):hits.append((a,1,x,'missing auth destination invariant'))
-print('=== WASSAFRICA GLOBAL FALLBACK AUDIT ===')
+        if not re.search(x,s):hits.append((a,1,x,'missing single-session/auth destination invariant'))
+
+print('=== WASSAFRICA GLOBAL AUTH / FALLBACK AUDIT ===')
 print(f'Files scanned: {scanned}')
 print(f'Redirect operations analyzed: {redirects}')
 print(f'Dangerous findings: {len(hits)}')
 for p,i,line,kind in hits: print(f'{p}:{i}: [{kind}] {line}')
 if hits:sys.exit(1)
-print('PASS: no unapproved Inbox fallback, fake auth callback, or broken auth destination invariant detected.')
+print('PASS: one shared Supabase session, no automatic Inbox fallback, no Vercel redirects, and no fake auth callback detected.')
