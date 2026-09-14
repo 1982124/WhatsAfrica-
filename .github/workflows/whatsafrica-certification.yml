@@ -31,7 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           grep -Eq "q[[:space:]]*=[[:space:]]*new URLSearchParams\\(location\\.search\\)" auth-v7.html
-          grep -Fq "q.get('next')||'/inbox'" auth-v7.html
+          grep -Fq "q.get('next')" auth-v7.html
+          ! grep -Fq "q.get('next')||'/inbox'" auth-v7.html
           grep -Fq 'u.origin===location.origin' auth-v7.html
           grep -Fq 'u.pathname+u.search+u.hash' auth-v7.html
           grep -Fq 'redirectTo:location.origin+next' auth-v7.html
