@@ -32,7 +32,7 @@ if v.exists():
 a=ROOT/'auth-v7.html'
 if a.exists():
     s=a.read_text(encoding='utf-8')
-    required=[r"q\s*=\s*new URLSearchParams\(location\.search\)",r"q\.get\('next'\)",r"document\.referrer",r"u\.origin\s*===\s*location\.origin",r"u\.pathname\s*\+\s*u\.search\s*\+\s*u\.hash",r"db=supabase\.createClient\(URL,KEY,",r"persistSession\s*:\s*true",r"redirectTo\s*:\s*location\.origin\s*\+\s*'/auth\?next='\s*\+\s*encodeURIComponent\(next\)"]
+    required=[r"q\s*=\s*new URLSearchParams\(location\.search\)",r"q\.get\('next'\)",r"document\.referrer",r"u\.origin\s*===\s*location\.origin",r"u\.pathname\s*\+\s*u\.search\s*\+\s*u\.hash",r"db=supabase\.createClient\(URL,KEY,",r"persistSession\s*:\s*true",r"redirectTo\s*:\s*location\.origin\s*\+\s*next"]
     for x in required:
         if not re.search(x,s):hits.append((a,1,x,'missing single-session/auth destination invariant'))
 
