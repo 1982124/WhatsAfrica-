@@ -1,28 +1,77 @@
-/* WASSAFRICA — WhatsApp-like media/call controls + reliable conversation entry. */
-(function(){'use strict';
-if(window.__WA_MESSAGING_UX_V27__)return;window.__WA_MESSAGING_UX_V27__=true;
+/* WASSAFRICA — messaging UX bridge: deterministic conversation entry + WhatsApp-like media controls. */
+(()=>{
+'use strict';
+if(window.__WA_MESSAGING_UX_V27__)return;
+window.__WA_MESSAGING_UX_V27__=true;
 const $=id=>document.getElementById(id);
-function css(){if($('wa-v27-css'))return;const s=document.createElement('style');s.id='wa-v27-css';s.textContent='.wa-v27-toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0;padding:7px 0}.wa-v27-btn{border:1px solid #d7e1dc;background:#fff;border-radius:12px;min-width:42px;height:42px;padding:0 10px;font:800 14px system-ui,sans-serif;cursor:pointer}.wa-v27-btn:hover{background:#f2f6f3}.wa-v27-btn:disabled{opacity:.45;cursor:not-allowed}.wa-v27-label{font-size:11px;color:#68766f;margin-left:2px}@media(max-width:640px){.wa-v27-toolbar{gap:5px}.wa-v27-btn{min-width:44px;height:44px;padding:0 8px}.wa-v27-label{display:none}}';document.head.appendChild(s)}
-function ctx(){try{return window.WA_MEDIA_P2P?.getConversationContext?.()?.conversationId||null}catch{return null}}
-function status(t){const e=$('wa-send-status');if(e)e.textContent=t;else{const n=document.createElement('div');n.id='wa-v27-status';n.style.cssText='font:700 12px system-ui;color:#68766f;text-align:center;margin-top:4px';n.textContent=t;document.querySelector('.composer-wrap')?.appendChild(n)}}
-function make(){css();const form=$('composer');if(!form||$('wa-v27-toolbar'))return false;const bar=document.createElement('div');bar.id='wa-v27-toolbar';bar.className='wa-v27-toolbar';
-const input=document.createElement('input');input.type='file';input.id='wa-v27-file';input.hidden=true;input.accept='image/*,video/*';
-const photo=document.createElement('button');photo.type='button';photo.className='wa-v27-btn';photo.textContent='📷';photo.title='Envoyer une photo';
-const video=document.createElement('button');video.type='button';video.className='wa-v27-btn';video.textContent='🎥';video.title='Enregistrer et envoyer une courte vidéo';
-const audio=document.createElement('button');audio.type='button';audio.className='wa-v27-btn';audio.textContent='🎙️';audio.title='Enregistrer et envoyer un audio';
-const callA=document.createElement('button');callA.type='button';callA.className='wa-v27-btn';callA.textContent='📞';callA.title='Appel audio';
-const callV=document.createElement('button');callV.type='button';callV.className='wa-v27-btn';callV.textContent='📹';callV.title='Appel vidéo';
-const label=document.createElement('span');label.className='wa-v27-label';label.textContent='Photo · Vidéo · Audio · Appel';
-bar.append(photo,video,audio,callA,callV,label);form.parentNode.insertBefore(bar,form);form.parentNode.appendChild(input);
-const ready=()=>{const ok=!!ctx();[photo,video,audio,callA,callV].forEach(b=>b.disabled=!ok);};
-photo.onclick=()=>input.click();input.onchange=async()=>{const f=input.files?.[0];input.value='';if(!f)return;try{await window.WA_MEDIA_P2P?.sendFile(f);status('Photo envoyée.')}catch(e){status('Photo non envoyée : '+(e.message||e))}};
-async function recordVideo(){if(!ctx())throw Error('CHOISISSEZ_CONVERSATION');if(!navigator.mediaDevices?.getUserMedia)throw Error('CAMERA_NON_DISPONIBLE');const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720}},audio:true});const types=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];const mt=types.find(x=>window.MediaRecorder?.isTypeSupported?.(x))||'';const rec=new MediaRecorder(stream,mt?{mimeType:mt}:undefined);const chunks=[];let timer=3;video.textContent='⏺️ '+timer;status('Enregistrement vidéo…');const tick=setInterval(()=>{timer--;video.textContent=timer>0?'⏺️ '+timer:'⏹️';if(timer<=0){clearInterval(tick);rec.stop()}},1000);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=async()=>{clearInterval(tick);stream.getTracks().forEach(t=>t.stop());video.textContent='🎥';const blob=new Blob(chunks,{type:rec.mimeType||'video/webm'});try{await window.WA_MEDIA_P2P.sendFile(new File([blob],'video-'+Date.now()+'.webm',{type:blob.type}));status('Courte vidéo envoyée.')}catch(e){status('Vidéo non envoyée : '+(e.message||e))}};rec.start();}
-video.onclick=()=>{if(video.dataset.busy)return;video.dataset.busy='1';recordVideo().catch(e=>{status('Caméra indisponible : '+(e.message||e))}).finally(()=>delete video.dataset.busy)};
-let ar=null,achunks=[];audio.onclick=async()=>{try{if(ar?.state==='recording'){ar.stop();return}if(!ctx())throw Error('CHOISISSEZ_CONVERSATION');if(!navigator.mediaDevices?.getUserMedia)throw Error('MICRO_NON_DISPONIBLE');const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});const mt=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'';ar=new MediaRecorder(st,mt?{mimeType:mt}:undefined);achunks=[];ar.ondataavailable=e=>{if(e.data.size)achunks.push(e.data)};ar.onstop=async()=>{st.getTracks().forEach(t=>t.stop());audio.textContent='🎙️';const b=new Blob(achunks,{type:ar.mimeType||'audio/webm'});try{await window.WA_MEDIA_P2P.sendFile(new File([b],'audio-'+Date.now()+'.webm',{type:b.type}));status('Audio envoyé.')}catch(e){status('Audio non envoyé : '+(e.message||e))}};ar.start();audio.textContent='⏹️';status('Enregistrement audio… cliquez encore pour envoyer')}catch(e){status('Micro indisponible : '+(e.message||e))}};
-callA.onclick=()=>clickCall('waAudioBtn');callV.onclick=()=>clickCall('waVideoBtn');function clickCall(id){const b=$(id);if(b&&!b.disabled)b.click();else status('Sélectionne d’abord une conversation avec un membre WASSAFRICA.')}
-/* Repair the visible “Entrer” action without replacing the proven inbox controller. */
-function wireEnter(){document.querySelectorAll('button,a,[role="button"]').forEach(el=>{if(el.dataset.waEnterWired==='1')return;const txt=(el.textContent||'').trim().replace(/\s+/g,' ');if(txt!=='Entrer'&&txt!=='Entrer dans la conversation')return;el.dataset.waEnterWired='1';el.addEventListener('click',ev=>{try{const href=el.getAttribute('href');if(href&&href!=='#'){return}ev.preventDefault();ev.stopPropagation();const row=el.closest('[data-conversation-id],.conv,[data-id]');const id=row?.dataset?.conversationId||row?.dataset?.id||el.dataset.conversationId;if(id){const target=document.querySelector('#list [data-conversation-id="'+CSS.escape(String(id))+'"]')||row;if(target&&target!==el){target.click();return}}const candidate=row?.querySelector('.conv,.conversation,[data-conversation-id]');if(candidate&&candidate!==el){candidate.click();return}const listRows=[...document.querySelectorAll('#list .conv')];if(listRows.length===1){listRows[0].click();return}status('Impossible d’ouvrir cette conversation. Sélectionnez-la dans la liste.')}catch(e){status('Ouverture impossible : '+(e.message||e))}},true)});}
-form.parentNode.addEventListener('click',ready,true);setInterval(ready,700);setInterval(wireEnter,500);wireEnter();ready();return true}
-function boot(){if(make())return;setTimeout(make,250);setTimeout(make,800);setTimeout(make,1600);setTimeout(make,3000)}
+const text=x=>String(x||'').replace(/\s+/g,' ').trim();
+function css(){if($('wa-v27-css'))return;const s=document.createElement('style');s.id='wa-v27-css';s.textContent='.wa-v27-toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 0;padding:7px 0}.wa-v27-btn{border:1px solid #d7e1dc;background:#fff;border-radius:12px;min-width:42px;height:42px;padding:0 10px;font:800 14px system-ui,sans-serif;cursor:pointer}.wa-v27-btn:hover{background:#f2f6f3}.wa-v27-btn:disabled{opacity:.45;cursor:not-allowed}.wa-v27-label{font-size:11px;color:#68766f;margin-left:2px}.wa-v27-status{font-size:11px;color:#68766f;margin-left:4px}@media(max-width:640px){.wa-v27-toolbar{gap:5px}.wa-v27-btn{min-width:44px;height:44px;padding:0 8px}.wa-v27-label{display:none}}';document.head.appendChild(s)}
+function conversationReady(){try{return !!(window.WA_MEDIA_P2P?.getConversationContext?.()?.conversationId)}catch{return false}}
+function setStatus(v){const e=$('wa-v27-status');if(e)e.textContent=v||''}
+function findEntryButton(){return [...document.querySelectorAll('button,a,[role="button"]')].find(e=>text(e.textContent).toLowerCase()==='entrer')||null}
+function forceConversationEntry(el){
+  const root=el?.closest('[data-conversation-id],.conv,[data-id],li,.card,article,section,div');
+  const id=root?.dataset?.conversationId||root?.dataset?.id||el?.dataset?.conversationId||el?.dataset?.id;
+  if(id){
+    const row=document.querySelector('.conv[data-conversation-id="'+CSS.escape(id)+'"],.conv[data-id="'+CSS.escape(id)+'"]');
+    if(row&&row!==el){row.click();return true}
+  }
+  const row=root?.matches?.('.conv')?root:root?.querySelector?.('.conv');
+  if(row&&row!==el){row.click();return true}
+  const start=$('start'),target=$('target');
+  if(start&&target&&text(target.value)){start.disabled=false;start.click();return true}
+  return false;
+}
+function installEntryBridge(){
+  document.addEventListener('click',e=>{
+    const b=e.target?.closest?.('button,a,[role="button"]');
+    if(!b||text(b.textContent).toLowerCase()!=='entrer')return;
+    e.preventDefault();e.stopImmediatePropagation();
+    if(!forceConversationEntry(b))setStatus('Impossible d’ouvrir cette conversation.');
+  },true);
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||e.isComposing)return;
+    const a=document.activeElement;
+    if(a&&text(a.textContent).toLowerCase()==='entrer'){e.preventDefault();a.click()}
+  },true);
+  document.addEventListener('click',e=>{
+    const row=e.target?.closest?.('.conv');
+    if(row){setTimeout(()=>{if(conversationReady())setStatus('Conversation ouverte');},50)}
+  },true);
+}
+function mediaButton(label,icon,title){const b=document.createElement('button');b.type='button';b.className='wa-v27-btn';b.innerHTML=icon+' <span>'+label+'</span>';b.title=title;return b}
+async function sendFile(file){const api=window.WA_MEDIA_P2P;if(!api?.sendFile)throw Error('MEDIA_UNAVAILABLE');if(!conversationReady())throw Error('NO_CONVERSATION');await api.sendFile(file)}
+function installMedia(){
+  const composer=$('composer');if(!composer||$('wa-v27-toolbar'))return;
+  css();
+  const bar=document.createElement('div');bar.id='wa-v27-toolbar';bar.className='wa-v27-toolbar';
+  const photo=mediaButton('Photo','📷','Envoyer une photo');
+  const video=mediaButton('Vidéo','🎥','Enregistrer une courte vidéo');
+  const audio=mediaButton('Audio','🎙️','Enregistrer un audio');
+  const callAudio=mediaButton('Appel audio','📞','Appel audio');
+  const callVideo=mediaButton('Appel vidéo','📹','Appel vidéo');
+  const label=document.createElement('span');label.className='wa-v27-label';label.textContent='Photo · Vidéo · Audio · Appel';
+  const status=document.createElement('span');status.id='wa-v27-status';status.className='wa-v27-status';
+  bar.append(photo,video,audio,callAudio,callVideo,label,status);composer.parentElement.insertBefore(bar,composer);
+  const input=document.createElement('input');input.type='file';input.accept='image/*';input.hidden=true;input.id='wa-v27-photo-input';composer.parentElement.appendChild(input);
+  photo.onclick=()=>input.click();
+  input.onchange=async()=>{const f=input.files?.[0];input.value='';if(!f)return;try{await sendFile(f);setStatus('Photo envoyée')}catch(e){setStatus('Photo non envoyée')}};
+  video.onclick=async()=>{
+    if(!conversationReady()){setStatus('Choisis une conversation');return}
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){setStatus('Vidéo indisponible sur cet appareil');return}
+    video.disabled=true;let stream=null;let rec=null;const chunks=[];
+    try{stream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});rec=new MediaRecorder(stream,{mimeType:MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')?'video/webm;codecs=vp8,opus':'video/webm'});rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.onstop=async()=>{try{const f=new File([new Blob(chunks,{type:rec.mimeType||'video/webm'})],'video-'+Date.now()+'.webm',{type:rec.mimeType||'video/webm'});await sendFile(f);setStatus('Vidéo envoyée')}catch{setStatus('Vidéo non envoyée')}finally{stream?.getTracks().forEach(t=>t.stop());video.disabled=false}};rec.start();setStatus('Enregistrement…');setTimeout(()=>{if(rec?.state==='recording')rec.stop()},5000)}catch{stream?.getTracks().forEach(t=>t.stop());video.disabled=false;setStatus('Autorisation caméra/micro requise')}};
+  let recording=null,audioStream=null,audioChunks=[];
+  audio.onclick=async()=>{
+    if(recording){recording.stop();return}
+    if(!conversationReady()){setStatus('Choisis une conversation');return}
+    try{audioStream=await navigator.mediaDevices.getUserMedia({audio:true});audioChunks=[];const type=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';recording=new MediaRecorder(audioStream,{mimeType:type});recording.ondataavailable=e=>{if(e.data.size)audioChunks.push(e.data)};recording.onstop=async()=>{try{const f=new File([new Blob(audioChunks,{type})],'audio-'+Date.now()+'.webm',{type});await sendFile(f);setStatus('Audio envoyé')}catch{setStatus('Audio non envoyé')}finally{audioStream?.getTracks().forEach(t=>t.stop());audioStream=null;recording=null;audio.textContent='🎙️ Audio';}};recording.start();audio.textContent='⏹️ Stop';setStatus('Enregistrement audio…')}catch{audioStream?.getTracks().forEach(t=>t.stop());audioStream=null;recording=null;setStatus('Autorisation micro requise')}};
+  const invokeCall=id=>{const b=$(id);if(b){b.click();return}setStatus('Appel indisponible ici');};
+  callAudio.onclick=()=>invokeCall('waAudioBtn');callVideo.onclick=()=>invokeCall('waVideoBtn');
+  const sync=()=>{const ok=conversationReady();[photo,video,audio,callAudio,callVideo].forEach(b=>b.disabled=!ok)};
+  sync();setInterval(sync,700);
+}
+function boot(){css();installEntryBridge();installMedia()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+new MutationObserver(()=>{installMedia()}).observe(document.documentElement,{childList:true,subtree:true});
 })();
