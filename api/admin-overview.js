@@ -1,7 +1,14 @@
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' });
-  const url = String(process.env.SUPABASE_URL || '').trim();
-  const publicKey = String(process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV').trim();
+
+  // The public Supabase project URL is safe to use client-side and keeps the
+  // owner cockpit functional even when SUPABASE_URL is not duplicated in Vercel.
+  const url = String(process.env.SUPABASE_URL || 'https://dzifpwqrqnvssfhwjccj.supabase.co').trim();
+  const publicKey = String(
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV'
+  ).trim();
   if (!url || !publicKey) return res.status(503).json({ error: 'admin_service_not_configured' });
 
   const auth = req.headers.authorization || '';
