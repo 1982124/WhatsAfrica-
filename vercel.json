@@ -10,7 +10,7 @@
     {"source":"/cockpit","destination":"/admin-cockpit.html"},
     {"source":"/admin-commercial-controls","destination":"/admin-commercial-controls.html"},
     {"source":"/smartlink","destination":"/smartlink-free-v3.html"},
-    {"source":"/smartlink-ai","destination":"/smartlink-ai.html"},
+    {"source":"/smartlink-ai","destination":"/smartlink-ai-v2.html"},
     {"source":"/smartlink-pro","destination":"/smartlink-business.html"},
     {"source":"/smartlink-theme","destination":"/smartlink-theme.html"},
     {"source":"/vitrine","destination":"/business-vitrine-v2.html"},
