@@ -40,14 +40,14 @@ a=ROOT/'auth-v7.html'
 if a.exists():
     s=a.read_text(encoding='utf-8')
     required=[
-        r"q=new URLSearchParams\(location\.search\)",
-        "q.get('next')||'/inbox'",
-        'u.origin===location.origin',
-        'u.pathname+u.search+u.hash',
-        'redirectTo:location.origin+next',
+        r"q\s*=\s*new URLSearchParams\(location\.search\)",
+        r"q\.get\('next'\)\s*\|\|\s*'/inbox'",
+        r'u\.origin\s*===\s*location\.origin',
+        r'u\.pathname\s*\+\s*u\.search\s*\+\s*u\.hash',
+        r'redirectTo\s*:\s*location\.origin\s*\+\s*next',
     ]
     for x in required:
-        if x not in s: hits.append((a,1,x,'missing auth destination invariant'))
+        if not re.search(x,s):hits.append((a,1,x,'missing auth destination invariant'))
 
 print('=== WASSAFRICA GLOBAL FALLBACK AUDIT ===')
 print(f'Files scanned: {scanned}')
