@@ -1,0 +1,36 @@
+name: CTO fix offer session
+on:
+  push:
+    paths:
+      - '.github/workflows/cto-fix-offer-session.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix session user binding
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('offer-create-v4.html')
+          s=p.read_text()
+          old='async function init(){const s=await getSession();if(!s){location.href='
+          if old not in s:
+              raise SystemExit('offer init signature not found')
+          if 'plan=sub.data.plan_code;business=await activate();' not in s:
+              raise SystemExit('offer plan/business initialization not found')
+          s=s.replace('plan=sub.data.plan_code;business=await activate();','plan=sub.data.plan_code;user=s.user;business=await activate();',1)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add offer-create-v4.html
+          git commit -m 'fix offer commerce session user binding'
+          git push
+      - name: Remove temporary workflow
+        run: |
+          git rm .github/workflows/cto-fix-offer-session.yml
+          git commit -m 'remove temporary CTO fix workflow'
+          git push
