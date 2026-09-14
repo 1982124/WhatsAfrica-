@@ -1,17 +1,17 @@
 window.WhatsAfricaAuthResilience = (() => {
   const PROD_ORIGIN = 'https://wassafrica.vercel.app';
   const PROVIDER_MESSAGES = {
-    google: 'Google rencontre actuellement un problème de connexion. Votre compte WhatsAfrica n’est pas perdu.',
-    phone: 'La réception SMS rencontre actuellement un problème. Votre compte WhatsAfrica n’est pas perdu.',
-    email: 'La connexion par e-mail rencontre actuellement un problème. Votre compte WhatsAfrica n’est pas perdu.'
+    google: 'Google rencontre actuellement un problème de connexion. Votre compte WASSAFRICA n’est pas perdu.',
+    phone: 'La réception SMS rencontre actuellement un problème. Votre compte WASSAFRICA n’est pas perdu.',
+    email: 'La connexion par e-mail rencontre actuellement un problème. Votre compte WASSAFRICA n’est pas perdu.'
   };
 
   function safeNext(next) {
     try {
-      const url = new URL(next || '/inbox', PROD_ORIGIN);
-      if (url.origin !== PROD_ORIGIN || !url.pathname.startsWith('/')) return '/inbox';
+      const url = new URL(next || '/', PROD_ORIGIN);
+      if (url.origin !== PROD_ORIGIN || !url.pathname.startsWith('/') || url.pathname === '/auth') return '/';
       return `${url.pathname}${url.search}${url.hash}`;
-    } catch (_) { return '/inbox'; }
+    } catch (_) { return '/'; }
   }
 
   function classify(error) {
@@ -26,7 +26,7 @@ window.WhatsAfricaAuthResilience = (() => {
     const provider = classify(error);
     return {
       provider,
-      message: PROVIDER_MESSAGES[provider] || 'La connexion rencontre momentanément un problème. Votre compte WhatsAfrica n’est pas perdu.',
+      message: PROVIDER_MESSAGES[provider] || 'La connexion rencontre momentanément un problème. Votre compte WASSAFRICA n’est pas perdu.',
       alternatives: provider === 'google' ? ['phone', 'email'] : provider === 'phone' ? ['email', 'google'] : ['phone', 'google']
     };
   }
