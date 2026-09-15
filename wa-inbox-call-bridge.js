@@ -1,84 +1,13 @@
 /* WASSAFRICA — inbox bridge: messaging, media and calls stay inside one conversation. */
 (function () {
   'use strict';
-  var searchBound = false;
-  var lastConversationId = null;
-  var contextTimer = null;
-  var callsReady = false;
-
-  function initCalls() {
-    if (callsReady || !window.WA_CALLS || typeof window.WA_CALLS.init !== 'function') return false;
-    var sb = window.supabase;
-    if (!sb || typeof sb.createClient !== 'function') return false;
-    try {
-      var db = sb.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co', 'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV', { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-      db.auth.getSession().then(function (r) {
-        var u = r && r.data && r.data.session && r.data.session.user;
-        if (!u) return;
-        window.WA_CALLS.init(db, u);
-        callsReady = true;
-      }).catch(function () {});
-    } catch (_) {}
-    return callsReady;
-  }
-
-  function bindSearch() {
-    if (searchBound) return true;
-    var target = document.getElementById('target');
-    var start = document.getElementById('start');
-    if (!target || !start || typeof start.click !== 'function') return false;
-    searchBound = true;
-    var timer = null;
-    target.addEventListener('input', function () {
-      clearTimeout(timer);
-      var value = target.value.trim();
-      if (!value) return;
-      timer = setTimeout(function () { if (!start.disabled) start.click(); }, 250);
-    });
-    return true;
-  }
-
-  function syncConversation(id) {
-    if (!id) return;
-    window.__WA_CURRENT_CONVERSATION_ID = id;
-    var media = window.WA_MEDIA_P2P;
-    if (media && typeof media.setConversation === 'function' && id !== lastConversationId) {
-      lastConversationId = id;
-      Promise.resolve(media.setConversation(id)).catch(function () {});
-    }
-  }
-
-  function bindConversationClicks() {
-    var list = document.getElementById('list');
-    if (!list || list.dataset.waBridgeBound) return !!list;
-    list.dataset.waBridgeBound = '1';
-    list.addEventListener('click', function (ev) {
-      var item = ev.target && ev.target.closest ? ev.target.closest('.conv') : null;
-      var id = item && item.dataset && item.dataset.conversationId;
-      if (id) syncConversation(id);
-    }, true);
-    return true;
-  }
-
-  function syncFromDom() {
-    var id = window.__WA_CURRENT_CONVERSATION_ID;
-    if (id) return;
-    var active = document.querySelector('.conv[data-conversation-id].active, .conv[data-conversation-id][aria-selected="true"]');
-    if (active && active.dataset.conversationId) syncConversation(active.dataset.conversationId);
-  }
-
-  function boot() {
-    bindSearch();
-    bindConversationClicks();
-    initCalls();
-    syncFromDom();
-    if (!contextTimer) contextTimer = setInterval(function () {
-      bindSearch();
-      bindConversationClicks();
-      initCalls();
-      syncFromDom();
-    }, 500);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
-  else boot();
+  var searchBound = false,lastConversationId = null,contextTimer = null,callsReady = false,uiLoaded=false;
+  function loadUI(){if(uiLoaded||document.getElementById('wa-inbox-ui-v2'))return;var s=document.createElement('script');s.id='wa-inbox-ui-v2';s.src='/wa-inbox-ui-v2.js';s.async=true;document.head.appendChild(s);uiLoaded=true}
+  function initCalls(){if(callsReady||!window.WA_CALLS||typeof window.WA_CALLS.init!=='function')return false;var sb=window.supabase;if(!sb||typeof sb.createClient!=='function')return false;try{var db=sb.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});db.auth.getSession().then(function(r){var u=r&&r.data&&r.data.session&&r.data.session.user;if(!u)return;window.WA_CALLS.init(db,u);callsReady=true}).catch(function(){})}catch(_){ }return callsReady}
+  function bindSearch(){if(searchBound)return true;var target=document.getElementById('target'),start=document.getElementById('start');if(!target||!start)return false;searchBound=true;var timer=null;target.addEventListener('input',function(){clearTimeout(timer);var value=target.value.trim();if(!value)return;timer=setTimeout(function(){if(!start.disabled)start.click()},250)});return true}
+  function syncConversation(id){if(!id)return;window.__WA_CURRENT_CONVERSATION_ID=id;var media=window.WA_MEDIA_P2P;if(media&&typeof media.setConversation==='function'&&id!==lastConversationId){lastConversationId=id;Promise.resolve(media.setConversation(id)).catch(function(){})}}
+  function bindConversationClicks(){var list=document.getElementById('list');if(!list||list.dataset.waBridgeBound)return!!list;list.dataset.waBridgeBound='1';list.addEventListener('click',function(ev){var item=ev.target&&ev.target.closest?ev.target.closest('.conv'):null;var id=item&&item.dataset&&item.dataset.conversationId;if(id)syncConversation(id)},true);return true}
+  function syncFromDom(){var id=window.__WA_CURRENT_CONVERSATION_ID;if(id)return;var active=document.querySelector('.conv[data-conversation-id].active,.conv[data-conversation-id][aria-selected="true"]');if(active&&active.dataset.conversationId)syncConversation(active.dataset.conversationId)}
+  function boot(){loadUI();bindSearch();bindConversationClicks();initCalls();syncFromDom();if(!contextTimer)contextTimer=setInterval(function(){loadUI();bindSearch();bindConversationClicks();initCalls();syncFromDom()},500)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
