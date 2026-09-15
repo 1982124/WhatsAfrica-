@@ -1,0 +1,1 @@
+drop policy if exists conversation_key_envelopes_insert_recovery_own_device on public.conversation_key_envelopes;
