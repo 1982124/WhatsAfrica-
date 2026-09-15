@@ -1,8 +1,6 @@
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' });
 
-  // The public Supabase project URL is safe to use client-side and keeps the
-  // owner cockpit functional even when SUPABASE_URL is not duplicated in Vercel.
   const url = String(process.env.SUPABASE_URL || 'https://dzifpwqrqnvssfhwjccj.supabase.co').trim();
   const publicKey = String(
     process.env.SUPABASE_PUBLISHABLE_KEY ||
@@ -23,22 +21,38 @@ export default async function handler(req, res) {
       headers: {
         apikey: publicKey,
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
       },
       body: '{}',
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(7000)
     });
-    if (rpc.status === 401) return res.status(401).json({ error: 'invalid_session' });
-    if (rpc.status === 403) return res.status(403).json({ error: 'forbidden' });
-    if (!rpc.ok) {
-      console.error('admin-overview rpc', rpc.status, await rpc.text());
-      return res.status(503).json({ error: 'admin_service_unavailable' });
+
+    const raw = await rpc.text();
+    let payload = null;
+    try { payload = raw ? JSON.parse(raw) : null; } catch { payload = null; }
+
+    if (rpc.ok) {
+      res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-WassAfrica-Admin-API', 'ok');
+      return res.status(200).json(payload || {});
     }
-    const out = await rpc.json();
-    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-WassAfrica-Admin-API', 'ok');
-    return res.status(200).json(out);
+
+    const pgCode = payload?.code || '';
+    const pgMessage = String(payload?.message || '').toLowerCase();
+    if (rpc.status === 401 || pgCode === 'PGRST301' || /jwt|authentication|session/.test(pgMessage)) {
+      return res.status(401).json({ error: 'invalid_session' });
+    }
+    if (rpc.status === 403 || /forbidden|not authorized|permission denied/.test(pgMessage)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    if (/email_mfa_required|mfa_required/.test(pgMessage)) {
+      return res.status(403).json({ error: 'email_mfa_required' });
+    }
+
+    console.error('admin-overview rpc', rpc.status, payload || raw.slice(0, 500));
+    return res.status(503).json({ error: 'admin_service_unavailable' });
   } catch (e) {
     console.error('admin-overview', e);
     return res.status(503).json({ error: 'admin_service_unavailable' });
