@@ -27,6 +27,7 @@ async function shareStudioMedia(){const out=document.getElementById('waStudioOut
 function wireStudio(){const out=document.getElementById('waStudioOutput');if(!out||out.dataset.waExtStudio)return;out.dataset.waExtStudio='1';const actions=out.querySelector('.wa-studio-actions');if(!actions)return;const b=document.createElement('button');b.type='button';b.textContent='↗ Partager ailleurs';b.onclick=shareStudioMedia;actions.appendChild(b)}
 window.WA_EXTERNAL_CONNECT={version:1,open,close,share,call,shareStudioMedia,networks:NETWORKS};
 function wire(){install();const tools=document.querySelector('.tools');if(tools&&!tools.dataset.waExt){tools.dataset.waExt='1';const b=document.createElement('button');b.id='waExternalBtn';b.className='tool';b.type='button';b.textContent='🌐 Réseaux';b.title='Ouvrir un réseau ou partager';b.onclick=e=>{e.preventDefault();open()};tools.appendChild(b)}wireStudio()}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
-new MutationObserver(()=>wire()).observe(document.body,{childList:true,subtree:true});
+function loadBrand(){if(document.getElementById('waWassafricaBrandScript'))return;const s=document.createElement('script');s.id='waWassafricaBrandScript';s.src='/wa-wassafrica-brand-v1.js';s.async=false;document.body.appendChild(s)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{wire();loadBrand()},{once:true});else{wire();loadBrand()}
+new MutationObserver(()=>{wire();loadBrand()}).observe(document.body,{childList:true,subtree:true});
 })();
