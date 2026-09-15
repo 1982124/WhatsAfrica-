@@ -1,1 +1,0 @@
-Omni CTO P0 execution is tracked on the E2EE key recovery branch.
