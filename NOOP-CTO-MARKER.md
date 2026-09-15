@@ -1,1 +1,0 @@
-This marker records the Omni CTO execution branch. Production certification remains gated on real two-account tests.
