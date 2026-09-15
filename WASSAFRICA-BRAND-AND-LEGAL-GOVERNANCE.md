@@ -12,7 +12,18 @@ Ce document encadre l'évolution de l'application existante WhatsAfrica vers **W
 - Les anciennes routes internes peuvent rester inchangées pour préserver la compatibilité.
 
 ## Positionnement et concurrence
-WASSAFRICA est présenté comme une plateforme de découverte, d'identité numérique et de commerce. WhatsApp reste un canal externe de contact lorsque le vendeur ou l'utilisateur choisit un lien `wa.me`. Ne jamais présenter WASSAFRICA comme un service officiel, affilié, sponsorisé ou approuvé par WhatsApp, Meta ou une autre marque tierce sans preuve contractuelle.
+WASSAFRICA est présenté comme une plateforme de découverte, d'identité numérique et de commerce. Les réseaux tiers restent des services externes. Ne jamais présenter WASSAFRICA comme un service officiel, affilié, sponsorisé ou approuvé par WhatsApp, Meta, Telegram, TikTok, YouTube, LinkedIn ou une autre marque tierce sans preuve contractuelle.
+
+## Interopérabilité externe — règle de sécurité
+WASSAFRICA peut **ouvrir** un service tiers et **partager** un contenu via les mécanismes publics du navigateur ou les liens officiels du fournisseur. WASSAFRICA ne doit pas, par défaut :
+- relayer les appels ou vidéos par ses propres serveurs ;
+- stocker les identifiants/mots de passe de services tiers ;
+- demander des permissions API tierces sans nécessité et base contractuelle ;
+- automatiser l'envoi massif, le scraping ou le contournement des règles d'un réseau ;
+- garantir qu'une application tierce est installée ou qu'une fonction tierce est disponible ;
+- prétendre fournir une fonction d'appel social si le fournisseur ne l'expose pas publiquement de manière documentée.
+
+Le bouton **Réseaux** doit rester léger : ouverture du service officiel, partage natif si disponible, et appel téléphonique `tel:` lorsque l'utilisateur choisit explicitement un numéro. Toute intégration API plus profonde doit être traitée comme un projet séparé avec vérification des conditions du fournisseur, du coût, de la sécurité et du risque juridique.
 
 ## Identité et confiance
 - Un pseudo public reste possible.
@@ -52,6 +63,7 @@ La sécurité doit être invisible. La confiance doit être visible.
 - Interdit dans l'UI utilisateur : RLS, RPC, E2EE, device, « préparation du chiffrement ».
 - Préférer : « Envoi en cours… », « Message envoyé », « Message en attente… », « Réessayez dans un instant ».
 - Parcours cible : **Rechercher → Trouver → Écrire → Envoyer**.
+- La caméra WASSAFRICA reste un outil de capture compact, stable et contextuel ; les fonctions réseau externe ne doivent jamais encombrer le viseur.
 
 ## Charte
 - Terracotta `#C85A32` : boutons, badges et grands éléments graphiques.
