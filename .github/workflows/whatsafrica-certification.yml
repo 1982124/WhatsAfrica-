@@ -19,20 +19,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json inbox-redteam-shell-v1.html inbox-production-media.html wa-messaging-key-recovery-v1.js wa-messaging-finalizer-v1.js smartlink-public-v7.html presentation.html; do test -f "$file"; done
+          for file in vercel.json inbox-redteam-shell-v1.html inbox-production-media.html wa-messaging-key-recovery-v1.js wa-messaging-finalizer-v1.js wa-wassafrica-studio-v1.js wa-media-healing-v1.js wa-media-consistency-v1.js wa-external-connect-v1.js smartlink-public-v7.html presentation.html; do test -f "$file"; done
       - name: Validate canonical routes
         shell: bash
         run: |
           set -euo pipefail
           for route in '"/auth"' '"/smartlink"' '"/vitrine"' '"/presentation"' '"/inbox"' '"/groups"' '"/market"' '"/dashboard"' '"/services"' '"/analytics"' '"/calls"'; do grep -Fq "$route" vercel.json; done
           grep -Fq '"/inbox","destination":"/inbox-redteam-shell-v1.html"' vercel.json
-      - name: Validate messaging finalizer is in the production chain
+      - name: Validate messaging and interoperability production chain
         shell: bash
         run: |
           set -euo pipefail
           grep -Fq '/wa-messaging-key-recovery-v1.js' inbox-redteam-shell-v1.html
           grep -Fq '/wa-messaging-finalizer-v1.js' inbox-redteam-shell-v1.html
+          grep -Fq '/wa-wassafrica-studio-v1.js' inbox-redteam-shell-v1.html
+          grep -Fq '/wa-media-healing-v1.js' inbox-redteam-shell-v1.html
+          grep -Fq '/wa-external-connect-v1.js' inbox-redteam-shell-v1.html
           grep -Fq 'WASSAFRICA — Messages' inbox-redteam-shell-v1.html
+      - name: Validate safe external launcher policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'https://wa.me/' wa-external-connect-v1.js
+          grep -Fq 'https://t.me/' wa-external-connect-v1.js
+          grep -Fq 'https://www.facebook.com/' wa-external-connect-v1.js
+          grep -Fq 'https://www.instagram.com/' wa-external-connect-v1.js
+          grep -Fq 'navigator.share' wa-external-connect-v1.js
+          grep -Fq "location.href='tel:'" wa-external-connect-v1.js
+          if grep -Eq 'SUPABASE|supabase|Authorization|access_token|service_role|sb_secret_' wa-external-connect-v1.js; then echo 'External launcher must not contain backend credentials or auth plumbing.'; exit 1; fi
       - name: Validate Smart Link → conversation primitive
         shell: bash
         run: |
@@ -77,7 +91,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in wa-messaging-finalizer-v1.js wa-messaging-key-recovery-v1.js; do node --check "$file"; done
+          for file in wa-messaging-finalizer-v1.js wa-messaging-key-recovery-v1.js wa-wassafrica-studio-v1.js wa-media-healing-v1.js wa-media-consistency-v1.js wa-external-connect-v1.js; do node --check "$file"; done
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
