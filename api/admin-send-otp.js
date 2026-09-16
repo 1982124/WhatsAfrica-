@@ -7,23 +7,29 @@ export default async function handler(req, res) {
   if (!accessToken) return res.status(401).json({ error: 'authentication_required' });
 
   const url = String(process.env.SUPABASE_URL || 'https://dzifpwqrqnvssfhwjccj.supabase.co').trim().replace(/\/$/, '');
-  const publicKey = String(
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV'
-  ).trim();
+  const publicKey = String(process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV').trim();
   const resendKey = String(process.env.RESEND_API_KEY || '').trim();
   const from = String(process.env.ADMIN_OTP_FROM || 'WhatsAfrica <onboarding@resend.dev>').trim();
-
   if (!url || !publicKey || !resendKey) return res.status(503).json({ error: 'email_provider_not_configured' });
 
+  function jwtClaims(token) {
+    try {
+      const part = token.split('.')[1];
+      return JSON.parse(Buffer.from(part, 'base64url').toString('utf8'));
+    } catch { return null; }
+  }
+
   try {
+    const claims = jwtClaims(accessToken);
+    const sessionId = claims?.session_id;
+    if (!claims?.sub || !sessionId) return res.status(401).json({ error: 'session_invalid' });
+
     const userResponse = await fetch(`${url}/auth/v1/user`, {
       headers: { apikey: publicKey, Authorization: `Bearer ${accessToken}` },
       signal: AbortSignal.timeout(7000)
     });
     const user = await userResponse.json().catch(() => null);
-    if (!userResponse.ok || !user?.id || !user?.email) return res.status(401).json({ error: 'authentication_required' });
+    if (!userResponse.ok || !user?.id || !user?.email || user.id !== claims.sub) return res.status(401).json({ error: 'authentication_required' });
 
     const adminRpc = await fetch(`${url}/rest/v1/rpc/is_platform_admin`, {
       method: 'POST',
@@ -33,9 +39,6 @@ export default async function handler(req, res) {
     });
     const admin = await adminRpc.json().catch(() => null);
     if (!adminRpc.ok || admin !== true) return res.status(403).json({ error: 'forbidden' });
-
-    const sessionId = user?.session_id;
-    if (!sessionId) return res.status(401).json({ error: 'session_invalid' });
 
     const codeArray = new Uint32Array(1);
     crypto.getRandomValues(codeArray);
