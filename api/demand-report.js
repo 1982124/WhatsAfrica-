@@ -1,5 +1,6 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const DEFAULT_RECIPIENT = process.env.DEMAND_REPORT_EMAIL || 'neodigitalstartupacademy@gmail.com';
 
 function unauthorized(res) { return res.status(401).json({ ok: false, error: 'unauthorized' }); }
@@ -11,12 +12,45 @@ function matchesProduct(productName, filters) { if (!filters.length) return true
 async function isAdminBearer(auth) {
   if (!auth.startsWith('Bearer ')) return false;
   const token = auth.slice(7).trim();
-  if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return false;
-  const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${token}` } });
-  if (!userResponse.ok) return false;
-  const rpcResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_platform_admin`, { method: 'POST', headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
-  if (!rpcResponse.ok) return false;
-  return (await rpcResponse.json()) === true;
+  if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_PUBLISHABLE_KEY) return false;
+
+  // Validate the access token against the same Supabase project used by the app.
+  // Do not rely on a service-role bearer context for auth.uid(): the privileged
+  // key is intentionally used only for the subsequent, server-side admin lookup.
+  const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!userResponse.ok) {
+    console.warn('[demand-report] bearer rejected by Supabase Auth', userResponse.status);
+    return false;
+  }
+
+  const user = await userResponse.json().catch(() => null);
+  const userId = user?.id;
+  if (!userId) return false;
+
+  // Authorize from the platform_admins table with the service-role key.
+  // This avoids depending on PostgREST's auth.uid() propagation when a
+  // service-role key and a user bearer are sent together.
+  const adminUrl = new URL(`${SUPABASE_URL}/rest/v1/platform_admins`);
+  adminUrl.searchParams.set('select', 'user_id');
+  adminUrl.searchParams.set('user_id', `eq.${userId}`);
+  adminUrl.searchParams.set('limit', '1');
+  const adminResponse = await fetch(adminUrl, {
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+    }
+  });
+  if (!adminResponse.ok) {
+    console.error('[demand-report] platform admin lookup failed', adminResponse.status);
+    return false;
+  }
+  const admins = await adminResponse.json().catch(() => []);
+  return Array.isArray(admins) && admins.length > 0;
 }
 
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
@@ -34,7 +68,10 @@ export default async function handler(req, res) {
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.authorization || '';
   const cronAuthorized = Boolean(secret && auth === `Bearer ${secret}`);
-  const adminAuthorized = !cronAuthorized && await isAdminBearer(auth).catch(() => false);
+  const adminAuthorized = !cronAuthorized && await isAdminBearer(auth).catch((error) => {
+    console.error('[demand-report] admin authorization error', error?.message || 'unknown');
+    return false;
+  });
   if (!cronAuthorized && !adminAuthorized) return unauthorized(res);
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ ok: false, error: 'supabase_env_missing' });
