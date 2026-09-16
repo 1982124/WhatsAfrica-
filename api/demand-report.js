@@ -1,23 +1,25 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const DEFAULT_RECIPIENT = process.env.DEMAND_REPORT_EMAIL || 'neodigitalstartupacademy@gmail.com';
 
-function unauthorized(res) { return res.status(401).json({ ok: false, error: 'unauthorized' }); }
+function unauthorized(res, code = 'unauthorized') { return res.status(401).json({ ok: false, error: code }); }
 function csv(value) { return String(value || '').split(',').map((x) => x.trim()).filter(Boolean); }
 function normalize(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
 function matchesZone(locationText, zones) { if (!zones.length) return true; const value = normalize(locationText); return zones.some((zone) => value.includes(normalize(zone))); }
 function matchesProduct(productName, filters) { if (!filters.length) return true; const value = normalize(productName); return filters.some((filter) => value.includes(normalize(filter))); }
 
 async function isAdminBearer(auth) {
-  if (!auth.startsWith('Bearer ')) return false;
+  if (!auth.startsWith('Bearer ')) return { ok: false, reason: 'missing_bearer' };
   const token = auth.slice(7).trim();
-  if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_PUBLISHABLE_KEY) return false;
+  if (!token) return { ok: false, reason: 'empty_bearer' };
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return { ok: false, reason: 'supabase_server_env_missing' };
+  if (!SUPABASE_PUBLISHABLE_KEY) return { ok: false, reason: 'supabase_publishable_key_missing' };
 
-  // Validate the access token against the same Supabase project used by the app.
-  // Do not rely on a service-role bearer context for auth.uid(): the privileged
-  // key is intentionally used only for the subsequent, server-side admin lookup.
+  // The user token is validated by Supabase Auth. Never treat a browser-supplied
+  // session object as proof of identity; only the Auth server response is trusted.
   const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    cache: 'no-store',
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${token}`
@@ -25,21 +27,22 @@ async function isAdminBearer(auth) {
   });
   if (!userResponse.ok) {
     console.warn('[demand-report] bearer rejected by Supabase Auth', userResponse.status);
-    return false;
+    return { ok: false, reason: 'invalid_or_expired_token' };
   }
 
   const user = await userResponse.json().catch(() => null);
   const userId = user?.id;
-  if (!userId) return false;
+  if (!userId) return { ok: false, reason: 'auth_user_missing' };
 
-  // Authorize from the platform_admins table with the service-role key.
-  // This avoids depending on PostgREST's auth.uid() propagation when a
-  // service-role key and a user bearer are sent together.
+  // Authorization is deliberately separate from authentication. The service role
+  // is used only server-side to test membership in platform_admins and is never
+  // sent back to the browser.
   const adminUrl = new URL(`${SUPABASE_URL}/rest/v1/platform_admins`);
   adminUrl.searchParams.set('select', 'user_id');
   adminUrl.searchParams.set('user_id', `eq.${userId}`);
   adminUrl.searchParams.set('limit', '1');
   const adminResponse = await fetch(adminUrl, {
+    cache: 'no-store',
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
       Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
@@ -47,10 +50,11 @@ async function isAdminBearer(auth) {
   });
   if (!adminResponse.ok) {
     console.error('[demand-report] platform admin lookup failed', adminResponse.status);
-    return false;
+    return { ok: false, reason: 'admin_lookup_failed' };
   }
   const admins = await adminResponse.json().catch(() => []);
-  return Array.isArray(admins) && admins.length > 0;
+  if (!Array.isArray(admins) || admins.length === 0) return { ok: false, reason: 'platform_admin_required' };
+  return { ok: true, userId };
 }
 
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
@@ -65,15 +69,18 @@ async function sendEmail({ subject, html, text }) {
 }
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.authorization || '';
   const cronAuthorized = Boolean(secret && auth === `Bearer ${secret}`);
-  const adminAuthorized = !cronAuthorized && await isAdminBearer(auth).catch((error) => {
-    console.error('[demand-report] admin authorization error', error?.message || 'unknown');
-    return false;
-  });
-  if (!cronAuthorized && !adminAuthorized) return unauthorized(res);
-  if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  if (!cronAuthorized) {
+    const authz = await isAdminBearer(auth).catch((error) => ({ ok: false, reason: error?.message || 'authorization_error' }));
+    if (!authz.ok) {
+      console.warn('[demand-report] unauthorized request', authz.reason);
+      return unauthorized(res, authz.reason === 'platform_admin_required' ? 'forbidden' : 'unauthorized');
+    }
+  }
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ ok: false, error: 'supabase_env_missing' });
 
   const end = new Date();
