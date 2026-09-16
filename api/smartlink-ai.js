@@ -78,7 +78,7 @@ async function requireUser(req) {
 }
 async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'Méthode non autorisée.' });
-  if (!process.env.OPENAI_API_KEY) return json(res, 503, { ok: false, error: 'Le moteur IA Smart Link n’est pas encore configuré côté serveur.' });
+  if (!process.env.OPENAI_API_KEY) return json(res, 503, { ok: false, error: 'Configuration serveur manquante : OPENAI_API_KEY. Ajoutez ce secret dans les variables d’environnement Vercel pour activer le moteur IA Smart Link.' });
   try {
     const user = await requireUser(req);
     if (!user?.id) return json(res, 401, { ok: false, error: 'Connectez-vous pour utiliser Smart Link IA.' });
