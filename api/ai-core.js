@@ -1,171 +1,21 @@
-const crypto = require('crypto');
-
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dzifpwqrqnvssfhwjccj.supabase.co';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
-const MODELS = (process.env.OPENROUTER_MODELS || 'qwen/qwen3.6-flash,qwen/qwen3.5-9b').split(',').map(x => x.trim()).filter(Boolean).slice(0, 4);
-const MAX_BODY = 12000;
-const FETCH_TIMEOUT_MS = 18000;
-
-const clean = (v, max = 2000) => typeof v === 'string' ? v.replace(/[\u0000-\u001F\u007F]/g, '').slice(0, max).trim() : '';
-const json = (v, fallback = {}) => v && typeof v === 'object' ? v : fallback;
-
-function requestId(req) {
-  return clean(req.headers['x-request-id'], 120) || crypto.randomUUID();
-}
-
-async function fetchJson(url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const r = await fetch(url, { ...options, signal: controller.signal });
-    const text = await r.text();
-    let data = {};
-    try { data = text ? JSON.parse(text) : {}; } catch {}
-    return { ok: r.ok, status: r.status, data };
-  } finally { clearTimeout(timer); }
-}
-
-function sbHeaders(token) {
-  const key = SERVICE_KEY || '';
-  return {
-    apikey: key,
-    Authorization: `Bearer ${token || key}`,
-    'Content-Type': 'application/json'
-  };
-}
-
-async function authenticate(req) {
-  const auth = String(req.headers.authorization || '');
-  if (!auth.startsWith('Bearer ')) return { ok: false, status: 401, code: 'missing_bearer' };
-  if (!SERVICE_KEY) return { ok: false, status: 503, code: 'server_auth_not_configured' };
-  const token = auth.slice(7).trim();
-  if (!token) return { ok: false, status: 401, code: 'missing_bearer' };
-  const result = await fetchJson(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${token}` } });
-  if (!result.ok || !result.data?.id) return { ok: false, status: 401, code: 'invalid_session' };
-  const admin = await fetchJson(`${SUPABASE_URL}/rest/v1/rpc/is_platform_admin`, { method: 'POST', headers: sbHeaders(token), body: '{}' });
-  return { ok: true, token, user: result.data, isAdmin: admin.ok && admin.data === true };
-}
-
-async function auditInsert(event) {
-  if (!SERVICE_KEY) return false;
-  const r = await fetchJson(`${SUPABASE_URL}/rest/v1/ai_core_events`, {
-    method: 'POST',
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify(event)
-  });
-  if (!r.ok) console.error('[ai-core] audit insert failed', r.status, r.data);
-  return r.ok;
-}
-
-async function auditUpdate(id, patch) {
-  if (!SERVICE_KEY || !id) return false;
-  const r = await fetchJson(`${SUPABASE_URL}/rest/v1/ai_core_events?id=eq.${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify(patch)
-  });
-  if (!r.ok) console.error('[ai-core] audit update failed', r.status, r.data);
-  return r.ok;
-}
-
-async function toolDemandReport(auth, input) {
-  if (!auth.isAdmin) return { ok: false, status: 403, code: 'admin_required' };
-  const hours = Math.max(1, Math.min(168, Number(input.hours || 24)));
-  const countries = Array.isArray(input.countries) ? input.countries.slice(0, 50).map(x => clean(x, 80)).filter(Boolean) : [];
-  const zones = Array.isArray(input.zones) ? input.zones.slice(0, 50).map(x => clean(x, 80)).filter(Boolean) : [];
-  const products = Array.isArray(input.products) ? input.products.slice(0, 50).map(x => clean(x, 120)).filter(Boolean) : [];
-  const r = await fetchJson(`${SUPABASE_URL}/rest/v1/rpc/admin_generate_demand_report`, {
-    method: 'POST', headers: sbHeaders(auth.token),
-    body: JSON.stringify({ p_hours: hours, p_countries: countries, p_zones: zones, p_products: products })
-  });
-  if (!r.ok) return { ok: false, status: r.status, code: 'demand_report_failed', detail: r.data };
-  return { ok: true, tool: 'demand_report', data: r.data };
-}
-
-const TOOLS = {
-  demand_report: {
-    description: 'Génère un rapport de demande autorisé à partir des observations globales.',
-    roles: ['admin'],
-    run: toolDemandReport,
-    mutating: true,
-    requiresConfirmation: true
-  }
-};
-
-function classify(message) {
-  const q = clean(message, 2000).toLowerCase();
-  if (/demande|besoin|tendance|opportunit|march[eé]|produit.*recherch|global command/.test(q)) return 'demand_intelligence';
-  if (/smart.?link|tarif|abonnement|prix/.test(q)) return 'smartlink_commercial';
-  if (/message|conversation|contact|client/.test(q)) return 'messaging_crm';
-  return 'general_assistance';
-}
-
-function selectTool(intent) {
-  if (intent === 'demand_intelligence') return 'demand_report';
-  return null;
-}
-
-async function reasonPlan(message, intent, toolResult) {
-  if (!OPENROUTER_KEY) return {
-    summary: `Intention détectée : ${intent}.`,
-    next_action: toolResult ? 'Analyser le résultat de l’outil autorisé.' : 'Aucun outil spécialisé sélectionné.',
-    confidence: 0.65
-  };
-  const prompt = `Tu es le moteur de décision de WassAfrica. Tu dois être factuel, ne rien inventer et distinguer données observées, interprétation et action proposée.\nIntention: ${intent}\nDemande: ${message}\nDonnées outil: ${JSON.stringify(toolResult).slice(0, 12000)}\nRetourne uniquement JSON avec summary, findings (array), proposed_action, confidence (0..1).`;
-  const r = await fetchJson('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENROUTER_KEY}`, 'HTTP-Referer': 'https://wassafrica.vercel.app', 'X-Title': 'WassAfrica AI Core' },
-    body: JSON.stringify({ model: MODELS[0], models: MODELS, messages: [{ role: 'system', content: 'Réponds en JSON strict.' }, { role: 'user', content: prompt }], temperature: 0.1, max_tokens: 900 })
-  });
-  const content = r.data?.choices?.[0]?.message?.content || '';
-  try { return JSON.parse(content.replace(/^```json\s*|\s*```$/g, '')); } catch { return { summary: clean(content, 4000), findings: [], proposed_action: null, confidence: 0.4 }; }
-}
-
-module.exports = async function handler(req, res) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Robots-Tag', 'noindex');
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée.' });
-  const rid = requestId(req);
-  try {
-    const auth = await authenticate(req);
-    if (!auth.ok) return res.status(auth.status).json({ error: auth.code, request_id: rid });
-    const body = json(req.body);
-    const message = clean(body.message, 2000);
-    if (!message) return res.status(400).json({ error: 'message_required', request_id: rid });
-    const intent = classify(message);
-    const requestedTool = clean(body.tool, 80) || selectTool(intent);
-    const tool = requestedTool ? TOOLS[requestedTool] : null;
-    if (requestedTool && !tool) return res.status(400).json({ error: 'tool_not_allowed', request_id: rid });
-    if (tool && tool.roles.includes('admin') && !auth.isAdmin) return res.status(403).json({ error: 'admin_required', request_id: rid });
-
-    const audit = { request_id: rid, user_id: auth.user.id, intent, status: 'planned', tool_name: requestedTool || null, tool_input: json(body.tool_input), decision: {}, verification: null };
-    await auditInsert(audit);
-
-    let toolResult = null;
-    if (tool && body.execute === true && tool.requiresConfirmation && !body.confirmation_id) {
-      const decision = { confirmation_required: true, reason: 'L’action sélectionnée modifie/génère des données opérationnelles.', tool: requestedTool };
-      return res.status(200).json({ ok: true, request_id: rid, intent, decision, next: { confirmation_id: rid, execute: true } });
-    }
-
-    if (tool && body.execute === true) {
-      toolResult = await tool.run(auth, json(body.tool_input));
-      if (!toolResult.ok) {
-        await auditUpdate(null, { status: 'failed', error_code: toolResult.code });
-        return res.status(toolResult.status || 500).json({ ok: false, request_id: rid, intent, error: toolResult.code });
-      }
-      const decision = await reasonPlan(message, intent, toolResult.data);
-      await auditInsert({ request_id: `${rid}:execution`, user_id: auth.user.id, intent, status: 'executed', tool_name: requestedTool, tool_input: json(body.tool_input), tool_output: toolResult.data, decision, verification: { tool_ok: true } });
-      return res.status(200).json({ ok: true, request_id: rid, intent, tool: requestedTool, result: toolResult.data, decision, verification: { status: 'verified', tool_ok: true } });
-    }
-
-    const decision = await reasonPlan(message, intent, null);
-    await auditInsert({ request_id: `${rid}:plan`, user_id: auth.user.id, intent, status: 'confirmation_required', tool_name: requestedTool || null, tool_input: json(body.tool_input), decision, verification: { planned: true } });
-    return res.status(200).json({ ok: true, request_id: rid, intent, decision, tool: requestedTool, action: requestedTool ? { mode: 'confirmation_required', tool: requestedTool } : { mode: 'no_action' } });
-  } catch (error) {
-    console.error('[ai-core] failed', rid, error?.message || error);
-    return res.status(500).json({ ok: false, error: 'ai_core_failed', request_id: rid });
-  }
-};
+const crypto=require('crypto');
+const SUPABASE_URL=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co';
+const SERVICE_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SECRET_KEY;
+const OPENROUTER_KEY=process.env.OPENROUTER_API_KEY;
+const MODELS=(process.env.OPENROUTER_MODELS||'qwen/qwen3.6-flash,qwen/qwen3.5-9b').split(',').map(x=>x.trim()).filter(Boolean).slice(0,4);
+const TIMEOUT=18000;
+const clean=(v,n=2000)=>typeof v==='string'?v.replace(/[\u0000-\u001F\u007F]/g,'').slice(0,n).trim():'';
+const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+const rid=req=>clean(req.headers['x-request-id'],120)||crypto.randomUUID();
+async function fetchJson(url,options={}){const c=new AbortController(),t=setTimeout(()=>c.abort(),TIMEOUT);try{const r=await fetch(url,{...options,signal:c.signal});const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch{}return{ok:r.ok,status:r.status,data}}finally{clearTimeout(t)}}
+function sb(token){return{apikey:SERVICE_KEY||'',Authorization:`Bearer ${token||SERVICE_KEY||''}`,'Content-Type':'application/json'}}
+async function auth(req){const h=String(req.headers.authorization||'');if(!h.startsWith('Bearer '))return{ok:false,status:401,code:'missing_bearer'};if(!SERVICE_KEY)return{ok:false,status:503,code:'server_auth_not_configured'};const token=h.slice(7).trim();if(!token)return{ok:false,status:401,code:'missing_bearer'};const u=await fetchJson(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${token}`}});if(!u.ok||!u.data?.id)return{ok:false,status:401,code:'invalid_session'};const a=await fetchJson(`${SUPABASE_URL}/rest/v1/rpc/is_platform_admin`,{method:'POST',headers:sb(token),body:'{}'});return{ok:true,token,user:u.data,isAdmin:a.ok&&a.data===true}}
+async function audit(event){if(!SERVICE_KEY)return false;const r=await fetchJson(`${SUPABASE_URL}/rest/v1/ai_core_events`,{method:'POST',headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(event)});if(!r.ok)console.error('[ai-core] audit insert failed',r.status);return r.ok}
+async function findPending(requestId,userId){if(!SERVICE_KEY)return null;const q=`request_id=eq.${encodeURIComponent(requestId)}&user_id=eq.${encodeURIComponent(userId)}&status=eq.confirmation_required&select=id,tool_name,tool_input,decision&order=created_at.desc&limit=1`;const r=await fetchJson(`${SUPABASE_URL}/rest/v1/ai_core_events?${q}`,{headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`}});return r.ok&&Array.isArray(r.data)&&r.data[0]?r.data[0]:null}
+async function mark(id,status,patch={}){if(!SERVICE_KEY||!id)return false;const r=await fetchJson(`${SUPABASE_URL}/rest/v1/ai_core_events?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status,...patch})});return r.ok}
+async function demand(authz,input){if(!authz.isAdmin)return{ok:false,status:403,code:'admin_required'};const hours=Math.max(1,Math.min(168,Number(input.hours||24)));const countries=Array.isArray(input.countries)?input.countries.slice(0,50).map(x=>clean(x,80)).filter(Boolean):[];const zones=Array.isArray(input.zones)?input.zones.slice(0,50).map(x=>clean(x,80)).filter(Boolean):[];const products=Array.isArray(input.products)?input.products.slice(0,50).map(x=>clean(x,120)).filter(Boolean):[];const r=await fetchJson(`${SUPABASE_URL}/rest/v1/rpc/admin_generate_demand_report`,{method:'POST',headers:sb(authz.token),body:JSON.stringify({p_hours:hours,p_countries:countries,p_zones:zones,p_products:products})});if(!r.ok)return{ok:false,status:r.status,code:'demand_report_failed'};return{ok:true,data:r.data}}
+const TOOLS={demand_report:{roles:['admin'],requiresConfirmation:true,run:demand}};
+function classify(m){const q=clean(m,2000).toLowerCase();if(/demande|besoin|tendance|opportunit|march[eé]|produit.*recherch|global command/.test(q))return'demand_intelligence';if(/smart.?link|tarif|abonnement|prix/.test(q))return'smartlink_commercial';if(/message|conversation|contact|client/.test(q))return'messaging_crm';return'general_assistance'}
+function selectTool(i){return i==='demand_intelligence'?'demand_report':null}
+async function reason(message,intent,data){if(!OPENROUTER_KEY)return{summary:`Intention détectée : ${intent}.`,findings:[],proposed_action:data?'Analyser les données du rapport.':'Aucune action spécialisée.',confidence:.65};const p=`Tu es le moteur de décision de WassAfrica. Ne rien inventer. Sépare données observées, interprétation et action proposée. Intention: ${intent}\nDemande: ${message}\nDonnées: ${JSON.stringify(data).slice(0,12000)}\nJSON strict avec summary, findings (array), proposed_action, confidence (0..1).`;const r=await fetchJson('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${OPENROUTER_KEY}`,'HTTP-Referer':'https://wassafrica.vercel.app','X-Title':'WassAfrica AI Core'},body:JSON.stringify({model:MODELS[0],models:MODELS,messages:[{role:'system',content:'Réponds en JSON strict.'},{role:'user',content:p}],temperature:.1,max_tokens:900})});const c=r.data?.choices?.[0]?.message?.content||'';try{return JSON.parse(c.replace(/^```json\s*|\s*```$/g,''))}catch{return{summary:clean(c,4000),findings:[],proposed_action:null,confidence:.4}}}
+module.exports=async function(req,res){res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Robots-Tag','noindex');if(req.method!=='POST')return res.status(405).json({error:'Méthode non autorisée.'});const requestId=rid(req);try{const a=await auth(req);if(!a.ok)return res.status(a.status).json({error:a.code,request_id:requestId});const body=obj(req.body),message=clean(body.message);if(!message)return res.status(400).json({error:'message_required',request_id:requestId});const intent=classify(message);const toolName=clean(body.tool,80)||selectTool(intent);const tool=toolName?TOOLS[toolName]:null;if(toolName&&!tool)return res.status(400).json({error:'tool_not_allowed',request_id:requestId});if(tool&&tool.roles.includes('admin')&&!a.isAdmin)return res.status(403).json({error:'admin_required',request_id:requestId});if(tool&&body.execute===true){const pending=await findPending(requestId,a.user.id);const confirmation=clean(body.confirmation_id,200);if(tool.requiresConfirmation&&(!pending||!confirmation||confirmation!==pending.decision.confirmation_token||pending.tool_name!==toolName))return res.status(409).json({error:'confirmation_required',request_id:requestId});const result=await tool.run(a,obj(body.tool_input));if(!result.ok){if(pending)await mark(pending.id,'failed',{error_code:result.code});await audit({request_id:`${requestId}:failed`,user_id:a.user.id,intent,status:'failed',tool_name:toolName,tool_input:obj(body.tool_input),error_code:result.code,decision:{},verification:{ok:false}});return res.status(result.status||500).json({ok:false,error:result.code,request_id:requestId})}const decision=await reason(message,intent,result.data);if(pending)await mark(pending.id,'executed',{tool_output:result.data,decision,verification:{tool_ok:true}});await audit({request_id:`${requestId}:execution`,user_id:a.user.id,intent,status:'executed',tool_name:toolName,tool_input:obj(body.tool_input),tool_output:result.data,decision,verification:{status:'verified',tool_ok:true}});return res.status(200).json({ok:true,request_id:requestId,intent,tool:toolName,result:result.data,decision,verification:{status:'verified',tool_ok:true}})}const token=crypto.randomBytes(24).toString('hex');const decision=await reason(message,intent,null);if(tool){decision.confirmation_required=true;decision.confirmation_token=token;decision.reason='Action opérationnelle protégée : confirmation explicite requise avant exécution.'}await audit({request_id:requestId,user_id:a.user.id,intent,status:tool?'confirmation_required':'planned',tool_name:toolName||null,tool_input:obj(body.tool_input),decision,verification:{planned:true}});return res.status(200).json({ok:true,request_id:requestId,intent,decision,tool:toolName||null,action:tool?{mode:'confirmation_required',tool:toolName}:{mode:'no_action'}})}catch(e){console.error('[ai-core] failed',requestId,e?.message||e);return res.status(500).json({ok:false,error:'ai_core_failed',request_id:requestId})}};
