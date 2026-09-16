@@ -13,6 +13,14 @@ function csv(value) {
     .filter(Boolean);
 }
 
+function normalize(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -24,8 +32,14 @@ function escapeHtml(value) {
 
 function matchesZone(locationText, zones) {
   if (!zones.length) return true;
-  const value = String(locationText || '').toLowerCase();
-  return zones.some((zone) => value.includes(zone.toLowerCase()));
+  const value = normalize(locationText);
+  return zones.some((zone) => value.includes(normalize(zone)));
+}
+
+function matchesProduct(productName, filters) {
+  if (!filters.length) return true;
+  const value = normalize(productName);
+  return filters.some((filter) => value.includes(normalize(filter)));
 }
 
 async function sendEmail({ subject, html, text }) {
@@ -54,10 +68,18 @@ export default async function handler(req, res) {
 
   const end = new Date();
   const start = new Date(end.getTime() - 6 * 60 * 60 * 1000);
+
   const requestedZones = csv(req.query?.zones);
   const configuredZones = csv(process.env.DEMAND_ZONES);
   const zones = requestedZones.length ? requestedZones : configuredZones;
   const countries = csv(req.query?.countries || process.env.DEMAND_COUNTRIES);
+
+  // Product/topic targeting. Examples: Super Gro, ciment, fer, TRE, moto,
+  // couple, amour, or several values separated by commas.
+  const requestedProducts = csv(req.query?.products || req.query?.product);
+  const configuredProducts = csv(process.env.DEMAND_PRODUCTS);
+  const products = requestedProducts.length ? requestedProducts : configuredProducts;
+
   const locationFilters = [...zones, ...countries];
 
   const baseHeaders = {
@@ -77,14 +99,29 @@ export default async function handler(req, res) {
   if (!obsResponse.ok) {
     return res.status(502).json({ ok: false, error: 'observation_query_failed', status: obsResponse.status });
   }
+
   let observations = await obsResponse.json();
-  if (locationFilters.length) observations = observations.filter((item) => matchesZone(item.location_text, locationFilters));
+  if (locationFilters.length) {
+    observations = observations.filter((item) => matchesZone(item.location_text, locationFilters));
+  }
+  if (products.length) {
+    observations = observations.filter((item) => matchesProduct(item.normalized_product, products));
+  }
 
   const groups = new Map();
   for (const item of observations) {
     const key = `${String(item.normalized_product || '').trim().toLowerCase()}|${String(item.unit || '').trim().toLowerCase()}`;
     if (!key || key === '|') continue;
-    if (!groups.has(key)) groups.set(key, { product: item.normalized_product, unit: item.unit, quantity: 0, count: 0, contacts: 0, items: [] });
+    if (!groups.has(key)) {
+      groups.set(key, {
+        product: item.normalized_product,
+        unit: item.unit,
+        quantity: 0,
+        count: 0,
+        contacts: 0,
+        items: [],
+      });
+    }
     const g = groups.get(key);
     g.quantity += Number(item.quantity || 0);
     g.count += 1;
@@ -94,20 +131,28 @@ export default async function handler(req, res) {
 
   const clusters = [...groups.values()].sort((a, b) => b.count - a.count || b.quantity - a.quantity);
   const scopeLabel = locationFilters.length ? locationFilters.join(', ') : 'Toutes zones';
+  const productLabel = products.length ? products.join(', ') : 'Tous produits / besoins';
   const report = {
     window_start: start.toISOString(),
     window_end: end.toISOString(),
     report_type: 'six_hour',
     status: 'generated',
-    scope: { zones, countries },
+    scope: { zones, countries, products },
     demand_count: observations.length,
     cluster_count: clusters.length,
     total_quantity: clusters.reduce((sum, x) => sum + x.quantity, 0),
-    summary: { generated_by: 'wassafrica-demand-intelligence', scope: scopeLabel, clusters },
+    summary: {
+      generated_by: 'wassafrica-demand-intelligence',
+      scope: scopeLabel,
+      products: productLabel,
+      clusters,
+    },
   };
 
   const reportResponse = await fetch(`${SUPABASE_URL}/rest/v1/demand_reports`, {
-    method: 'POST', headers: { ...baseHeaders, Prefer: 'return=representation' }, body: JSON.stringify(report),
+    method: 'POST',
+    headers: { ...baseHeaders, Prefer: 'return=representation' },
+    body: JSON.stringify(report),
   });
   if (!reportResponse.ok) {
     return res.status(502).json({ ok: false, error: 'report_insert_failed', status: reportResponse.status });
@@ -122,7 +167,9 @@ export default async function handler(req, res) {
       notes: `${cluster.count} demande(s), ${cluster.quantity || 0} ${cluster.unit || ''}. Contacts publics détectés: ${cluster.contacts}.`,
     }));
     await fetch(`${SUPABASE_URL}/rest/v1/demand_report_items`, {
-      method: 'POST', headers: { ...baseHeaders, Prefer: 'return=minimal' }, body: JSON.stringify(items),
+      method: 'POST',
+      headers: { ...baseHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify(items),
     });
   }
 
@@ -130,7 +177,8 @@ export default async function handler(req, res) {
   const text = [
     'WASSAFRICA — RAPPORT DES BESOINS (6 H)',
     `Période: ${start.toISOString()} → ${end.toISOString()}`,
-    `Périmètre: ${scopeLabel}`,
+    `Zone(s): ${scopeLabel}`,
+    `Produit(s) ciblé(s): ${productLabel}`,
     `Demandes: ${observations.length}`,
     `Produits regroupés: ${clusters.length}`,
     '',
@@ -138,9 +186,11 @@ export default async function handler(req, res) {
     '',
     `Rapport ID: ${saved?.id || 'n/a'}`,
   ].join('\n');
-  const html = `<h2>WASSAFRICA — Rapport des besoins (6 h)</h2><p><b>Période :</b> ${escapeHtml(start.toISOString())} → ${escapeHtml(end.toISOString())}</p><p><b>Périmètre :</b> ${escapeHtml(scopeLabel)}</p><p><b>Demandes :</b> ${observations.length} · <b>Produits regroupés :</b> ${clusters.length}</p><ul>${clusters.length ? clusters.map((x) => `<li><b>${escapeHtml(x.product)}</b> — ${escapeHtml(x.quantity || 0)} ${escapeHtml(x.unit || '')} — ${x.count} demande(s) — ${x.contacts} contact(s) public(s)</li>`).join('') : '<li>Aucune demande détectée sur ce périmètre.</li>'}</ul><p>Rapport ID : ${escapeHtml(saved?.id || 'n/a')}</p>`;
+
+  const html = `<h2>WASSAFRICA — Rapport des besoins (6 h)</h2><p><b>Période :</b> ${escapeHtml(start.toISOString())} → ${escapeHtml(end.toISOString())}</p><p><b>Zone(s) :</b> ${escapeHtml(scopeLabel)}</p><p><b>Produit(s) ciblé(s) :</b> ${escapeHtml(productLabel)}</p><p><b>Demandes :</b> ${observations.length} · <b>Produits regroupés :</b> ${clusters.length}</p><ul>${clusters.length ? clusters.map((x) => `<li><b>${escapeHtml(x.product)}</b> — ${escapeHtml(x.quantity || 0)} ${escapeHtml(x.unit || '')} — ${x.count} demande(s) — ${x.contacts} contact(s) public(s)</li>`).join('') : '<li>Aucune demande détectée sur ce périmètre.</li>'}</ul><p>Rapport ID : ${escapeHtml(saved?.id || 'n/a')}</p>`;
+
   const email = await sendEmail({
-    subject: `WassAfrica — demandes 6 h — ${scopeLabel}`,
+    subject: `WassAfrica — demandes 6 h — ${productLabel} — ${scopeLabel}`,
     html,
     text,
   });
@@ -150,7 +200,7 @@ export default async function handler(req, res) {
     report_id: saved?.id || null,
     window_start: start.toISOString(),
     window_end: end.toISOString(),
-    scope: { zones, countries },
+    scope: { zones, countries, products },
     demand_count: observations.length,
     cluster_count: clusters.length,
     email,
