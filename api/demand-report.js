@@ -3,57 +3,45 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const DEFAULT_RECIPIENT = process.env.DEMAND_REPORT_EMAIL || 'neodigitalstartupacademy@gmail.com';
 
-function unauthorized(res, code = 'unauthorized') { return res.status(401).json({ ok: false, error: code }); }
 function csv(value) { return String(value || '').split(',').map((x) => x.trim()).filter(Boolean); }
 function normalize(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
 function matchesZone(locationText, zones) { if (!zones.length) return true; const value = normalize(locationText); return zones.some((zone) => value.includes(normalize(zone))); }
 function matchesProduct(productName, filters) { if (!filters.length) return true; const value = normalize(productName); return filters.some((filter) => value.includes(normalize(filter))); }
 
 async function isAdminBearer(auth) {
-  if (!auth.startsWith('Bearer ')) return { ok: false, reason: 'missing_bearer' };
+  if (!auth.startsWith('Bearer ')) return { ok: false, status: 401, reason: 'missing_bearer' };
   const token = auth.slice(7).trim();
-  if (!token) return { ok: false, reason: 'empty_bearer' };
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return { ok: false, reason: 'supabase_server_env_missing' };
-  if (!SUPABASE_PUBLISHABLE_KEY) return { ok: false, reason: 'supabase_publishable_key_missing' };
+  if (!token) return { ok: false, status: 401, reason: 'empty_bearer' };
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return { ok: false, status: 503, reason: 'supabase_server_env_missing' };
+  if (!SUPABASE_PUBLISHABLE_KEY) return { ok: false, status: 503, reason: 'supabase_publishable_key_missing' };
 
-  // The user token is validated by Supabase Auth. Never treat a browser-supplied
-  // session object as proof of identity; only the Auth server response is trusted.
   const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     cache: 'no-store',
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${token}`
-    }
+    headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}` }
   });
   if (!userResponse.ok) {
     console.warn('[demand-report] bearer rejected by Supabase Auth', userResponse.status);
-    return { ok: false, reason: 'invalid_or_expired_token' };
+    return { ok: false, status: 401, reason: 'invalid_or_expired_token' };
   }
 
   const user = await userResponse.json().catch(() => null);
   const userId = user?.id;
-  if (!userId) return { ok: false, reason: 'auth_user_missing' };
+  if (!userId) return { ok: false, status: 401, reason: 'auth_user_missing' };
 
-  // Authorization is deliberately separate from authentication. The service role
-  // is used only server-side to test membership in platform_admins and is never
-  // sent back to the browser.
   const adminUrl = new URL(`${SUPABASE_URL}/rest/v1/platform_admins`);
   adminUrl.searchParams.set('select', 'user_id');
   adminUrl.searchParams.set('user_id', `eq.${userId}`);
   adminUrl.searchParams.set('limit', '1');
   const adminResponse = await fetch(adminUrl, {
     cache: 'no-store',
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
-    }
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` }
   });
   if (!adminResponse.ok) {
     console.error('[demand-report] platform admin lookup failed', adminResponse.status);
-    return { ok: false, reason: 'admin_lookup_failed' };
+    return { ok: false, status: 503, reason: 'admin_lookup_failed' };
   }
   const admins = await adminResponse.json().catch(() => []);
-  if (!Array.isArray(admins) || admins.length === 0) return { ok: false, reason: 'platform_admin_required' };
+  if (!Array.isArray(admins) || admins.length === 0) return { ok: false, status: 403, reason: 'platform_admin_required' };
   return { ok: true, userId };
 }
 
@@ -70,15 +58,14 @@ async function sendEmail({ subject, html, text }) {
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
-
   const secret = process.env.CRON_SECRET;
   const auth = req.headers.authorization || '';
   const cronAuthorized = Boolean(secret && auth === `Bearer ${secret}`);
   if (!cronAuthorized) {
-    const authz = await isAdminBearer(auth).catch((error) => ({ ok: false, reason: error?.message || 'authorization_error' }));
+    const authz = await isAdminBearer(auth).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'authorization_error' }));
     if (!authz.ok) {
       console.warn('[demand-report] unauthorized request', authz.reason);
-      return unauthorized(res, authz.reason === 'platform_admin_required' ? 'forbidden' : 'unauthorized');
+      return res.status(authz.status).json({ ok: false, error: authz.status === 403 ? 'forbidden' : authz.reason });
     }
   }
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ ok: false, error: 'supabase_env_missing' });
@@ -95,7 +82,6 @@ export default async function handler(req, res) {
   const configuredProducts = csv(process.env.DEMAND_PRODUCTS);
   const products = requestedProducts.length ? requestedProducts : configuredProducts;
   const locationFilters = [...zones, ...countries];
-
   const baseHeaders = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
   const obsUrl = new URL(`${SUPABASE_URL}/rest/v1/demand_observations`);
   obsUrl.searchParams.set('select', 'id,normalized_product,quantity,unit,author_display_name,public_contact,public_contact_type,source_url,source_platform,confidence,location_text,status,observed_at');
@@ -105,11 +91,9 @@ export default async function handler(req, res) {
   obsUrl.searchParams.set('order', 'observed_at.desc');
   const obsResponse = await fetch(obsUrl, { headers: baseHeaders });
   if (!obsResponse.ok) return res.status(502).json({ ok: false, error: 'observation_query_failed', status: obsResponse.status });
-
   let observations = await obsResponse.json();
   if (locationFilters.length) observations = observations.filter((item) => matchesZone(item.location_text, locationFilters));
   if (products.length) observations = observations.filter((item) => matchesProduct(item.normalized_product, products));
-
   const groups = new Map();
   for (const item of observations) {
     const key = `${normalize(item.normalized_product)}|${normalize(item.unit)}`;
@@ -118,12 +102,10 @@ export default async function handler(req, res) {
     const g = groups.get(key);
     g.quantity += Number(item.quantity || 0); g.count += 1; if (item.public_contact) g.contacts += 1; g.items.push(item.id);
   }
-
   const clusters = [...groups.values()].sort((a, b) => b.count - a.count || b.quantity - a.quantity);
   const scopeLabel = locationFilters.length ? locationFilters.join(', ') : 'Toutes zones';
   const productLabel = products.length ? products.join(', ') : 'Tous produits / besoins';
   const report = { window_start: start.toISOString(), window_end: end.toISOString(), report_type: 'six_hour', status: 'generated', scope: { zones, countries, products }, demand_count: observations.length, cluster_count: clusters.length, total_quantity: clusters.reduce((sum, x) => sum + x.quantity, 0), summary: { generated_by: 'wassafrica-demand-intelligence', scope: scopeLabel, products: productLabel, hours, clusters } };
-
   const reportResponse = await fetch(`${SUPABASE_URL}/rest/v1/demand_reports`, { method: 'POST', headers: { ...baseHeaders, Prefer: 'return=representation' }, body: JSON.stringify(report) });
   if (!reportResponse.ok) return res.status(502).json({ ok: false, error: 'report_insert_failed', status: reportResponse.status });
   const [saved] = await reportResponse.json();
@@ -131,7 +113,6 @@ export default async function handler(req, res) {
     const items = clusters.map((cluster) => ({ report_id: saved.id, priority: cluster.count >= 10 ? 'urgent' : cluster.count >= 5 ? 'high' : 'normal', action_status: 'pending', notes: `${cluster.count} demande(s), ${cluster.quantity || 0} ${cluster.unit || ''}. Contacts publics détectés: ${cluster.contacts}.` }));
     await fetch(`${SUPABASE_URL}/rest/v1/demand_report_items`, { method: 'POST', headers: { ...baseHeaders, Prefer: 'return=minimal' }, body: JSON.stringify(items) });
   }
-
   const lines = clusters.map((x) => `- ${x.product}: ${x.quantity || 0} ${x.unit || ''} — ${x.count} demande(s) — ${x.contacts} contact(s) public(s)`);
   const text = ['WASSAFRICA — RAPPORT DES BESOINS', `Période: ${start.toISOString()} → ${end.toISOString()}`, `Durée: ${hours} h`, `Zone(s): ${scopeLabel}`, `Produit(s) ciblé(s): ${productLabel}`, `Demandes: ${observations.length}`, `Produits regroupés: ${clusters.length}`, '', ...(lines.length ? lines : ['Aucune demande détectée sur ce périmètre.']), '', `Rapport ID: ${saved?.id || 'n/a'}`].join('\n');
   const html = `<h2>WASSAFRICA — Rapport des besoins</h2><p><b>Période :</b> ${escapeHtml(start.toISOString())} → ${escapeHtml(end.toISOString())}</p><p><b>Durée :</b> ${hours} h · <b>Zone(s) :</b> ${escapeHtml(scopeLabel)}</p><p><b>Produit(s) ciblé(s) :</b> ${escapeHtml(productLabel)}</p><p><b>Demandes :</b> ${observations.length} · <b>Produits regroupés :</b> ${clusters.length}</p><ul>${clusters.length ? clusters.map((x) => `<li><b>${escapeHtml(x.product)}</b> — ${escapeHtml(x.quantity || 0)} ${escapeHtml(x.unit || '')} — ${x.count} demande(s) — ${x.contacts} contact(s) public(s)</li>`).join('') : '<li>Aucune demande détectée sur ce périmètre.</li>'}</ul><p>Rapport ID : ${escapeHtml(saved?.id || 'n/a')}</p>`;
