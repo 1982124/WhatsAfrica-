@@ -23,6 +23,12 @@
     const r = await db.rpc('user_can_use_feature', { p_feature: feature });
     return r.error ? false : r.data === true;
   }
+  async function getSmartLinkTariff(db) {
+    if (!db) throw new Error('Client Supabase requis');
+    const r = await db.rpc('smartlink_current_tariff');
+    if (r.error) throw r.error;
+    return r.data;
+  }
   function formatXof(value) { return new Intl.NumberFormat('fr-FR').format(Number(value || 0)) + ' FCFA/mois'; }
-  global.WA_PLANS = { DEFAULTS, getPlans, getCurrentPlan, canUseFeature, formatXof };
+  global.WA_PLANS = { DEFAULTS, getPlans, getCurrentPlan, canUseFeature, getSmartLinkTariff, formatXof };
 })(window);
