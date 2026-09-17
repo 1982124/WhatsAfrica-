@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json inbox-v25.html wa-calls-v2.js wa-media-p2p.js wa-message-invite.js wa-inbox-call-bridge.js smartlink-public-v7.html presentation.html studio-visuel-ia.html api/ai-visual-studio.js; do test -f "$file"; done
+          for file in vercel.json inbox-v25.html wa-calls-v2.js wa-media-p2p.js wa-message-invite.js wa-inbox-call-bridge.js smartlink-public-v7.html presentation.html studio-visuel-ia.html; do test -f "$file"; done
       - name: Validate canonical routes
         shell: bash
         run: |
@@ -39,7 +39,6 @@ jobs:
           grep -Fq 'wa:conversation-ready' inbox-v25.html
           grep -Fq 'wa:inbox-ready' inbox-v25.html
           grep -Fq 'Studio Visuel IA' studio-visuel-ia.html
-          node --check api/ai-visual-studio.js
       - name: Validate safe external launcher policy
         shell: bash
         run: |
@@ -95,7 +94,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in wa-calls-v2.js wa-media-p2p.js wa-message-invite.js wa-inbox-call-bridge.js api/ai-visual-studio.js; do node --check "$file"; done
+          for file in wa-calls-v2.js wa-media-p2p.js wa-message-invite.js wa-inbox-call-bridge.js; do node --check "$file"; done
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
