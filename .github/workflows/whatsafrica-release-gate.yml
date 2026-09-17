@@ -61,7 +61,7 @@ jobs:
           grep -Fq "secondary_failure_does_not_block_auth: true" api/auth-health.js
           grep -Fq "secrets_exposed: false" api/auth-health.js
           grep -Fq "certification_rule: 'infrastructure_healthy_does_not_equal_provider_certified'" api/auth-health.js
-          grep -Fq "redirectTo:location.origin+next" auth-v7.html
+          grep -Fq "redirectTo:location.origin+'/auth?next='" auth-v7.html
           grep -Fq "u.origin===location.origin" auth-v7.html
           grep -Fq "emailRedirectTo" auth-v3.html
 
