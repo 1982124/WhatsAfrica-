@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f vercel.json
-          if grep -RIn --exclude-dir=.git --exclude-dir=.vercel --exclude-dir=node_modules --exclude-dir=android --include='*.html' --include='*.js' --include='*.mjs' --include='*.cjs' --include='*.json' --include='*.yml' --include='*.yaml' 'https://whatsafrica.vercel.app' .; then
+          if grep -RIn --exclude-dir=.git --exclude-dir=.vercel --exclude-dir=node_modules --exclude-dir=android --include='*.html' --include='*.js' --include='*.mjs' --include='*.cjs' --include='*.json' --include='*.yml' --include='*.yaml' --exclude='wassafrica-fallback-gate.yml' 'https://whatsafrica.vercel.app' .; then
             echo 'Legacy production domain reference detected. Canonical domain is https://wassafrica.vercel.app.'
             exit 1
           fi
