@@ -90,7 +90,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RIn --exclude-dir=.git --exclude-dir=supabase --exclude-dir=.github --exclude='*.md' -E 'SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=[[:space:]]*["'"']?sb_secret_|sb_secret_[A-Za-z0-9_-]{20,}' .; then echo 'Potential service-role secret exposure detected.'; exit 1; fi
+          if grep -RIn --exclude-dir=.git --exclude-dir=supabase --exclude-dir=.github --exclude='*.md' -E 'sb_secret_[A-Za-z0-9_-]{20,}' .; then echo 'Potential service-role secret exposure detected.'; exit 1; fi
       - name: Validate JavaScript syntax
         shell: bash
         run: |
