@@ -18,16 +18,17 @@ async function handler(req,res){
    if(!status?.enabled)return json(res,402,{ok:false,error:'studio_premium_required',plan:status?.plan||'free'});
    if(Number(status.credits||0)<n)return json(res,402,{ok:false,error:'credits_exhausted',credits:Number(status.credits||0)});
    for(let i=0;i<n;i++){const c=await rpc(token,'ai_consume_credit',{p_generation_id:genId});if(!c?.ok)throw new Error('credits_exhausted');consumed++;}
-   const inputImage=imageUrl?{image_url:imageUrl}:null;
-   const payload={model:process.env.WASSAFRICA_IMAGE_MODEL||'gpt-image-2',prompt,images:inputImage?[inputImage]:undefined,input_fidelity:'high',n,quality:body.quality==='high'?'high':'medium',size:body.size||'1536x1024',output_format:'webp',background:'auto',moderation:'auto',user:user.id};
-   const ai=await fetch('https://api.openai.com/v1/images/edits',{method:'POST',headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+   const model=process.env.WASSAFRICA_IMAGE_MODEL||'gpt-image-2';
+   const payload=imageUrl?{model,prompt,images:[{image_url:imageUrl}],input_fidelity:'high',n,quality:body.quality==='high'?'high':'medium',size:body.size||'1536x1024',output_format:'webp',background:'auto',moderation:'auto',user:user.id}:{model,prompt,n,quality:body.quality==='high'?'high':'medium',size:body.size||'1536x1024',output_format:'webp',background:'auto',moderation:'auto',user:user.id};
+   const endpoint=imageUrl?'https://api.openai.com/v1/images/edits':'https://api.openai.com/v1/images/generations';
+   const ai=await fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(payload)});
    const data=await ai.json().catch(()=>({}));
    if(!ai.ok)throw new Error(data?.error?.message||'Le moteur image IA a refusé la génération.');
    const images=(data.data||[]).map(x=>x.b64_json).filter(Boolean);
    if(!images.length)throw new Error('Le moteur image IA n’a retourné aucun visuel.');
    const projectId=body.project_id||null;
    if(projectId){await rpc(token,'noop',{ }).catch(()=>{});}
-   return json(res,200,{ok:true,generation_id:genId,credits:Number(status.credits)-n,images,model:payload.model});
+   return json(res,200,{ok:true,generation_id:genId,credits:Number(status.credits)-n,images,model});
  }catch(e){
    for(let i=0;i<consumed;i++)await rpc(token,'ai_refund_credit',{p_generation_id:genId}).catch(()=>{});
    return json(res,422,{ok:false,error:safe(e?.message||'Génération impossible.',500)});
