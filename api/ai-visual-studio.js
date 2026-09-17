@@ -11,7 +11,7 @@ async function handler(req,res){
  if(!process.env.OPENAI_API_KEY)return json(res,503,{ok:false,error:'OPENAI_API_KEY n’est pas configurée sur Vercel.'});
  const body=req.body||{}; const prompt=safe(body.prompt,32000); const imageUrl=safe(body.image_url,20971520); const n=Math.min(3,Math.max(1,Number(body.n||1)));
  if(!prompt)return json(res,400,{ok:false,error:'Décrivez le visuel à créer.'});
- const genId=crypto.randomUUID();
+ const genId=String(body.generation_id||'').trim(); if(!/^[0-9a-f-]{36}$/i.test(genId))return json(res,400,{ok:false,error:'generation_id requis.'});
  let consumed=0;
  try{
    const status=await rpc(token,'ai_studio_status',{});
