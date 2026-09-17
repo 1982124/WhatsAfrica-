@@ -25,7 +25,8 @@ jobs:
         run: |
           set -euo pipefail
           for route in '"/auth"' '"/smartlink"' '"/vitrine"' '"/presentation"' '"/inbox"' '"/groups"' '"/market"' '"/dashboard"' '"/services"' '"/analytics"' '"/calls"'; do grep -Fq "$route" vercel.json; done
-          grep -Fq '"/inbox","destination":"/inbox-redteam-shell-v1.html"' vercel.json
+          grep -Fq '"/inbox","destination":"/inbox-v25.html"' vercel.json
+          grep -Fq '"/studio-visuel-ia","destination":"/studio-visuel-ia.html"' vercel.json
       - name: Validate canonical messaging and AI studio chain
         shell: bash
         run: |
