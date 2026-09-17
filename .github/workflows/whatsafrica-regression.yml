@@ -27,7 +27,7 @@ jobs:
         run: '! grep -Fq "if(!result)return res.status(200).json(result)" api/assistant.js'
       - name: Validate canonical WASSAFRICA auth destination guard
         run: |
-          grep -Fq "redirectTo:location.origin+next" auth-v7.html
+          grep -Fq "redirectTo:location.origin+'/auth?next='" auth-v7.html
           grep -Fq "u.origin===location.origin" auth-v7.html
           grep -Fq "u.pathname+u.search+u.hash" auth-v7.html
           ! grep -Fq "auth-callback" auth-v7.html
