@@ -1,0 +1,6 @@
+/* WASSAFRICA — Modern Media Studio launcher UI. */
+(function(){'use strict';
+function boot(){const form=document.getElementById('composer');if(!form||document.getElementById('wa-modern-media-launcher'))return false;const bar=document.createElement('div');bar.id='wa-modern-media-launcher';bar.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 6px';const mk=(id,label,title,fn)=>{const b=document.createElement('button');b.id=id;b.type='button';b.textContent=label;b.title=title;b.style.cssText='border:1px solid #d6e0db;border-radius:10px;padding:9px 11px;background:#fff;font:800 14px system-ui,sans-serif;cursor:pointer';b.onclick=()=>{try{fn()}catch(e){console.error(e)}};return b};bar.append(mk('waModernPhoto','📷 Photo','Ouvrir l’appareil photo',()=>window.WA_MODERN_MEDIA?.photo()),mk('waModernVideo','🎥 Vidéo','Enregistrer une vidéo moderne',()=>window.WA_MODERN_MEDIA?.video()),mk('waModernAudio','🎙️ Audio','Enregistrer un message vocal',()=>window.WA_MODERN_MEDIA?.audio()));form.parentNode.insertBefore(bar,form);return true}
+function wait(){if(boot())return;setTimeout(wait,250)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wait,{once:true});else wait();
+})();
