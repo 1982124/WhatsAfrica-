@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [{"path": "/api/demand-report", "schedule": "0 10 * * *"}],
+  "crons": [{"path":"/api/demand-report","schedule":"0 10 * * *"}],
   "rewrites": [
     {"source":"/","destination":"/launch-shell.html"},
     {"source":"/auth","destination":"/auth-v8.html"},
@@ -26,6 +26,9 @@
     {"source":"/digital-market","destination":"/market-v4.html"},
     {"source":"/inbox","destination":"/inbox-v25.html"},
     {"source":"/messages","destination":"/inbox-v25.html"},
+    {"source":"/calls","destination":"/inbox-v25.html"},
+    {"source":"/call","destination":"/inbox-v25.html"},
+    {"source":"/appels","destination":"/inbox-v25.html"},
     {"source":"/message-invite","destination":"/message-invite.html"},
     {"source":"/groups","destination":"/groups-v5.html"},
     {"source":"/groups/:id","destination":"/community-v7.html"},
@@ -54,9 +57,6 @@
     {"source":"/group-manager","destination":"/group-manager.html"},
     {"source":"/invite","destination":"/invite.html"},
     {"source":"/share","destination":"/share-center.html"},
-    {"source":"/calls","destination":"/inbox-v25.html"},
-    {"source":"/call","destination":"/inbox-v25.html"},
-    {"source":"/appels","destination":"/inbox-v25.html"},
     {"source":"/crm","destination":"/crm.html"},
     {"source":"/live","destination":"/live-v3.html"},
     {"source":"/live/:id","destination":"/live.html"},
@@ -85,6 +85,6 @@
     {"source":"/(api|dashboard|cockpit|admin-commercial-controls|design-settings|smartlink|smartlink-ai|smartlink-pro|smartlink-theme|offer-create|admin|crm|calls|call|appels|inbox|messages|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|auth|forgot-password|reset-password|confirm-email|account-security|install|manifesto|message-invite)(.*)","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},
     {"source":"/profile","headers":[{"key":"X-Robots-Tag","value":"noindex, no-store, max-age=0"}]},
     {"source":"/(api|commande|s)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]},
-    {"source":"/(dashboard|cockpit|admin-commercial-controls|design-settings|smartlink|smartlink-ai|smartlink-pro|smartlink-theme|offer-create|admin|crm|calls|call|appels|inbox|messages|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|services|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security|install|manifesto|message-invite)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
+    {"source":"/(dashboard|cockpit|admin-commercial-controls|design-settings|smartlink|smartlink-ai|smartlink-pro|smartlink-theme|offer-create|admin|crm|calls|call|appels|inbox|messages|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|vitrine|digital-products|digital-market|services|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security|install|manifesto|message-invite)(.*)","headers":[{"key":"Cache-Control","value":"private, no-store, max-age=0"}]}
   ]
 }
