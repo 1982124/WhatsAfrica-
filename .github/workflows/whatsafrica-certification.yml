@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json inbox-redteam-shell-v1.html inbox-production-media.html wa-messaging-key-recovery-v1.js wa-messaging-finalizer-v1.js wa-wassafrica-studio-v1.js wa-media-healing-v1.js wa-media-consistency-v1.js wa-external-connect-v1.js smartlink-public-v7.html presentation.html; do test -f "$file"; done
+          for file in vercel.json inbox-v25.html inbox-production-media.html wa-messaging-key-recovery-v1.js wa-messaging-finalizer-v1.js wa-wassafrica-studio-v1.js wa-media-healing-v1.js wa-media-consistency-v1.js wa-external-connect-v1.js smartlink-public-v7.html presentation.html studio-visuel-ia.html api/ai-visual-studio.js; do test -f "$file"; done
       - name: Validate canonical routes
         shell: bash
         run: |
@@ -30,12 +30,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq '/wa-messaging-key-recovery-v1.js' inbox-redteam-shell-v1.html
-          grep -Fq '/wa-messaging-finalizer-v1.js' inbox-redteam-shell-v1.html
-          grep -Fq '/wa-wassafrica-studio-v1.js' inbox-redteam-shell-v1.html
-          grep -Fq '/wa-media-healing-v1.js' inbox-redteam-shell-v1.html
-          grep -Fq '/wa-external-connect-v1.js' inbox-redteam-shell-v1.html
-          grep -Fq 'WASSAFRICA — Messages' inbox-redteam-shell-v1.html
+          grep -Fq '/wa-messaging-key-recovery-v1.js' inbox-v25.html
+          grep -Fq '/wa-messaging-finalizer-v1.js' inbox-v25.html
+          grep -Fq '/wa-wassafrica-studio-v1.js' inbox-v25.html
+          grep -Fq '/wa-media-healing-v1.js' inbox-v25.html
+          grep -Fq '/wa-external-connect-v1.js' inbox-v25.html
+          grep -Fq 'WASSAFRICA' inbox-v25.html
+          grep -Fq 'Studio Visuel IA' studio-visuel-ia.html
+          node --check api/ai-visual-studio.js
       - name: Validate safe external launcher policy
         shell: bash
         run: |
@@ -91,7 +93,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in wa-messaging-finalizer-v1.js wa-messaging-key-recovery-v1.js wa-wassafrica-studio-v1.js wa-media-healing-v1.js wa-media-consistency-v1.js wa-external-connect-v1.js; do node --check "$file"; done
+          for file in wa-messaging-finalizer-v1.js wa-messaging-key-recovery-v1.js wa-wassafrica-studio-v1.js wa-media-healing-v1.js wa-media-consistency-v1.js wa-external-connect-v1.js api/ai-visual-studio.js; do node --check "$file"; done
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
@@ -104,7 +106,7 @@ jobs:
                   if tag=='script' and self.in_script: self.scripts.append(''.join(self.buf)); self.in_script=False
               def handle_data(self,data):
                   if self.in_script: self.buf.append(data)
-          for name in ['inbox-redteam-shell-v1.html','smartlink-public-v7.html','presentation.html']:
+          for name in ['inbox-v25.html','studio-visuel-ia.html','smartlink-public-v7.html','presentation.html']:
               p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
               for i,code in enumerate(p.scripts):
                   if not code.strip(): continue
