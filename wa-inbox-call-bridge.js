@@ -1,4 +1,5 @@
 /* WASSAFRICA — canonical messaging bridge. */
+/* CTO invariant: opening or selecting a conversation must hydrate the complete canonical UX without reload. */
 (function(){
 'use strict';
 var lastConversationId=null,callsReady=false,callDb=null,callUser=null,mediaLoaded=false,recoveryLoaded=false;
