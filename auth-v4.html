@@ -65,7 +65,7 @@ input{width:100%;height:50px;box-sizing:border-box;border:1px solid #d7d1c4;bord
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (()=>{'use strict';
-const URL='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',PROD='https://whatsafrica.vercel.app',db=supabase.createClient(URL,KEY),$=id=>document.getElementById(id);
+const URL='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',PROD='https://wassafrica.vercel.app',db=supabase.createClient(URL,KEY),$=id=>document.getElementById(id);
 let user=null,pendingPhone='';
 function origin(){return location.hostname==='localhost'||location.hostname==='127.0.0.1'?PROD:location.origin}
 function next(){const n=new URLSearchParams(location.search).get('next')||'/inbox';try{const u=new URL(n,origin());return u.origin===origin()&&u.pathname.startsWith('/')?u.pathname+u.search+u.hash:'/inbox'}catch{return'/inbox'}}
