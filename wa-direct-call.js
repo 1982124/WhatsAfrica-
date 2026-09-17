@@ -4,7 +4,7 @@ const URL='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhdu
 function client(){if(db)return db;db=window.supabase?.createClient?.(URL,KEY);return db}
 function nativePhone(v){const x=(v||'').trim().replace(/[\s().-]/g,'');return /^\+?[0-9]{7,15}$/.test(x)?x:null}
 function digits(v){const p=nativePhone(v);return p?p.replace(/\D/g,''):null}
-function whatsapp(v,text='Bonjour 👋 Je te contacte depuis WhatsAfrica. Rejoins WhatsAfrica gratuitement pour poursuivre la conversation de façon sécurisée : https://whatsafrica.vercel.app/auth'){const d=digits(v);if(!d)return null;return 'https://wa.me/'+d+'?text='+encodeURIComponent(text)}
+function whatsapp(v,text='Bonjour 👋 Je te contacte depuis WhatsAfrica. Rejoins WhatsAfrica gratuitement pour poursuivre la conversation de façon sécurisée : https://wassafrica.vercel.app/auth'){const d=digits(v);if(!d)return null;return 'https://wa.me/'+d+'?text='+encodeURIComponent(text)}
 function esc(v){return String(v||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function profileName(p){return p?.display_name||p?.full_name||p?.name||p?.username||p?.public_name||p?.phone||p?.public_phone||'Contact WhatsAfrica'}
 function profilePhone(p){return p?.public_phone||p?.phone||p?.phone_number||p?.whatsapp_phone||''}
