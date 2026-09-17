@@ -1,6 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [{"path":"/api/demand-report","schedule":"0 10 * * *"}],
+  "redirects": [
+    {"source":"/inbox","destination":"/messaging-final.html","permanent":false},
+    {"source":"/messages","destination":"/messaging-final.html","permanent":false},
+    {"source":"/calls","destination":"/messaging-final.html","permanent":false},
+    {"source":"/call","destination":"/messaging-final.html","permanent":false},
+    {"source":"/appels","destination":"/messaging-final.html","permanent":false}
+  ],
   "rewrites": [
     {"source":"/","destination":"/launch-shell.html"},
     {"source":"/auth","destination":"/auth-v8.html"},
@@ -24,11 +31,6 @@
     {"source":"/digital-products","destination":"/offer-create-free-v3.html?type=digital"},
     {"source":"/services","destination":"/offer-create-free-v3.html?type=service"},
     {"source":"/digital-market","destination":"/market-v4.html"},
-    {"source":"/inbox","destination":"/messaging-final.html"},
-    {"source":"/messages","destination":"/messaging-final.html"},
-    {"source":"/calls","destination":"/messaging-final.html"},
-    {"source":"/call","destination":"/messaging-final.html"},
-    {"source":"/appels","destination":"/messaging-final.html"},
     {"source":"/message-invite","destination":"/message-invite.html"},
     {"source":"/groups","destination":"/groups-v5.html"},
     {"source":"/groups/:id","destination":"/community-v7.html"},
