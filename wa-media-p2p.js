@@ -34,6 +34,7 @@ async function renderStored(id,node){const n=node||document.querySelector('[data
 function decorate(row,node){if(!row||!node||row.message_type==='text')return;node.dataset.mediaId=row.id;node.textContent='📎 '+(row.encryption_metadata?.file_name||row.message_type||'Fichier')+' · transfert local/P2P';renderStored(row.id,node).catch(e=>setStatus('Aperçu média : '+(e.message||e)))}
 function init(){controls();const s=sess();if(s){user=s.user;if(!pollTimer)pollTimer=setInterval(pollSignals,POLL)}}
 window.WA_MEDIA_P2P={init,setConversation,sendFile,decorate,saveToPhone,getConversationContext:()=>({conversationId:currentConversation,peerId:currentPeer,userId:user?.id})};
+document.addEventListener('wa:conversation-selected',e=>{const id=e?.detail?.conversationId;if(id)setConversation(id).catch(err=>console.warn('[WassAfrica] media conversation sync',err));});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 window.addEventListener('load',()=>controls());
 setTimeout(controls,500);
