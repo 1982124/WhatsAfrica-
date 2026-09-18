@@ -1,6 +1,7 @@
 begin;
 alter table public.ai_generations add column if not exists estimated_cost_usd numeric(12,6);
 alter table public.ai_generations add column if not exists cost_basis text;
+alter table public.ai_generations add column if not exists provider_usage jsonb;
 
 create or replace function public.admin_ai_economics(p_days integer default 30)
 returns jsonb
