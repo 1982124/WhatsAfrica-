@@ -84,7 +84,64 @@ function updateComposerState(){$('send').disabled=!(current&&$('body').value.tri
 async function send(e){e.preventDefault();const text=$('body').value.trim();if(!text||!current)return;$('send').disabled=true;try{const x=await ensureKey(current.id),id=crypto.randomUUID(),e2=await encryptText(current.id,id,text,x.key,x.version);const meta={v:2,alg:'AES-256-GCM',iv:e2.iv,conversation_id:current.id,message_id:id,key_version:x.version};if(replyTo)meta.reply_to_id=replyTo.id;await rest('messages_v2','',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id,conversation_id:current.id,sender_id:user.id,body:null,message_type:'text',encryption_version:1,ciphertext:e2.ciphertext,encryption_metadata:meta})});$('body').value='';clearReply();await loadMessages()}catch(e){console.error('[WassAfrica] send',e);$('subtitle').textContent='⚠️ Envoi impossible — réessayez';setTimeout(()=>{if(current)$('subtitle').textContent='● temps réel'},3500)}finally{updateComposerState();$('body').focus()}}
 async function openConv(c){current=c;window.__WA_CURRENT_CONVERSATION_ID=c.id;document.dispatchEvent(new CustomEvent('wa:conversation-selected',{detail:{conversationId:c.id}}));keyCache.clear();$('title').textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');$('subtitle').textContent='● temps réel';$('chatAvatar').textContent=(c.title||'W').trim().charAt(0).toUpperCase();clearReply();if(timer)clearInterval(timer);await loadMessages();updateComposerState();document.dispatchEvent(new CustomEvent('wa:conversation-ready',{detail:{conversationId:c.id}}));timer=setInterval(()=>loadMessages().catch(e=>console.warn('[WassAfrica] refresh',e)),3500)}
 async function boot(){try{await auth();$('app').hidden=false;$('gate').hidden=true;try{await ensureDevice()}catch(e){console.warn('[WassAfrica] device bootstrap deferred',e);device=null}try{await list();await find('')}catch(e){console.error('[WassAfrica] inbox directory bootstrap',e);$('list').innerHTML='<div class="empty">Impossible de charger l’annuaire. Réessayez.</div>'}document.dispatchEvent(new CustomEvent('wa:inbox-ready'))}catch(e){console.error('[WassAfrica] inbox auth bootstrap',e);$('gate').hidden=false;$('gate').innerHTML='<div style="font-weight:750;margin-bottom:6px">Connectez-vous pour accéder à vos messages.</div><a href="/auth?next=%2Fmessaging">Se connecter</a>'}}
-const waBtnStyle='border:1px solid #cfdcd5;border-radius:11px;padding:8px 10px;background:#fff;color:#18231d;font:800 12px system-ui,-apple-system,sans-serif;cursor:pointer';document.querySelectorAll('#waCanonicalMediaDock button,#waCanonicalCallDock button').forEach(b=>b.style.cssText=waBtnStyle);(function(){const file=$('waCanonicalFileInput'),voice=$('waVoiceBtn'),state=$('waVoiceState'),photo=$('waPhotoBtn'),video=$('waVideoBtn'),attach=$('waFileBtn'),sticker=$('waStickerBtn');function pick(accept){file.accept=accept;file.onchange=()=>{const f=file.files?.[0];file.value='';if(f)window.WA_MEDIA_P2P?.sendFile?.(f).catch(e=>state.textContent='⚠️ '+(e.message||'Envoi impossible'))};file.click()}photo.onclick=()=>pick('image/*');video.onclick=()=>pick('video/*');attach.onclick=()=>pick('image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip');sticker.onclick=async()=>{const choices=['❤️','👍','😂','🙏','🔥','🎉','😍','😮'],s=window.prompt('Choisir un sticker : '+choices.join(' '),'❤️');if(!s||!choices.includes(s.trim()))return;const blob=new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="100%" height="100%" rx="96" fill="white"/><text x="50%" y="58%" text-anchor="middle" font-size="300">'+s.trim()+'</text></svg>'],{type:'image/svg+xml'});try{await window.WA_MEDIA_P2P?.sendFile?.(new File([blob],'sticker-'+Date.now()+'.svg',{type:'image/svg+xml'}))}catch(e){state.textContent='⚠️ '+(e.message||'Sticker impossible')}};let rec=null,chunks=[];voice.onclick=async()=>{if(rec){rec.stop();return}try{if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw Error('Message vocal non pris en charge');const stream=await navigator.mediaDevices.getUserMedia({audio:true});rec=new MediaRecorder(stream);chunks=[];rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:rec.mimeType||'audio/webm'});rec=null;voice.textContent='🎙️ Message vocal';state.textContent='Envoi…';try{await window.WA_MEDIA_P2P?.sendFile?.(new File([blob],'message-vocal-'+Date.now()+'.webm',{type:blob.type}));state.textContent='Message vocal envoyé';setTimeout(()=>state.textContent='',2500)}catch(e){state.textContent='⚠️ '+(e.message||'Envoi impossible')}};rec.start();voice.textContent='⏹️ Arrêter';state.textContent='🔴 Enregistrement…'}catch(e){state.textContent='⚠️ '+(e.message||'Microphone indisponible')}};})();document.querySelectorAll('#directoryScope [data-scope]').forEach(b=>b.addEventListener('click',async()=>{directoryScope=b.dataset.scope;document.querySelectorAll('#directoryScope [data-scope]').forEach(x=>{const on=x.dataset.scope===directoryScope;x.style.background=on?'#173d2d':'#fff';x.style.color=on?'#fff':'#18231d'});$('directoryHint').textContent=directoryScope==='global'?'Tout WassAfrica : membres authentifiés, entreprises et profils publics.':(directoryScope==='subscribers'?'Mes abonnés : membres WassAfrica authentifiés.':'Mon réseau : personnes de vos conversations, groupes et communautés.');try{await find($('target').value.trim())}catch(e){console.error('[WassAfrica] directory scope',e);$('list').innerHTML='<div class="empty">Annuaire indisponible. Réessayez.</div>'}}));$('start').onclick=start;$('target').addEventListener('input',()=>{clearTimeout(searchTimer);updateComposerState();if(!$('target').value.trim())find('').catch(e=>console.error('[WassAfrica] directory',e))});$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});$('body').addEventListener('input',updateComposerState);$('chatSearch').addEventListener('input',()=>loadMessages().catch(()=>{}));$('composer').addEventListener('submit',send);$('clearReply').onclick=clearReply;$('closeForward').onclick=()=>$('forwardModal').classList.remove('show');$('forwardModal').addEventListener('click',e=>{if(e.target.id==='forwardModal')$('forwardModal').classList.remove('show')});boot();
+const waBtnStyle='border:1px solid #cfdcd5;border-radius:11px;padding:8px 10px;background:#fff;color:#18231d;font:800 12px system-ui,-apple-system,sans-serif;cursor:pointer';document.querySelectorAll('#waCanonicalMediaDock button,#waCanonicalCallDock button').forEach(b=>b.style.cssText=waBtnStyle);
+(function(){
+  const file=$('waCanonicalFileInput'),voice=$('waVoiceBtn'),state=$('waVoiceState'),photo=$('waPhotoBtn'),video=$('waVideoBtn'),attach=$('waFileBtn'),sticker=$('waStickerBtn');
+  let rec=null,stream=null,chunks=[],startedAt=0,timerId=null,cancelled=false;
+  const setState=t=>{if(state)state.textContent=t||''};
+  const elapsed=()=>{const s=Math.floor((Date.now()-startedAt)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+  function stopTimer(){if(timerId){clearInterval(timerId);timerId=null}}
+  function resetRecorder(){stopTimer();if(stream){stream.getTracks().forEach(t=>{try{t.stop()}catch{}});stream=null}rec=null;chunks=[];startedAt=0;cancelled=false;voice.textContent='🎙️ Message vocal'}
+  function pick(accept){file.accept=accept;file.onchange=()=>{const f=file.files?.[0];file.value='';if(!f)return;if(!window.WA_MEDIA_P2P?.sendFile){setState('⚠️ Média indisponible');return}window.WA_MEDIA_P2P.sendFile(f).then(()=>setState('Envoi du média…')).catch(e=>setState('⚠️ '+(e.message||'Envoi impossible')))};file.click()}
+  photo.onclick=()=>pick('image/*');
+  video.onclick=()=>pick('video/*');
+  attach.onclick=()=>pick('image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip');
+  sticker.onclick=async()=>{const choices=['❤️','👍','😂','🙏','🔥','🎉','😍','😮'],s=window.prompt('Choisir un sticker : '+choices.join(' '),'❤️');if(!s||!choices.includes(s.trim()))return;const blob=new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="100%" height="100%" rx="96" fill="white"/><text x="50%" y="58%" text-anchor="middle" font-size="300">'+s.trim()+'</text></svg>'],{type:'image/svg+xml'});try{if(!window.WA_MEDIA_P2P?.sendFile)throw Error('Média indisponible');await window.WA_MEDIA_P2P.sendFile(new File([blob],'sticker-'+Date.now()+'.svg',{type:'image/svg+xml'}));setState('Sticker en cours d’envoi…')}catch(e){setState('⚠️ '+(e.message||'Sticker impossible'))}};
+  function mimeType(){const supported=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg','audio/mp4'];return supported.find(x=>window.MediaRecorder?.isTypeSupported?.(x))||''}
+  async function startVoice(){
+    if(!current||!window.WA_MEDIA_P2P?.sendFile){setState('⚠️ Ouvre une conversation avant d’enregistrer');return}
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){setState('⚠️ Enregistrement vocal non pris en charge');return}
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      const mime=mimeType();
+      rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+      chunks=[];cancelled=false;startedAt=Date.now();
+      rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+      rec.onerror=e=>{console.error('[WassAfrica] voice recorder',e.error||e);setState('⚠️ Erreur d’enregistrement');resetRecorder()};
+      rec.onstop=async()=>{
+        const r=rec, st=stream, wasCancelled=cancelled;
+        stopTimer();
+        if(st)st.getTracks().forEach(t=>{try{t.stop()}catch{}});
+        rec=null;stream=null;voice.textContent='🎙️ Message vocal';
+        if(wasCancelled){chunks=[];setState('Enregistrement annulé');setTimeout(()=>setState(''),1800);return}
+        const type=r?.mimeType||mime||'audio/webm';
+        const blob=new Blob(chunks,{type});
+        chunks=[];
+        if(!blob.size){setState('⚠️ Enregistrement vide');setTimeout(()=>setState(''),2200);return}
+        try{
+          setState('⏳ Envoi du message vocal…');
+          await window.WA_MEDIA_P2P.sendFile(new File([blob],'message-vocal-'+Date.now()+'.'+(type.includes('ogg')?'ogg':type.includes('mp4')?'m4a':'webm'),{type}));
+          setState('🎙️ Message vocal prêt à être transmis');
+          setTimeout(()=>setState(''),3000);
+        }catch(e){setState('⚠️ '+(e.message||'Envoi impossible'));setTimeout(()=>setState(''),3500)}
+      };
+      rec.start(250);
+      voice.textContent='⏹️ Arrêter · 00:00';
+      setState='🔴 Enregistrement…';
+      if(state)state.textContent='🔴 Enregistrement… 00:00';
+      timerId=setInterval(()=>{if(rec&&state)state.textContent='🔴 Enregistrement… '+elapsed();if(rec)voice.textContent='⏹️ Arrêter · '+elapsed()},250);
+    }catch(e){
+      console.error('[WassAfrica] microphone',e);
+      if(e?.name==='NotAllowedError'||e?.name==='PermissionDeniedError')setState('⚠️ Microphone refusé — autorisez-le pour WassAfrica');
+      else if(e?.name==='NotFoundError')setState('⚠️ Aucun microphone détecté');
+      else setState('⚠️ '+(e.message||'Microphone indisponible'));
+      resetRecorder();
+    }
+  }
+  voice.onclick=()=>{if(rec){rec.stop();return}startVoice()};
+  window.addEventListener('beforeunload',()=>{try{rec?.stop()}catch{}try{stream?.getTracks().forEach(t=>t.stop())}catch{}});
+})();
+document.querySelectorAll('#directoryScope [data-scope]').forEach(b=>b.addEventListener('click',async()=>{directoryScope=b.dataset.scope;document.querySelectorAll('#directoryScope [data-scope]').forEach(x=>{const on=x.dataset.scope===directoryScope;x.style.background=on?'#173d2d':'#fff';x.style.color=on?'#fff':'#18231d'});$('directoryHint').textContent=directoryScope==='global'?'Tout WassAfrica : membres authentifiés, entreprises et profils publics.':(directoryScope==='subscribers'?'Mes abonnés : membres WassAfrica authentifiés.':'Mon réseau : personnes de vos conversations, groupes et communautés.');try{await find($('target').value.trim())}catch(e){console.error('[WassAfrica] directory scope',e);$('list').innerHTML='<div class="empty">Annuaire indisponible. Réessayez.</div>'}}));$('start').onclick=start;$('target').addEventListener('input',()=>{clearTimeout(searchTimer);updateComposerState();if(!$('target').value.trim())find('').catch(e=>console.error('[WassAfrica] directory',e))});$('target').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();start()}});$('body').addEventListener('input',updateComposerState);$('chatSearch').addEventListener('input',()=>loadMessages().catch(()=>{}));$('composer').addEventListener('submit',send);$('clearReply').onclick=clearReply;$('closeForward').onclick=()=>$('forwardModal').classList.remove('show');$('forwardModal').addEventListener('click',e=>{if(e.target.id==='forwardModal')$('forwardModal').classList.remove('show')});boot();
 })();
 </script>
 </body>
