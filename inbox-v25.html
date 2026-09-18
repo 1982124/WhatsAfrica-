@@ -127,7 +127,6 @@ const waBtnStyle='border:1px solid #cfdcd5;border-radius:11px;padding:8px 10px;b
       };
       rec.start(250);
       voice.textContent='⏹️ Arrêter · 00:00';
-      setState='🔴 Enregistrement…';
       if(state)state.textContent='🔴 Enregistrement… 00:00';
       timerId=setInterval(()=>{if(rec&&state)state.textContent='🔴 Enregistrement… '+elapsed();if(rec)voice.textContent='⏹️ Arrêter · '+elapsed()},250);
     }catch(e){
