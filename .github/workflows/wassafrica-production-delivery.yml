@@ -23,6 +23,19 @@ jobs:
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@48.10.2
 
+      - name: Static JavaScript and media integrity gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t jsfiles < <(find . -type f -name '*.js' -not -path './node_modules/*' -not -path './.git/*' | sort)
+          test "${jsfiles[@]}" != "" || { echo "No JavaScript files found"; exit 1; }
+          for f in "${jsfiles[@]}"; do node --check "$f"; done
+          grep -Fq "window.WA_MODERN_MEDIA={open,close,photo:()=>open('photo'),video:()=>open('video'),audio:()=>open('audio')}" wa-modern-media.js
+          ! grep -Fq ",250)}" wa-modern-media.js
+          grep -Fq "photo.onclick=()=>openStudio('photo')" inbox-v25.html
+          grep -Fq "video.onclick=()=>openStudio('video')" inbox-v25.html
+          grep -Fq "stun:stun.l.google.com:19302" wa-media-p2p.js
+
       - name: Require deployment credentials
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
