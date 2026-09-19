@@ -10,6 +10,5 @@ Disallow: /messaging
 Disallow: /inbox
 Disallow: /profile
 Disallow: /analytics
-Disallow: /smartlink
 Disallow: /offer-create
 Sitemap: https://wassafrica.vercel.app/sitemap.xml
