@@ -94,8 +94,7 @@ function start(){
   addStyle();
   if(timer)clearInterval(timer);
   timer=setInterval(()=>sync(),8000);
-  new MutationObserver(()=>{if(document.getElementById('msgs')||document.getElementById('composer'))sync()})
-    .observe(document.body,{subtree:true,childList:true});
+  // No global MutationObserver: receipt updates and message renders must not trigger sync loops.
   document.addEventListener('wa:conversation-selected',e=>{lastConv=e.detail?.conversationId||lastConv;lastReadSignature='';setTimeout(sync,250)});
   document.addEventListener('wa:conversation-ready',e=>{lastConv=e.detail?.conversationId||lastConv;lastReadSignature='';setTimeout(sync,250)});
   document.addEventListener('wa:inbox-ready',()=>setTimeout(sync,500));
