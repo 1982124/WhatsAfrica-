@@ -51,6 +51,12 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
     </div>
     <div id="passwordHint" class="hint hidden">8 caractères minimum. Utilisez une phrase de passe unique et difficile à deviner.</div>
 
+    <div id="statusPhotoWrap" class="hidden">
+      <label for="statusPhoto">Photo de statut <span style="font-weight:500;color:var(--muted)">(facultative · 24 h)</span></label>
+      <input id="statusPhoto" class="field" type="file" accept="image/jpeg,image/png,image/webp,image/gif" autocomplete="off">
+      <div class="hint">Ajoutez une photo qui pourra être publiée comme statut WASSAFRICA pendant 24 h. 8 Mo maximum.</div>
+    </div>
+
     <div id="confirmWrap" class="hidden">
       <label for="confirmPassword">Confirmer le mot de passe</label>
       <div class="password-row">
@@ -102,6 +108,7 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
     $('signupTab').classList.toggle('active',signup);
     $('nameFields').classList.toggle('hidden',!signup);
     $('confirmWrap').classList.toggle('hidden',!signup);
+    $('statusPhotoWrap').classList.toggle('hidden',!signup);
     $('passwordHint').classList.toggle('hidden',!signup);
     $('loginLinks').classList.toggle('hidden',signup);
     $('title').textContent=signup?'Créez votre compte WASSAFRICA.':'Connectez-vous à votre compte.';
@@ -128,12 +135,43 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
     }
   }catch{}
 
+  async function publishPendingStatus(session){
+    const file=$('statusPhoto')?.files?.[0];
+    if(!session?.user || !file)return;
+    if(!/^image\/(jpeg|png|webp|gif)$/.test(file.type))throw new Error('Format de photo non pris en charge.');
+    if(file.size>8*1024*1024)throw new Error('La photo doit faire 8 Mo maximum.');
+    const statusId=crypto.randomUUID();
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+    const path=session.user.id+'/'+statusId+'/'+crypto.randomUUID()+'.'+ext;
+    const {error:statusError}=await db.from('statuses').insert({
+      id:statusId,owner_id:session.user.id,media_type:'image',visibility:'public'
+    });
+    if(statusError)throw statusError;
+    const {error:uploadError}=await db.storage.from('status-media').upload(path,file,{contentType:file.type,upsert:false});
+    if(uploadError){
+      await db.from('statuses').delete().eq('id',statusId).eq('owner_id',session.user.id);
+      throw uploadError;
+    }
+    const publicUrl=db.storage.from('status-media').getPublicUrl(path).data.publicUrl;
+    const {error:mediaError}=await db.from('status_media').insert({
+      status_id:statusId,media_url:publicUrl,media_type:'image',mime_type:file.type,sort_order:0
+    });
+    if(mediaError)throw mediaError;
+    const {error:updateError}=await db.from('statuses').update({image_url:publicUrl}).eq('id',statusId).eq('owner_id',session.user.id);
+    if(updateError)throw updateError;
+    $('statusPhoto').value='';
+  }
+
   const existing=await db.auth.getSession();
-  if(existing.data?.session){go();return}
+  if(existing.data?.session){
+    try{await publishPendingStatus(existing.data.session)}catch(e){console.warn('status photo publish failed',e)}
+    go();return
+  }
 
   db.auth.onAuthStateChange((event,session)=>{
     if(session && (event==='SIGNED_IN'||event==='INITIAL_SESSION'||event==='TOKEN_REFRESHED')){
-      setTimeout(go,80);
+      publishPendingStatus(session).catch(e=>console.warn('status photo publish failed',e));
+      setTimeout(go,120);
     }
   });
 
@@ -148,6 +186,9 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
       if(mode==='signup'){
         const p2=$('confirmPassword').value;
         if(password!==p2){status('Les deux mots de passe ne correspondent pas.');return}
+        const photo=$('statusPhoto').files?.[0];
+        if(photo && photo.size>8*1024*1024){status('La photo doit faire 8 Mo maximum.');return}
+        if(photo && !/^image\/(jpeg|png|webp|gif)$/.test(photo.type)){status('Utilisez une image JPG, PNG, WebP ou GIF.');return}
         const first=$('firstName').value.trim(), last=$('lastName').value.trim();
         const full=[first,last].filter(Boolean).join(' ')||email.split('@')[0];
         status('Création sécurisée de votre compte…',true);
@@ -160,8 +201,12 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
           }
         });
         if(r.error)throw r.error;
-        if(r.data?.session){window.WA_COMMERCE?.track('signup_completed',{entity_type:'identity',metadata:{method:'email'}});go();return}
-        status('Compte créé. Vérifiez votre e-mail pour confirmer votre adresse, puis connectez-vous.',true);
+        if(r.data?.session){
+          try{await publishPendingStatus(r.data.session)}catch(e){console.warn('status photo publish failed',e)}
+          window.WA_COMMERCE?.track('signup_completed',{entity_type:'identity',metadata:{method:'email'}});
+          go();return
+        }
+        status('Compte créé. Vérifiez votre e-mail pour confirmer votre adresse. Votre photo de statut sera publiée après confirmation.',true);
         setMode('login');
         $('email').value=email;
         $('password').value='';
