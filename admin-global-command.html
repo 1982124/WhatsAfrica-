@@ -3,7 +3,7 @@ async function getAdminSession(){const x=await window.WA_ADMIN_SSO.requireAdmin(
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
 async function run(){try{$('run').disabled=true;$('result').textContent='Vérification de la session administrateur…';const s=await getAdminSession();if(!s)return;const world=$('world').checked,c=csv($('countries').value),z=csv($('zones').value),pr=csv($('products').value),hours=$('hours').value;$('result').textContent='Analyse WassAfrica interne + recherche web externe en cours…';
 const p=new URLSearchParams({hours});if(!world&&c.length)p.set('countries',c.join(','));if(z.length)p.set('zones',z.join(','));if(pr.length)p.set('products',pr.join(','));
-const [ir,wr]=await Promise.all([fetch('/api/demand-report?'+p,{headers:{Authorization:'Bearer '+s.access_token},cache:'no-store'}),fetch('/api/demand-web-search?'+p,{headers:{Authorization:'Bearer '+s.access_token},cache:'no-store'})]);
+const [ir,wr]=await Promise.all([fetch('/api/demand-report?'+p,{headers:{Authorization:'Bearer '+s.access_token},cache:'no-store'}),fetch('/api/demand-report?'+p.toString()+'&web=1',{headers:{Authorization:'Bearer '+s.access_token},cache:'no-store'})]);
 const d=await ir.json().catch(()=>({})),w=await wr.json().catch(()=>({}));
 if(ir.status===401||wr.status===401){$('result').innerHTML='<span class="err">🔐 Session refusée. Reconnectez-vous au cockpit puis relancez l’analyse.</span>';return}
 if(ir.status===403||wr.status===403){$('result').innerHTML='<span class="err">⛔ Compte authentifié mais non autorisé comme administrateur plateforme.</span>';return}
