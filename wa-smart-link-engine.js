@@ -44,6 +44,7 @@ function boot(){
  const lang=getLang();window.WA_SMART_LINK={language:lang,languages:LANGS,labels:LABELS[lang]||LABELS.fr,track};
  const u=new URL(location.href),id=u.searchParams.get('smart_link_id')||u.searchParams.get('sl');
  if(id)track('smart_link_opened',{smart_link_id:id});
+ resolveSmartLinkId().then(resolved=>{bootReady=true;if(resolved)track('smart_link_opened',{smart_link_id:resolved});while(pending.length){const [ev,ex]=pending.shift();track(ev,ex)}}).catch(()=>{bootReady=true});
  document.documentElement.dataset.waLanguage=lang;
  document.addEventListener('click',e=>{
   const el=e.target?.closest?.('[data-wa-smart-event]');
