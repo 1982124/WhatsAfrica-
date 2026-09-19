@@ -7,7 +7,7 @@ const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
 const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 const SID='wa-smart-link-session-v1';
 const LANGS=['fr','en','yo','bm'];
-const LABELS={fr:{open:'Découvrir',contact:'Contacter',share:'Partager'},en:{open:'Discover',contact:'Contact',share:'Share'},yo:{open:'Ṣàwárí',contact:'Kàn sí',share:'Pín},bm:{open:'Jɛlen',contact:'Aw ye kuma',share:'Wele'}};
+const LABELS={fr:{open:'Découvrir',contact:'Contacter',share:'Partager'},en:{open:'Discover',contact:'Contact',share:'Share'},yo:{open:'Ṣàwárí',contact:'Kàn sí',share:'Pín'},bm:{open:'Jɛlen',contact:'Aw ye kuma',share:'Wele'}}};
 function getLang(){
  const raw=(navigator.languages||[navigator.language||'fr']).map(x=>String(x).toLowerCase().split('-')[0]);
  const stored=localStorage.getItem('wa-language');
