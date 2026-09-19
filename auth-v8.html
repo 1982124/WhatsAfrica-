@@ -1,1 +1,205 @@
-<!doctype html><html lang="fr"><head><script src="/i18n.js" defer></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WASSAFRICA — Connexion</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>body{margin:0;background:#071b16;color:#f5f7f3;font:15px system-ui;min-height:100vh;display:grid;place-items:center}.card{width:min(460px,calc(100% - 32px));background:#f7f1df;color:#17211d;border-radius:24px;padding:28px}.btn{width:100%;height:52px;border:0;border-radius:13px;margin-top:12px;font-weight:900;cursor:pointer}.primary{background:#21784c;color:#fff}.secondary{background:#fff;border:1px solid #d7d1c4;color:#24312b}.muted{color:#65716b;line-height:1.5}</style></head><body><main class="card"><strong style="font-size:23px">WASSAFRICA</strong><p style="color:#d49a2c;font-weight:900;letter-spacing:2px">ACCÈS</p><h1>Reprenez exactement votre parcours.</h1><p class="muted">La destination demandée est conservée pendant toute la connexion.</p><button id="google" class="btn primary">🌐 Continuer avec Google</button><button id="back" class="btn secondary">← Retour</button><p id="status" class="muted"></p></main><script>(async()=>{const URL='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',K='wa-auth-next-v2',db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}}),q=new URLSearchParams(location.search);let next=q.get('next')||'/';try{const u=new URL(next,location.origin);next=u.origin===location.origin&&u.pathname!=='/auth'?u.pathname+u.search+u.hash:'/'}catch{next='/'}try{sessionStorage.setItem(K,next)}catch{}const status=t=>document.getElementById('status').textContent=t;const go=()=>{let d=next;try{const s=sessionStorage.getItem(K);if(s)d=s}catch{}location.replace(d||'/')};const s=await db.auth.getSession();if(s.data?.session){go();return}db.auth.onAuthStateChange((event,session)=>{if(session&&(event==='SIGNED_IN'||event==='INITIAL_SESSION'||event==='TOKEN_REFRESHED'))setTimeout(go,50)});document.getElementById('google').onclick=async()=>{document.getElementById('google').disabled=true;status('Ouverture de Google…');const r=await db.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/auth?next='+encodeURIComponent(next),queryParams:{prompt:'select_account'}}});if(r.error){status(r.error.message);document.getElementById('google').disabled=false}};document.getElementById('back').onclick=go})().catch(e=>document.getElementById('status').textContent=e.message||'Connexion impossible')</script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071b16">
+<title>WASSAFRICA — Inscription / Connexion</title>
+<script src="/i18n.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#071b16;--panel:#f7f1df;--text:#17211d;--muted:#65716b;--primary:#21784c;--gold:#d49a2c;--line:#d7d1c4;--danger:#b42318}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 10%,#21784c22,transparent 38%),var(--bg);color:#f5f7f3;font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh;display:grid;place-items:center;padding:16px}
+.card{width:min(500px,100%);background:var(--panel);color:var(--text);border-radius:24px;padding:26px;box-shadow:0 24px 70px #0008}
+.brand{font-size:23px;font-weight:950}.eyebrow{color:var(--gold);font-weight:900;letter-spacing:2px;margin:14px 0 6px}
+h1{font-size:30px;line-height:1.1;margin:0 0 8px}.muted{color:var(--muted);line-height:1.5}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:20px 0 8px}.tab{border:1px solid var(--line);background:#fffdf8;color:var(--text);border-radius:11px;padding:11px;font-weight:900;cursor:pointer}.tab.active{background:#173f2c;color:#fff;border-color:#173f2c}
+label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;background:#fffdf8;color:var(--text);outline:none}.field:focus{border-color:var(--primary);box-shadow:0 0 0 3px #21784c22}
+.password-row{position:relative}.password-row .field{padding-right:82px}.show{position:absolute;right:8px;top:7px;border:0;background:transparent;color:var(--primary);font-weight:800;padding:7px;cursor:pointer}
+.btn{width:100%;height:50px;border:0;border-radius:12px;margin-top:14px;font-weight:900;cursor:pointer}.primary{background:var(--primary);color:#fff}.google{background:#fffdf8;border:1px solid var(--line);color:var(--text)}.secondary{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn:disabled{opacity:.55;cursor:not-allowed}.links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px}.link{color:var(--primary);font-weight:800;text-decoration:none}.divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:18px 0}.divider:before,.divider:after{content:"";height:1px;background:var(--line);flex:1}
+.status{min-height:24px;margin-top:14px}.ok{color:#167a4a}.err{color:var(--danger)}.hint{font-size:12px;color:var(--muted);margin-top:6px}.hidden{display:none!important}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">WASSAFRICA</div>
+  <div class="eyebrow">ACCÈS SÉCURISÉ</div>
+  <h1 id="title">Connectez-vous à votre compte.</h1>
+  <p id="subtitle" class="muted">E-mail + mot de passe ou Google. Votre destination est conservée pendant la connexion.</p>
+
+  <div class="tabs" role="tablist">
+    <button id="loginTab" class="tab active" type="button">Connexion</button>
+    <button id="signupTab" class="tab" type="button">Créer un compte</button>
+  </div>
+
+  <form id="form" novalidate>
+    <div id="nameFields" class="hidden">
+      <label for="firstName">Prénom</label>
+      <input id="firstName" class="field" autocomplete="given-name" maxlength="80">
+      <label for="lastName">Nom</label>
+      <input id="lastName" class="field" autocomplete="family-name" maxlength="80">
+    </div>
+
+    <label for="email">E-mail</label>
+    <input id="email" class="field" type="email" inputmode="email" autocomplete="email" maxlength="254" required placeholder="vous@exemple.com">
+
+    <label for="password">Mot de passe</label>
+    <div class="password-row">
+      <input id="password" class="field" type="password" autocomplete="current-password" minlength="8" required>
+      <button id="showPassword" class="show" type="button">Afficher</button>
+    </div>
+    <div id="passwordHint" class="hint hidden">8 caractères minimum. Utilisez une phrase de passe unique et difficile à deviner.</div>
+
+    <div id="confirmWrap" class="hidden">
+      <label for="confirmPassword">Confirmer le mot de passe</label>
+      <div class="password-row">
+        <input id="confirmPassword" class="field" type="password" autocomplete="new-password" minlength="8">
+        <button id="showConfirm" class="show" type="button">Afficher</button>
+      </div>
+    </div>
+
+    <button id="submit" class="btn primary" type="submit">Se connecter</button>
+  </form>
+
+  <div class="divider">ou</div>
+  <button id="google" class="btn google" type="button">🌐 Continuer avec Google</button>
+
+  <div id="loginLinks" class="links">
+    <a class="link" id="forgot" href="/forgot-password">Mot de passe oublié ?</a>
+  </div>
+
+  <button id="back" class="btn secondary" type="button">← Retour</button>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+</main>
+
+<script>
+(async()=>{
+  const SUPABASE_URL='https://dzifpwqrqnvssfhwjccj.supabase.co';
+  const SUPABASE_KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+  const AUTH_NEXT_KEY='wa-auth-next-v3';
+  const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}
+  });
+  const $=id=>document.getElementById(id);
+  const q=new URLSearchParams(location.search);
+  let next='/';
+  try{
+    const explicit=q.get('next')||'';
+    const u=new URL(explicit||'/',location.origin);
+    next=u.origin===location.origin && u.pathname!=='/auth' && u.pathname.startsWith('/') ? u.pathname+u.search+u.hash : '/';
+  }catch{next='/'}
+  try{sessionStorage.setItem(AUTH_NEXT_KEY,next)}catch{}
+
+  let mode='login';
+  const status=(text,ok=false)=>{$('status').textContent=text;$('status').className='status '+(ok?'ok':'err')};
+  const go=()=>{let d=next;try{d=sessionStorage.getItem(AUTH_NEXT_KEY)||next}catch{}location.replace(d||'/')};
+
+  function setMode(value){
+    mode=value;
+    const signup=value==='signup';
+    $('loginTab').classList.toggle('active',!signup);
+    $('signupTab').classList.toggle('active',signup);
+    $('nameFields').classList.toggle('hidden',!signup);
+    $('confirmWrap').classList.toggle('hidden',!signup);
+    $('passwordHint').classList.toggle('hidden',!signup);
+    $('loginLinks').classList.toggle('hidden',signup);
+    $('title').textContent=signup?'Créez votre compte WASSAFRICA.':'Connectez-vous à votre compte.';
+    $('subtitle').textContent=signup?'Inscription gratuite par e-mail ou avec Google.':'E-mail + mot de passe ou Google. Votre destination est conservée pendant la connexion.';
+    $('password').autocomplete=signup?'new-password':'current-password';
+    $('submit').textContent=signup?'Créer mon compte':'Se connecter';
+    status('');
+  }
+
+  function togglePassword(inputId,buttonId){
+    const input=$(inputId), button=$(buttonId);
+    button.onclick=()=>{const visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'Afficher':'Masquer'};
+  }
+  togglePassword('password','showPassword');
+  togglePassword('confirmPassword','showConfirm');
+  $('loginTab').onclick=()=>setMode('login');
+  $('signupTab').onclick=()=>setMode('signup');
+
+  try{
+    const legacy=localStorage.getItem('whatsafrica-auth');
+    if(!legacy){
+      const old=localStorage.getItem('sb-dzifpwqrqnvssfhwjccj-auth-token');
+      if(old)localStorage.setItem('whatsafrica-auth',old);
+    }
+  }catch{}
+
+  const existing=await db.auth.getSession();
+  if(existing.data?.session){go();return}
+
+  db.auth.onAuthStateChange((event,session)=>{
+    if(session && (event==='SIGNED_IN'||event==='INITIAL_SESSION'||event==='TOKEN_REFRESHED')){
+      setTimeout(go,80);
+    }
+  });
+
+  $('form').onsubmit=async e=>{
+    e.preventDefault();
+    const email=$('email').value.trim().toLowerCase();
+    const password=$('password').value;
+    if(!email)return status('Saisissez votre e-mail.');
+    if(password.length<8)return status('Le mot de passe doit contenir au moins 8 caractères.');
+    $('submit').disabled=true;
+    try{
+      if(mode==='signup'){
+        const p2=$('confirmPassword').value;
+        if(password!==p2){status('Les deux mots de passe ne correspondent pas.');return}
+        const first=$('firstName').value.trim(), last=$('lastName').value.trim();
+        const full=[first,last].filter(Boolean).join(' ')||email.split('@')[0];
+        status('Création sécurisée de votre compte…',true);
+        const r=await db.auth.signUp({
+          email,password,
+          options:{
+            data:{first_name:first||null,last_name:last||null,full_name:full},
+            emailRedirectTo:location.origin+'/confirm-email?next='+encodeURIComponent(next)
+          }
+        });
+        if(r.error)throw r.error;
+        if(r.data?.session){go();return}
+        status('Compte créé. Vérifiez votre e-mail pour confirmer votre adresse, puis connectez-vous.',true);
+        setMode('login');
+        $('email').value=email;
+        $('password').value='';
+        $('password').focus();
+      }else{
+        status('Connexion…',true);
+        const r=await db.auth.signInWithPassword({email,password});
+        if(r.error)throw r.error;
+        go();
+      }
+    }catch(err){
+      const message=String(err?.message||'Connexion impossible.');
+      if(/email.*not.*confirmed/i.test(message))status('Votre e-mail n’est pas encore confirmé. Vérifiez votre boîte de réception.');
+      else if(/invalid.*credential|invalid login/i.test(message))status('E-mail ou mot de passe incorrect.');
+      else status(message);
+    }finally{$('submit').disabled=false}
+  };
+
+  $('google').onclick=async()=>{
+    $('google').disabled=true;
+    status('Ouverture de Google…',true);
+    try{
+      const r=await db.auth.signInWithOAuth({
+        provider:'google',
+        options:{redirectTo:location.origin+'/auth?next='+encodeURIComponent(next),queryParams:{prompt:'select_account'}}
+      });
+      if(r.error)throw r.error;
+      if(r.data?.url)location.assign(r.data.url);
+    }catch(err){
+      status(err?.message||'Connexion Google impossible.');
+      $('google').disabled=false;
+    }
+  };
+
+  $('forgot').href='/forgot-password?next='+encodeURIComponent(next);
+  $('back').onclick=go;
+  setMode('login');
+  $('email').focus();
+})().catch(e=>{const el=document.getElementById('status');if(el)el.textContent=e?.message||'Service d’authentification indisponible.'});
+</script>
+</body>
+</html>
