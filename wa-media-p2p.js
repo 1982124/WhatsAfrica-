@@ -28,7 +28,7 @@ async function localGet(id){const d=await localDb();return new Promise((ok,no)=>
 async function encryptChunk(key,id,index,plain){const iv=crypto.getRandomValues(new Uint8Array(12)),k=await crypto.subtle.importKey('raw',key,{name:'AES-GCM'},false,['encrypt']),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:enc.encode('wassafrica:media:v2:'+id+':'+index)},k,plain);const out=new Uint8Array(4+12+ct.byteLength);new DataView(out.buffer).setUint32(0,index);out.set(iv,4);out.set(new Uint8Array(ct),16);return out}
 async function decryptChunk(key,id,frame){const a=new Uint8Array(frame),index=new DataView(a.buffer,a.byteOffset,4).getUint32(0),iv=a.slice(4,16),ct=a.slice(16),k=await crypto.subtle.importKey('raw',key,{name:'AES-GCM'},false,['decrypt']),plain=await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:enc.encode('wassafrica:media:v2:'+id+':'+index)},k,ct);return{index,plain:new Uint8Array(plain)}}
 
-async function loadTurn(){if(turnConfig!==null)return turnConfig;turnConfig=[];try{const r=await fetch('/api/media-turn',{cache:'no-store'});if(r.ok){const d=await r.json();if(Array.isArray(d?.iceServers))turnConfig=d.iceServers}}catch{}return turnConfig}
+async function loadTurn(){if(turnConfig!==null)return turnConfig;turnConfig=Array.isArray(window.WA_TURN_CONFIG)?window.WA_TURN_CONFIG.slice():[];return turnConfig}
 async function iceServers(){const s=[{urls:['stun:stun.l.google.com:19302']}];for(const x of await loadTurn())if(x?.urls)s.push(x);return s}
 
 function relayPath(id){return currentConversation+'/relay/'+user.id+'/'+id+'.bin'}
