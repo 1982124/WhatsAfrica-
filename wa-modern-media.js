@@ -23,5 +23,5 @@ function close(){const recorder=rec;try{if(recorder&&recorder.state!=='inactive'
 // UI mounting is intentionally owned by the canonical inbox bridge (wa-inbox-call-bridge.js).
 // This module provides the media studio only; it must never mount a second composer toolbar.
 window.WA_MODERN_MEDIA={open,close,photo:()=>open('photo'),video:()=>open('video'),audio:()=>open('audio')};
-// No automatic UI mount here. The canonical bridge mounts the single complete media toolbar.,250)}
+// No automatic UI mount here. The canonical bridge mounts the single complete media toolbar.
 })();
