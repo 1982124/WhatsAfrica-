@@ -151,7 +151,8 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
         const first=$('firstName').value.trim(), last=$('lastName').value.trim();
         const full=[first,last].filter(Boolean).join(' ')||email.split('@')[0];
         status('Création sécurisée de votre compte…',true);
-        window.WA_COMMERCE?.track('signup_started',{entity_type:'identity',metadata:{method:'email'}});\n        const r=await db.auth.signUp({
+        window.WA_COMMERCE?.track('signup_started',{entity_type:'identity',metadata:{method:'email'}});
+        const r=await db.auth.signUp({
           email,password,
           options:{
             data:{first_name:first||null,last_name:last||null,full_name:full},
