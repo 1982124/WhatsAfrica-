@@ -6,7 +6,7 @@
 const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
 const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 const AUTH='whatsafrica-auth';
-let timer=null,busy=false,lastConv=null;
+let timer=null,busy=false,lastConv=null,lastReadSignature='';
 
 function session(){
   try{
@@ -64,9 +64,12 @@ async function markVisibleRead(){
   const s=session(); if(!s?.user?.id)return;
   const incoming=[...document.querySelectorAll('#msgs .bubble:not(.mine)')].map(b=>b.dataset.id).filter(Boolean);
   if(!incoming.length)return;
+  const sig=id+'|'+incoming.join(',');
+  if(sig===lastReadSignature)return;
   try{
     await rpc('mark_messages_read',{p_message_ids:incoming});
     await rpc('mark_conversation_read_until',{p_conversation_id:id,p_message_id:incoming[incoming.length-1]});
+    lastReadSignature=sig;
   }catch(e){console.warn('[WassAfrica] receipt sync',e)}
 }
 function ensureMedia(){
@@ -90,11 +93,11 @@ async function sync(){
 function start(){
   addStyle();
   if(timer)clearInterval(timer);
-  timer=setInterval(()=>sync(),2500);
+  timer=setInterval(()=>sync(),8000);
   new MutationObserver(()=>{if(document.getElementById('msgs')||document.getElementById('composer'))sync()})
     .observe(document.body,{subtree:true,childList:true});
-  document.addEventListener('wa:conversation-selected',e=>{lastConv=e.detail?.conversationId||lastConv;setTimeout(sync,250)});
-  document.addEventListener('wa:conversation-ready',e=>{lastConv=e.detail?.conversationId||lastConv;setTimeout(sync,250)});
+  document.addEventListener('wa:conversation-selected',e=>{lastConv=e.detail?.conversationId||lastConv;lastReadSignature='';setTimeout(sync,250)});
+  document.addEventListener('wa:conversation-ready',e=>{lastConv=e.detail?.conversationId||lastConv;lastReadSignature='';setTimeout(sync,250)});
   document.addEventListener('wa:inbox-ready',()=>setTimeout(sync,500));
   setTimeout(sync,700);
 }
