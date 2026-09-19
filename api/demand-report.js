@@ -104,10 +104,11 @@ RÈGLE ABSOLUE:
 
 Retourne UNIQUEMENT ce JSON:
 {"demands":[{"product":"","location":"","intent":"","evidence":"","source_title":"","source_url":"","date":""}],"offers":[{"product":"","location":"","evidence":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","location":"","reason":"","source_title":"","source_url":""}],"summary":"","search_method":""}`;
-  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search'}],input:prompt,max_output_tokens:5000})});
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'low'}],input:prompt,max_output_tokens:2500})});
   const data=await r.json().catch(()=>({}));
-  if(!r.ok)return {ok:false,status:502,reason:cleanWeb(data?.error?.message||'web_search_failed',300)};
-  const parsed=parseWebJson(data.output_text)||{demands:[],offers:[],uncertain:[],summary:'',search_method:'web_search'};
+  if(!r.ok)return {ok:false,status:r.status===429?429:502,reason:cleanWeb(data?.error?.message||'web_search_failed',500)};
+  const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\n'))||'');
+  const parsed=parseWebJson(outputText)||{demands:[],offers:[],uncertain:[],summary:outputText.slice(0,1200),search_method:'web_search'};
   const sources=webAnnotations(data);
   const sourceMap=new Map(sources.map(s=>[s.url,s]));
   const normalize=x=>Array.isArray(x)?x.map(i=>({...i,product:cleanWeb(i.product,180),location:cleanWeb(i.location,180),intent:cleanWeb(i.intent,240),evidence:cleanWeb(i.evidence,600),source_title:cleanWeb(i.source_title,240),source_url:cleanWeb(i.source_url,2000),date:cleanWeb(i.date,80)})).filter(i=>i.source_url):[];
