@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#071b16">
 <title>WASSAFRICA — Inscription / Connexion</title>
 <script src="/i18n.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/wa-commerce-core.js"></script>
 <style>
 :root{--bg:#071b16;--panel:#f7f1df;--text:#17211d;--muted:#65716b;--primary:#21784c;--gold:#d49a2c;--line:#d7d1c4;--danger:#b42318}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 10%,#21784c22,transparent 38%),var(--bg);color:#f5f7f3;font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh;display:grid;place-items:center;padding:16px}
@@ -151,7 +151,7 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
         const first=$('firstName').value.trim(), last=$('lastName').value.trim();
         const full=[first,last].filter(Boolean).join(' ')||email.split('@')[0];
         status('Création sécurisée de votre compte…',true);
-        const r=await db.auth.signUp({
+        window.WA_COMMERCE?.track('signup_started',{entity_type:'identity',metadata:{method:'email'}});\n        const r=await db.auth.signUp({
           email,password,
           options:{
             data:{first_name:first||null,last_name:last||null,full_name:full},
@@ -159,7 +159,7 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
           }
         });
         if(r.error)throw r.error;
-        if(r.data?.session){go();return}
+        if(r.data?.session){window.WA_COMMERCE?.track('signup_completed',{entity_type:'identity',metadata:{method:'email'}});go();return}
         status('Compte créé. Vérifiez votre e-mail pour confirmer votre adresse, puis connectez-vous.',true);
         setMode('login');
         $('email').value=email;
