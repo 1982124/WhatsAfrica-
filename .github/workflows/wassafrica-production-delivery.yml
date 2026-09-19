@@ -35,6 +35,10 @@ jobs:
           grep -Fq "photo.onclick=()=>openStudio('photo')" inbox-v25.html
           grep -Fq "video.onclick=()=>openStudio('video')" inbox-v25.html
           grep -Fq "stun:stun.l.google.com:19302" wa-media-p2p.js
+          grep -Fq "AES-GCM" wa-media-p2p.js
+          grep -Fq "encrypted-relay" wa-media-p2p.js
+          grep -Fq "'/api/media-turn'" wa-media-p2p.js
+          test -f api/media-turn.js
 
       - name: Require deployment credentials
         env:
@@ -77,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           base='https://wassafrica.vercel.app'
-          for path in / /auth /messaging /marche /manifesto /install /manifest.webmanifest /sw.js /robots.txt /sitemap.xml; do
+          for path in / /auth /messaging /marche /manifesto /install /manifest.webmanifest /sw.js /robots.txt /sitemap.xml /api/media-turn; do
             code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 30 "$base$path")
             echo "$path -> $code"
             case "$code" in 200|204|301|302|303) ;; *) exit 1 ;; esac
