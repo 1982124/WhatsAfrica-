@@ -14,7 +14,7 @@ function getLang(){
  return LANGS.includes(stored)?stored:(raw.find(x=>LANGS.includes(x))||'fr');
 }
 function sid(){try{let x=localStorage.getItem(SID);if(!x){x=crypto.randomUUID();localStorage.setItem(SID,x)}return x}catch{return null}}
-let smartLinkId=null;
+let smartLinkId=null;let bootReady=false;const pending=[];
 async function resolveSmartLinkId(){
  if(smartLinkId)return smartLinkId;
  const u=new URL(location.href);
@@ -35,7 +35,8 @@ function meta(extra){
   product_id:extra?.product_id||u.searchParams.get('product_id')||null,language:getLang(),...(extra||{})};
 }
 async function track(event,extra={}){
- const id=meta(extra).smart_link_id||smartLinkId;if(!id)return;
+ const id=meta(extra).smart_link_id||smartLinkId;
+ if(!id){if(!bootReady)pending.push([event,extra]);return;}
  try{await fetch(SB+'/rest/v1/rpc/track_smart_link_event',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},
  body:JSON.stringify({p_smart_link_id:id,p_event_type:event,p_metadata:meta(extra)}),keepalive:true})}catch{}
 }
