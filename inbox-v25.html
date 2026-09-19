@@ -96,8 +96,19 @@ const waBtnStyle='border:1px solid #cfdcd5;border-radius:11px;padding:8px 10px;b
   function stopTimer(){if(timerId){clearInterval(timerId);timerId=null}}
   function resetRecorder(){stopTimer();if(stream){stream.getTracks().forEach(t=>{try{t.stop()}catch{}});stream=null}rec=null;chunks=[];startedAt=0;cancelled=false;voice.textContent='🎙️ Message vocal'}
   function pick(accept){file.accept=accept;file.onchange=()=>{const f=file.files?.[0];file.value='';if(!f)return;if(!window.WA_MEDIA_P2P?.sendFile){setState('⚠️ Média indisponible');return}window.WA_MEDIA_P2P.sendFile(f).then(()=>setState('Envoi du média…')).catch(e=>setState('⚠️ '+(e.message||'Envoi impossible')))};file.click()}
-  photo.onclick=()=>pick('image/*');
-  video.onclick=()=>pick('video/*');
+  async function openStudio(mode){
+    for(let i=0;i<30;i++){
+      const api=window.WA_MODERN_MEDIA;
+      if(api&&typeof api.open==='function'){
+        try{await api.open(mode)}catch(e){setState('⚠️ '+(e?.message||'Caméra WassAfrica indisponible'))}
+        return;
+      }
+      await new Promise(r=>setTimeout(r,100));
+    }
+    setState('⚠️ Studio média WassAfrica indisponible');
+  }
+  photo.onclick=()=>openStudio('photo');
+  video.onclick=()=>openStudio('video');
   attach.onclick=()=>pick('image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip');
   sticker.onclick=async()=>{const choices=['❤️','👍','😂','🙏','🔥','🎉','😍','😮'],s=window.prompt('Choisir un sticker : '+choices.join(' '),'❤️');if(!s||!choices.includes(s.trim()))return;const blob=new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="100%" height="100%" rx="96" fill="white"/><text x="50%" y="58%" text-anchor="middle" font-size="300">'+s.trim()+'</text></svg>'],{type:'image/svg+xml'});try{if(!window.WA_MEDIA_P2P?.sendFile)throw Error('Média indisponible');await window.WA_MEDIA_P2P.sendFile(new File([blob],'sticker-'+Date.now()+'.svg',{type:'image/svg+xml'}));setState('Sticker en cours d’envoi…')}catch(e){setState('⚠️ '+(e.message||'Sticker impossible'))}};
   function mimeType(){const supported=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg','audio/mp4'];return supported.find(x=>window.MediaRecorder?.isTypeSupported?.(x))||''}
