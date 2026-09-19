@@ -117,6 +117,7 @@ Retourne UNIQUEMENT ce JSON:
   return {ok:true,scope:{countries,zones,products,hours},demand_count:demands.length,signal_count:demands.length+offers.length+(Array.isArray(parsed.uncertain)?parsed.uncertain.length:0),demands:demands.slice(0,30),offers:offers.slice(0,30),sources:sources.slice(0,30),summary:cleanWeb(parsed.summary,1200),note:'Les résultats web sont des signaux publics sourcés. Les offres/vendeurs ne sont jamais comptés comme demandes. Une vente réelle doit être confirmée par une transaction ou un signal WassAfrica.',search_method:'OpenAI Responses API + web search'};
 }
 
+// Shared web intelligence keeps the Hobby deployment within the serverless function budget.
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   const requestedHours = Number(req.query?.hours || 6); const hours = Number.isFinite(requestedHours) && requestedHours > 0 && requestedHours <= 168 ? requestedHours : 6;
