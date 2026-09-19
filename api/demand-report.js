@@ -69,6 +69,54 @@ async function sendEmail({ subject, html, text }) {
   if (!response.ok) return { sent: false, reason: `resend_${response.status}` }; const data = await response.json(); return { sent: true, id: data.id || null };
 }
 
+function cleanWeb(v,n=500){return String(v??'').replace(/\u0000/g,'').replace(/\s+/g,' ').trim().slice(0,n);}
+function parseWebJson(text){
+  const raw=String(text||'').replace(/^\`\`\`json/i,'').replace(/\`\`\`$/,'').trim();
+  try{return JSON.parse(raw)}catch{}
+  const a=raw.indexOf('{'),b=raw.lastIndexOf('}');
+  if(a>=0&&b>a){try{return JSON.parse(raw.slice(a,b+1))}catch{}}
+  return null;
+}
+function webAnnotations(response){
+  const out=[];
+  for(const item of (response?.output||[])) for(const part of (item?.content||[])) for(const a of (part?.annotations||[]))
+    if(a?.type==='url_citation'&&a.url) out.push({url:a.url,title:a.title||a.url});
+  const seen=new Set();
+  return out.filter(x=>{if(seen.has(x.url))return false;seen.add(x.url);return true}).slice(0,30);
+}
+async function generateExternalWebDemand({hours,countries,zones,products}){
+  const OPENAI_KEY=process.env.OPENAI_API_KEY||process.env.wassAfrica;
+  if(!OPENAI_KEY)return {ok:false,status:503,reason:'OPENAI_API_KEY_missing'};
+  const scope=[...countries,...zones].join(', ')||'monde entier';
+  const productLabel=products.join(', ')||'produits et besoins';
+  const prompt=`Tu es WASSAFRICA DEMAND INTELLIGENCE. Recherche le web actuel pour trouver des SIGNAUX DE DEMANDE, pas des vendeurs.
+Périmètre: ${scope}. Produits/thèmes: ${productLabel}. Fenêtre cible: ${hours} heures, mais utilise les pages publiques récentes disponibles et indique leur date.
+
+RÈGLE ABSOLUE:
+- DEMANDE = personne/entreprise qui cherche, demande, veut acheter, demande un prix/devis, recherche un fournisseur, exprime un besoin ou une intention d'achat explicite.
+- OFFRE = vendeur, boutique, catalogue, annonce de produit, stock, prix affiché, marketplace listing, fabricant ou distributeur qui propose le produit.
+- Une OFFRE ne compte JAMAIS comme DEMANDE.
+- Ne transforme jamais une annonce en acheteur.
+- Si la source ne permet pas d'établir une intention de demande, classe-la "offer" ou "uncertain".
+- Ne fabrique aucun demandeur, quantité, lieu, date ou contact.
+- Les résultats doivent être sourcés par les pages réellement consultées.
+- Donne priorité aux pages récentes, forums/posts publics et pages où une intention de recherche/achat est explicitement exprimée. Les marketplaces servent surtout à constater l'offre et doivent rester séparées.
+
+Retourne UNIQUEMENT ce JSON:
+{"demands":[{"product":"","location":"","intent":"","evidence":"","source_title":"","source_url":"","date":""}],"offers":[{"product":"","location":"","evidence":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","location":"","reason":"","source_title":"","source_url":""}],"summary":"","search_method":""}`;
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search'}],input:prompt,max_output_tokens:5000})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)return {ok:false,status:502,reason:cleanWeb(data?.error?.message||'web_search_failed',300)};
+  const parsed=parseWebJson(data.output_text)||{demands:[],offers:[],uncertain:[],summary:'',search_method:'web_search'};
+  const sources=webAnnotations(data);
+  const sourceMap=new Map(sources.map(s=>[s.url,s]));
+  const normalize=x=>Array.isArray(x)?x.map(i=>({...i,product:cleanWeb(i.product,180),location:cleanWeb(i.location,180),intent:cleanWeb(i.intent,240),evidence:cleanWeb(i.evidence,600),source_title:cleanWeb(i.source_title,240),source_url:cleanWeb(i.source_url,2000),date:cleanWeb(i.date,80)})).filter(i=>i.source_url):[];
+  const demands=normalize(parsed.demands).filter(x=>/demand|request|search|buy|purchase|need|quote|supplier|looking|cherche|besoin|acheter|achat|devis|fournisseur/i.test(x.intent+' '+x.evidence));
+  const offers=normalize(parsed.offers);
+  for(const x of [...demands,...offers])if(x.source_url&&!sourceMap.has(x.source_url))sources.push({url:x.source_url,title:x.source_title||x.source_url});
+  return {ok:true,scope:{countries,zones,products,hours},demand_count:demands.length,signal_count:demands.length+offers.length+(Array.isArray(parsed.uncertain)?parsed.uncertain.length:0),demands:demands.slice(0,30),offers:offers.slice(0,30),sources:sources.slice(0,30),summary:cleanWeb(parsed.summary,1200),note:'Les résultats web sont des signaux publics sourcés. Les offres/vendeurs ne sont jamais comptés comme demandes. Une vente réelle doit être confirmée par une transaction ou un signal WassAfrica.',search_method:'OpenAI Responses API + web search'};
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   const requestedHours = Number(req.query?.hours || 6); const hours = Number.isFinite(requestedHours) && requestedHours > 0 && requestedHours <= 168 ? requestedHours : 6;
@@ -76,6 +124,7 @@ module.exports = async function handler(req, res) {
   const auth = req.headers.authorization || ''; const cronAuthorized = Boolean(process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`);
   let result;
   if (cronAuthorized) result = await generateForCron({ hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'cron_generation_failed' }));
+  else if (String(req.query?.web || '') === '1') result = await generateExternalWebDemand({ hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'web_search_failed' }));
   else {
     const admin = await validateAdminBearer(auth).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'authorization_error' }));
     if (!admin.ok) return res.status(admin.status).json({ ok: false, error: admin.reason });
