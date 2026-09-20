@@ -34,7 +34,8 @@
 <script>
 (async()=>{'use strict';
 const $=id=>document.getElementById(id),SB='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',AUTH='whatsafrica-auth',DB='wassafrica-msg-v20',te=new TextEncoder(),td=new TextDecoder();
-let session=null,user=null,device=null,current=null,timer=null,busy=false,searchTimer=null,directoryMode=false,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}},directoryScope='global';\nlet realtimeClient=null,realtimeChannel=null,realtimeRefreshTimer=null,realtimeStarting=false;
+let session=null,user=null,device=null,current=null,timer=null,busy=false,searchTimer=null,directoryMode=false,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}},directoryScope='global';
+let realtimeClient=null,realtimeChannel=null,realtimeRefreshTimer=null,realtimeStarting=false;
 const b64=x=>{let s='';new Uint8Array(x).forEach(b=>s+=String.fromCharCode(b));return btoa(s)};const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const esc=v=>String(v??'').replace(/[<>]/g,'');
 function sessionLike(x){return x&&typeof x==='object'&&typeof x.access_token==='string'&&x.user?.id?x:null}
