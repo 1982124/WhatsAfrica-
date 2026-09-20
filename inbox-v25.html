@@ -191,7 +191,7 @@ async function activateOptionalMessagingFeatures(){
   const load=(id,src)=>new Promise((resolve,reject)=>{
     if(document.getElementById(id))return resolve();
     const s=document.createElement('script');
-    s.id=id;s.src=src;
+    s.id=id;s.src=src+(src.includes('?')?'&':'?')+'v=20260920-mobile3';
     s.onload=()=>resolve();
     s.onerror=()=>reject(Error('MODULE_LOAD_FAILED:'+src));
     document.head.appendChild(s);
@@ -199,6 +199,7 @@ async function activateOptionalMessagingFeatures(){
   // Les actions optionnelles sont isolées du boot du cœur texte.
   try{
     await load('wa-media-p2p-runtime','/wa-media-p2p.js');
+    await window.WA_MEDIA_P2P?.init?.();
     window.WA_MEDIA_P2P?.setConversation?.(current?.id);
   }catch(e){console.warn('[WassAfrica] media transport unavailable',e);say('⚠️ Transport média indisponible');}
   try{
