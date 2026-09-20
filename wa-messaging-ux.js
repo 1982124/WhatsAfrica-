@@ -6,7 +6,47 @@
 const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
 const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 const AUTH='whatsafrica-auth';
-let timer=null,busy=false,lastConv=null,lastReadSignature='';
+let timer=null,busy=false,lastConv=null,lastReadSignature='',realtime=null,audioCtx=null;
+function unlockSound(){
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  }catch{}
+}
+function playIncomingSound(){
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const now=audioCtx.currentTime;
+    if(audioCtx.state==='suspended'){audioCtx.resume().catch(()=>{});return}
+    const gain=audioCtx.createGain(),osc=audioCtx.createOscillator();
+    gain.gain.setValueAtTime(0.0001,now);
+    gain.gain.exponentialRampToValueAtTime(0.16,now+0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001,now+0.24);
+    osc.type='sine';osc.frequency.setValueAtTime(880,now);osc.frequency.setValueAtTime(1175,now+0.09);
+    osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+0.25);
+  }catch{}
+}
+function startIncomingSound(){
+  document.addEventListener('pointerdown',unlockSound,{once:false,passive:true});
+  document.addEventListener('keydown',unlockSound,{once:false,passive:true});
+  try{
+    const s=session();
+    if(!s?.access_token||!s?.user?.id||!window.supabase?.createClient)return;
+    const sb=window.supabase.createClient(SB,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+    sb.realtime.setAuth(s.access_token);
+    realtime=sb.channel('wa-incoming-messages')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages_v2',filter:'sender_id=neq.'+s.user.id},payload=>{
+        const m=payload?.new;
+        if(!m?.id||m.sender_id===s.user.id)return;
+        const sameConversation=String(m.conversation_id||'')===String(currentId()||'');
+        if(!sameConversation||document.visibilityState!=='visible')playIncomingSound();
+        document.dispatchEvent(new CustomEvent('wa:incoming-message',{detail:m}));
+      })
+      .subscribe(status=>{
+        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('[WassAfrica] realtime notification channel',status);
+      });
+  }catch(e){console.warn('[WassAfrica] incoming sound setup',e)}
+}
 
 function session(){
   try{
@@ -92,6 +132,7 @@ async function sync(){
 }
 function start(){
   addStyle();
+  startIncomingSound();
   if(timer)clearInterval(timer);
   timer=setInterval(()=>sync(),8000);
   // No global MutationObserver: receipt updates and message renders must not trigger sync loops.
