@@ -207,9 +207,7 @@ initMessageScroll();document.querySelectorAll('#directoryScope [data-scope]').fo
     if(!app)return;
     const q=id=>document.getElementById(id);
     const activate=(id,fn)=>{const el=q(id);if(!el||el.dataset.waBound==='1')return;el.dataset.waBound='1';el.addEventListener('click',e=>{e.preventDefault();try{fn(e)}catch(err){console.error('[WassAfrica UI]',id,err)}})};
-    activate('showInterlocutors',()=>window.WA_UI?.showInterlocutors?.());
-    activate('showConversations',()=>window.WA_UI?.showConversations?.());
-    activate('send',()=>window.WA_UI?.send?.());
+    activate('send',()=>{const form=q('composer');if(form)form.requestSubmit();});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
