@@ -29,23 +29,12 @@ function playIncomingSound(){
 function startIncomingSound(){
   document.addEventListener('pointerdown',unlockSound,{once:false,passive:true});
   document.addEventListener('keydown',unlockSound,{once:false,passive:true});
-  try{
-    const s=session();
-    if(!s?.access_token||!s?.user?.id||!window.supabase?.createClient)return;
-    const sb=window.supabase.createClient(SB,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-    sb.realtime.setAuth(s.access_token);
-    realtime=sb.channel('wa-incoming-messages')
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages_v2',filter:'sender_id=neq.'+s.user.id},payload=>{
-        const m=payload?.new;
-        if(!m?.id||m.sender_id===s.user.id)return;
-        const sameConversation=String(m.conversation_id||'')===String(currentId()||'');
-        if(!sameConversation||document.visibilityState!=='visible')playIncomingSound();
-        document.dispatchEvent(new CustomEvent('wa:incoming-message',{detail:m}));
-      })
-      .subscribe(status=>{
-        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('[WassAfrica] realtime notification channel',status);
-      });
-  }catch(e){console.warn('[WassAfrica] incoming sound setup',e)}
+  document.addEventListener('wa:incoming-message',e=>{
+    const m=e.detail;
+    if(!m?.id||m.sender_id===session()?.user?.id)return;
+    const sameConversation=String(m.conversation_id||'')===String(currentId()||'');
+    if(!sameConversation||document.visibilityState!=='visible')playIncomingSound();
+  });
 }
 
 function session(){
