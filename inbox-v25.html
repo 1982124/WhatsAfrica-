@@ -66,7 +66,11 @@ function renderList(){const box=$('list');box.innerHTML='';const q=$('target').v
 function renderDirectory(rs){const box=$('list');box.innerHTML='';const head=document.createElement('div');head.style.cssText='padding:8px 10px;font-size:12px;font-weight:800;color:#536158';head.textContent=(directoryScope==='global'?'Tout WassAfrica':directoryScope==='subscribers'?'Mes abonnés':'Mon réseau')+' · '+rs.length+' membre'+(rs.length>1?'s':'');box.appendChild(head);for(const p of rs.slice(0,50)){const d=document.createElement('div');d.className='conv';const av=document.createElement('div');av.className='avatar';const photo=p.avatar_url||'';if(photo){const im=document.createElement('img');im.src=photo;im.alt='';im.style.cssText='width:100%;height:100%;border-radius:50%;object-fit:cover';av.textContent='';av.append(im)}else av.textContent=(p.display_name||'W').trim().charAt(0).toUpperCase();const main=document.createElement('div');main.className='conv-main';const name=document.createElement('div');name.className='conv-name';name.textContent=p.display_name||'Profil WassAfrica';const sub=document.createElement('div');sub.className='conv-sub';sub.textContent=[p.result_type==='business'?'🏢 Entreprise':'👤 Membre',p.city,p.country].filter(Boolean).join(' · ');main.append(name,sub);d.append(av,main);d.onclick=()=>startUser(p);box.appendChild(d)}if(!rs.length)box.innerHTML='<div class="empty">Aucun membre trouvé.</div>'}
 async function find(v=''){
   const q=String(v||'').trim();
+  const cacheKey='wassafrica:directory:'+directoryScope;
   let rs=[];
+  if(directoryScope==='global'&&q===''){
+    try{const cached=JSON.parse(localStorage.getItem(cacheKey)||'[]');if(Array.isArray(cached)&&cached.length){rs=cached.filter(x=>x.user_id!==user.id);renderDirectory(rs)}}catch{}
+  }
   if(directoryScope==='global'){
     try{
       const rows=await rest('profiles','select=user_id,public_display_name,display_name,first_name,last_name,country,city,smartlink_slug,profile_image_url,profile_photo_url,avatar_url&user_id=neq.'+encodeURIComponent(user.id)+'&order=created_at.asc&limit=100');
@@ -74,17 +78,14 @@ async function find(v=''){
         const name=[p.first_name,p.last_name,p.public_display_name,p.display_name,p.smartlink_slug].filter(Boolean).join(' ').toLowerCase();
         return !q||name.includes(q.toLowerCase());
       }).map(p=>({result_type:'person',user_id:p.user_id,display_name:[p.first_name,p.last_name].filter(Boolean).join(' ').trim()||p.public_display_name||p.display_name||'Membre WASSAFRICA',country:p.country,city:p.city,smartlink_slug:p.smartlink_slug,avatar_url:p.profile_image_url||p.profile_photo_url||p.avatar_url,context:'Membre WassAfrica'}));
-    }catch(e){
-      console.error('[WassAfrica] global directory REST failed',e);
-    }
+      if(!q&&rs.length)try{localStorage.setItem(cacheKey,JSON.stringify(rs))}catch{}
+    }catch(e){console.error('[WassAfrica] global directory REST failed',e)}
   }
   if(directoryScope!=='global' || !rs.length){
     try{
       const rpcRows=await rpc('search_wassafrica_directory',{p_query:q,p_scope:directoryScope});
       if(Array.isArray(rpcRows)&&rpcRows.length) rs=rpcRows.filter(x=>x.user_id!==user.id);
-    }catch(e){
-      console.warn('[WassAfrica] directory RPC unavailable',e);
-    }
+    }catch(e){console.warn('[WassAfrica] directory RPC unavailable',e)}
   }
   renderDirectory(rs);
   return rs;
