@@ -74,30 +74,35 @@ async function list(){const rows=await rpc('get_my_conversations',{});conversati
 async function refreshPresence(){for(const c of conversationCache.slice(0,50)){try{const r=await rpc('get_conversation_presence',{p_conversation_id:c.id});const p=Array.isArray(r)?r[0]:r;const el=document.querySelector('[data-presence-conv="'+c.id+'"]');if(el){el.textContent=p?.online?'● En ligne':(p?.last_seen_at?'Vu '+fmtTime(p.last_seen_at):'Hors ligne');el.style.color=p?.online?'#18864b':'#738078'}}catch(e){}}}
 async function heartbeat(){try{await rpc('touch_web_device',{})}catch(e){console.warn('[WassAfrica] presence heartbeat',e)}}
 function renderList(){const box=$('list');box.innerHTML='';const q=$('target').value.trim().toLowerCase();for(const c of conversationCache){if(q&&!(c.title||'').toLowerCase().includes(q))continue;const d=document.createElement('div');d.className='conv';const av=document.createElement('div');av.className='avatar';const photo=c.avatar_url||'';if(photo){const im=document.createElement('img');im.src=photo;im.alt='';im.style.cssText='width:100%;height:100%;border-radius:50%;object-fit:cover';av.textContent='';av.append(im)}else av.textContent=(c.title||'W').trim().charAt(0).toUpperCase();const main=document.createElement('div');main.className='conv-main';const name=document.createElement('div');name.className='conv-name';name.textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');const sub=document.createElement('div');sub.className='conv-sub';sub.dataset.presenceConv=c.id;sub.textContent='Vérification…';main.append(name,sub);d.append(av,main);d.onclick=()=>openConv(c);box.appendChild(d)}if(!box.children.length)box.innerHTML='<div class="empty">Aucune conversation.</div>'}
-function renderDirectory(rs){const box=$('list');box.innerHTML='';const head=document.createElement('div');head.style.cssText='padding:8px 10px;font-size:12px;font-weight:800;color:#536158';head.textContent=(directoryScope==='global'?'Tout WassAfrica':directoryScope==='subscribers'?'Mes abonnés':'Mon réseau')+' · '+rs.length+' membre'+(rs.length>1?'s':'');box.appendChild(head);for(const p of rs.slice(0,50)){const d=document.createElement('div');d.className='conv';const av=document.createElement('div');av.className='avatar';const photo=p.avatar_url||'';if(photo){const im=document.createElement('img');im.src=photo;im.alt='';im.style.cssText='width:100%;height:100%;border-radius:50%;object-fit:cover';av.textContent='';av.append(im)}else av.textContent=(p.display_name||'W').trim().charAt(0).toUpperCase();const main=document.createElement('div');main.className='conv-main';const name=document.createElement('div');name.className='conv-name';name.textContent=p.display_name||'Profil WassAfrica';const sub=document.createElement('div');sub.className='conv-sub';sub.textContent=[p.result_type==='business'?'🏢 Entreprise':'👤 Membre',p.city,p.country].filter(Boolean).join(' · ');main.append(name,sub);d.append(av,main);d.onclick=()=>startUser(p);box.appendChild(d)}if(!rs.length)box.innerHTML='<div class="empty">Aucun membre trouvé.</div>'}
+function renderDirectory(rs){const box=$('list');box.innerHTML='';const head=document.createElement('div');head.style.cssText='padding:8px 10px;font-size:12px;font-weight:800;color:#536158';head.textContent=(directoryScope==='global'?'Tout WassAfrica':directoryScope==='subscribers'?'Mes abonnés':'Mon réseau')+' · '+rs.length+' membre'+(rs.length>1?'s':'');box.appendChild(head);for(const p of rs.slice(0,50)){const d=document.createElement('div');d.className='conv';const av=document.createElement('div');av.className='avatar';const photo=p.avatar_url||'';if(photo){const im=document.createElement('img');im.src=photo;im.alt='';im.style.cssText='width:100%;height:100%;border-radius:50%;object-fit:cover';av.textContent='';av.append(im)}else av.textContent=(p.display_name||'W').trim().charAt(0).toUpperCase();const main=document.createElement('div');main.className='conv-main';const name=document.createElement('div');name.className='conv-name';name.textContent=p.display_name||'Profil WassAfrica';const sub=document.createElement('div');sub.className='conv-sub';sub.textContent=[p.result_type==='business'?'🏢 Entreprise':'👤 Membre',p.city,p.country].filter(Boolean).join(' · ');main.append(name,sub);d.append(av,main);d.onclick=()=>{if(p.is_self){$('directoryHint').textContent='Vous êtes connecté à WassAfrica.';return}startUser(p).catch(e=>console.error('[WassAfrica] start directory contact',e))};box.appendChild(d)}if(!rs.length)box.innerHTML='<div class="empty">Aucun membre trouvé.</div>'}
 async function find(v=''){
   const q=String(v||'').trim();
   const cacheKey='wassafrica:directory:'+directoryScope;
   let rs=[];
-  if(directoryScope==='global'&&q===''){
-    try{const cached=JSON.parse(localStorage.getItem(cacheKey)||'[]');if(Array.isArray(cached)&&cached.length){rs=cached.filter(x=>x.user_id!==user.id);renderDirectory(rs)}}catch{}
-  }
-  if(directoryScope==='global'){
+  // Canonical directory source: SECURITY DEFINER RPC over active auth.users.
+  // profiles REST is fallback only; it must never erase a valid directory with an empty/error response.
+  try{
+    const rpcRows=await rpc('search_wassafrica_directory',{p_query:q,p_scope:directoryScope});
+    if(Array.isArray(rpcRows)) rs=rpcRows.filter(x=>x.user_id!==user.id);
+  }catch(e){console.warn('[WassAfrica] canonical directory RPC failed',e)}
+  if(!rs.length&&directoryScope==='global'){
     try{
-      const rows=await rest('profiles','select=user_id,public_display_name,display_name,first_name,last_name,country,city,smartlink_slug,profile_image_url,profile_photo_url,avatar_url&user_id=neq.'+encodeURIComponent(user.id)+'&order=created_at.asc&limit=100');
-      rs=(rows||[]).filter(p=>{
+      const rows=await rest('profiles','select=user_id,public_display_name,display_name,first_name,last_name,country,city,smartlink_slug,profile_image_url,profile_photo_url,avatar_url&order=created_at.asc&limit=100');
+      const fallback=(rows||[]).filter(p=>{
         const name=[p.first_name,p.last_name,p.public_display_name,p.display_name,p.smartlink_slug].filter(Boolean).join(' ').toLowerCase();
-        return !q||name.includes(q.toLowerCase());
+        return p.user_id!==user.id&&(!q||name.includes(q.toLowerCase()));
       }).map(p=>({result_type:'person',user_id:p.user_id,display_name:[p.first_name,p.last_name].filter(Boolean).join(' ').trim()||p.public_display_name||p.display_name||'Membre WASSAFRICA',country:p.country,city:p.city,smartlink_slug:p.smartlink_slug,avatar_url:p.profile_image_url||p.profile_photo_url||p.avatar_url,context:'Membre WassAfrica'}));
-      if(!q&&rs.length)try{localStorage.setItem(cacheKey,JSON.stringify(rs))}catch{}
-    }catch(e){console.error('[WassAfrica] global directory REST failed',e)}
+      if(fallback.length) rs=fallback;
+    }catch(e){console.error('[WassAfrica] directory REST fallback failed',e)}
   }
-  if(directoryScope!=='global' || !rs.length){
-    try{
-      const rpcRows=await rpc('search_wassafrica_directory',{p_query:q,p_scope:directoryScope});
-      if(Array.isArray(rpcRows)&&rpcRows.length) rs=rpcRows.filter(x=>x.user_id!==user.id);
-    }catch(e){console.warn('[WassAfrica] directory RPC unavailable',e)}
+  // The authenticated user is also an enrolled member. Keep the directory count truthful (24 active accounts)
+  // while preventing a self-conversation action.
+  if(directoryScope==='global'&&q===''){
+    const selfName=[user?.user_metadata?.first_name,user?.user_metadata?.last_name,user?.user_metadata?.full_name,user?.user_metadata?.name].filter(Boolean).join(' ').trim()||'Vous';
+    const selfProfile={result_type:'person',user_id:user.id,display_name:selfName,country:user?.user_metadata?.country||'',city:user?.user_metadata?.city||'',smartlink_slug:user?.user_metadata?.smartlink_slug||'',avatar_url:user?.user_metadata?.avatar_url||user?.user_metadata?.picture||'',context:'Vous · membre WassAfrica',is_self:true};
+    rs=[...rs.filter(x=>x.user_id!==user.id),selfProfile];
   }
+  if(directoryScope==='global'&&q==='')try{localStorage.setItem(cacheKey,JSON.stringify(rs))}catch{}
   renderDirectory(rs);
   return rs;
 }
@@ -174,7 +179,7 @@ async function startCanonicalRealtime(){
   }finally{realtimeStarting=false}
 }
 async function boot(){try{await auth();$('app').hidden=false;$('gate').hidden=true;try{await ensureDevice()}catch(e){console.warn('[WassAfrica] device bootstrap deferred',e);device=null};try{await startCanonicalRealtime()}catch(e){console.warn('[WassAfrica] realtime start deferred',e)}try{await showInterlocutors();heartbeat();setInterval(heartbeat,30000);setTimeout(refreshPresence,250);}catch(e){console.error('[WassAfrica] registered members bootstrap',e);$('list').innerHTML='<div class="empty">Impossible de charger les inscrits. Réessayez.</div>'}document.dispatchEvent(new CustomEvent('wa:inbox-ready'))}catch(e){console.error('[WassAfrica] inbox auth bootstrap',e);$('gate').hidden=false;$('gate').innerHTML='<div style="font-weight:750;margin-bottom:6px">Connectez-vous pour accéder à vos messages.</div><a href="/auth?next=%2Fmessaging">Se connecter</a>'}}
-const waBtnStyle='';document.querySelectorAll('#waCanonicalMediaDock button,#waCanonicalCallDock button').forEach(b=>b.style.cssText=waBtnStyle);
+// One owner for the composer controls: inbox-v25. Do not clear inline/button state after binding.
 (function(){
   const file=$('waCanonicalFileInput'),voice=$('waVoiceBtn'),state=$('waVoiceState'),attach=$('waFileBtn'),emoji=$('waEmojiBtn');
   let rec=null,stream=null,chunks=[],startedAt=0,timerId=null;
