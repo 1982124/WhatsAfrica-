@@ -209,10 +209,19 @@ async function activateOptionalMessagingFeatures(){
   if(emoji&&!emoji.dataset.bound){
     emoji.dataset.bound='1';
     emoji.onclick=()=>{
-      say('😊 Emoji : choisis un symbole');
-      const choices=['😀','😂','😍','🙏','❤️','🔥','🎉','👍'];
-      const pick=window.prompt('Emoji / sticker : '+choices.join(' '),'❤️');
-      if(pick){$('body').value+=pick;updateComposerState();$('body').focus();say('Emoji ajouté — appuie sur ➤ pour envoyer');}
+      let sheet=document.getElementById('waEmojiSheet');
+      if(!sheet){
+        sheet=document.createElement('div');sheet.id='waEmojiSheet';
+        sheet.style.cssText='position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:100001;width:min(420px,calc(100vw - 20px));max-height:46vh;overflow:auto;background:#fff;border:1px solid #dce6e0;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.2);padding:12px';
+        const tabs=[['😀','😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😍 🥰 😘 😎 🤔 😢 😭 😡 😱'],['❤️','❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❤️‍🔥 💕 💞 💓 💗 💖 💘'],['🎉','🎉 👍 👎 👏 🙌 🙏 🔥 ⭐ ✨ 💯 🎊 😍 😂 🤣 😘 🤩 🥳']];
+        const title=document.createElement('div');title.textContent='Emoji & stickers';title.style.cssText='font-weight:800;margin-bottom:8px';
+        const tabbar=document.createElement('div');tabbar.style.cssText='display:flex;gap:6px;margin-bottom:8px';
+        const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(8,1fr);gap:4px';
+        const render=(items)=>{grid.innerHTML='';items.split(' ').forEach(x=>{const b=document.createElement('button');b.type='button';b.textContent=x;b.style.cssText='border:0;background:#f4f7f5;border-radius:10px;font-size:24px;min-height:42px;cursor:pointer';b.onclick=()=>{const input=document.getElementById('body');input.value+=(input.value?' ':'')+x;updateComposerState();input.focus();sheet.remove();say('Emoji/sticker ajouté');};grid.appendChild(b)})};
+        tabs.forEach(([label,items],i)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.style.cssText='border:1px solid #dce6e0;background:#fff;border-radius:10px;padding:6px 12px;font-size:20px;cursor:pointer';b.onclick=()=>render(items);tabbar.appendChild(b);if(i===0)render(items)});
+        sheet.append(title,tabbar,grid);document.body.appendChild(sheet);
+        document.addEventListener('click',e=>{if(sheet.isConnected&&!sheet.contains(e.target)&&e.target!==emoji)sheet.remove()},{once:true});
+      }else sheet.remove();
     };
   }
   if(file&&!file.dataset.bound){
@@ -239,23 +248,32 @@ async function activateOptionalMessagingFeatures(){
       }else say('⚠️ Transport média indisponible');
     };
   }
+  let waVoiceRecorder=null,waVoiceStream=null,waVoiceChunks=[];
   if(voice&&!voice.dataset.bound){
     voice.dataset.bound='1';
     voice.onclick=async()=>{
       if(!current){say('⚠️ Choisis d’abord une conversation');return;}
-      say('🎙️ Ouverture du message vocal…');
       try{
-        if(window.WA_MODERN_MEDIA?.open){ await window.WA_MODERN_MEDIA.open('audio'); }
-        else {
-          if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder) throw Error('ENREGISTREUR_VOCAL_INDISPONIBLE');
-          const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-          const chunks=[]; const rec=new MediaRecorder(stream); let stopped=false;
-          const finish=async()=>{if(stopped)return;stopped=true;stream.getTracks().forEach(t=>t.stop());const type=rec.mimeType||'audio/webm';const f=new File([new Blob(chunks,{type})],'audio-'+Date.now()+'.webm',{type});try{say('⏳ Envoi du vocal…');await window.WA_MEDIA_P2P?.sendFile?.(f);say('✅ Message vocal envoyé');}catch(err){say('⚠️ Envoi vocal impossible : '+(err.message||err));}};
-          rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};rec.onstop=()=>finish();rec.start(250);say('🎙️ Enregistrement… Appuie à nouveau sur 🎙️ pour arrêter.');
-          voice.dataset.recording='1'; voice.textContent='⏹️';
-          voice.onclick=()=>{if(rec.state==='recording')rec.stop()};
+        if(waVoiceRecorder?.state==='recording'){
+          waVoiceRecorder.stop();say('⏳ Préparation du vocal…');return;
         }
-      }catch(e){console.error('[WassAfrica] voice action',e);say('⚠️ Message vocal indisponible : '+(e.message||'réessayez'))}
+        if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw Error('ENREGISTREUR_VOCAL_INDISPONIBLE');
+        waVoiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+        waVoiceChunks=[];
+        const preferred=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(x=>window.MediaRecorder.isTypeSupported?.(x));
+        waVoiceRecorder=preferred?new MediaRecorder(waVoiceStream,{mimeType:preferred}):new MediaRecorder(waVoiceStream);
+        waVoiceRecorder.ondataavailable=e=>{if(e.data?.size)waVoiceChunks.push(e.data)};
+        waVoiceRecorder.onstop=async()=>{
+          try{
+            waVoiceStream?.getTracks?.().forEach(t=>t.stop());waVoiceStream=null;
+            const type=waVoiceRecorder?.mimeType||'audio/webm';
+            const f=new File([new Blob(waVoiceChunks,{type})],'vocal-'+Date.now()+'.webm',{type});
+            say('⏳ Envoi du vocal…');await window.WA_MEDIA_P2P?.sendFile?.(f);say('✅ Message vocal envoyé');
+          }catch(e){console.error('[WassAfrica] voice send',e);say('⚠️ Envoi vocal impossible : '+(e.message||e))}
+          finally{waVoiceRecorder=null;waVoiceChunks=[];voice.textContent='🎙️';}
+        };
+        waVoiceRecorder.start(250);voice.textContent='⏹️';say('🎙️ Enregistrement… Appuie à nouveau pour envoyer');
+      }catch(e){console.error('[WassAfrica] voice action',e);say('⚠️ Message vocal indisponible : '+(e.message||'réessayez'));voice.textContent='🎙️';}
     };
   }
   let callsReady=false;
