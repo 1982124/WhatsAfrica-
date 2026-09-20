@@ -180,19 +180,106 @@ async function startCanonicalRealtime(){
 }
 async function boot(){try{await auth();$('app').hidden=false;$('gate').hidden=true;try{await ensureDevice()}catch(e){console.warn('[WassAfrica] device bootstrap deferred',e);device=null};try{await startCanonicalRealtime()}catch(e){console.warn('[WassAfrica] realtime start deferred',e)}try{await showInterlocutors();heartbeat();setInterval(heartbeat,30000);setTimeout(refreshPresence,250);}catch(e){console.error('[WassAfrica] registered members bootstrap',e);$('list').innerHTML='<div class="empty">Impossible de charger les inscrits. Réessayez.</div>'}document.dispatchEvent(new CustomEvent('wa:inbox-ready'))
 async function activateOptionalMessagingFeatures(){
-  const state=$('waFeatureState'),say=t=>{if(state){state.textContent=t||'';if(t)setTimeout(()=>{if(state.textContent===t)state.textContent=''},3500)}};
-  const load=(id,src)=>new Promise((resolve,reject)=>{if(document.getElementById(id))return resolve();const s=document.createElement('script');s.id=id;s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('MODULE_LOAD_FAILED:'+src));document.head.appendChild(s)});
-  try{await load('wa-media-p2p-runtime','/wa-media-p2p.js');window.WA_MEDIA_P2P?.setConversation?.(current?.id).catch?.(()=>{})}catch(e){console.warn('[WassAfrica] media transport unavailable',e);say('Médias indisponibles')}
-  try{await load('wa-modern-media-runtime','/wa-modern-media.js')}catch(e){console.warn('[WassAfrica] media studio unavailable',e)}
+  const state=$('waFeatureState');
+  const say=t=>{
+    if(!state)return;
+    state.textContent=t||'';
+    state.style.opacity=t?'1':'0';
+    if(t)setTimeout(()=>{if(state.textContent===t){state.textContent='';state.style.opacity='0'}},5000);
+  };
+  const load=(id,src)=>new Promise((resolve,reject)=>{
+    if(document.getElementById(id))return resolve();
+    const s=document.createElement('script');
+    s.id=id;s.src=src;
+    s.onload=()=>resolve();
+    s.onerror=()=>reject(Error('MODULE_LOAD_FAILED:'+src));
+    document.head.appendChild(s);
+  });
+  // Les actions optionnelles sont isolées du boot du cœur texte.
+  try{
+    await load('wa-media-p2p-runtime','/wa-media-p2p.js');
+    window.WA_MEDIA_P2P?.setConversation?.(current?.id);
+  }catch(e){console.warn('[WassAfrica] media transport unavailable',e);say('⚠️ Transport média indisponible');}
+  try{
+    await load('wa-modern-media-runtime','/wa-modern-media.js');
+  }catch(e){console.warn('[WassAfrica] media studio unavailable',e);say('⚠️ Studio média indisponible');}
   const emoji=$('waEmojiBtn'),file=$('waFileBtn'),voice=$('waVoiceBtn'),input=$('waCanonicalFileInput');
-  if(emoji&&!emoji.dataset.bound){emoji.dataset.bound='1';emoji.onclick=()=>{const choices=['😀','😂','😍','🙏','❤️','🔥','🎉','👍'];const pick=window.prompt('Emoji / sticker : '+choices.join(' '),'❤️');if(pick){$('body').value+=pick;updateComposerState();$('body').focus()}}}
-  if(file&&!file.dataset.bound){file.dataset.bound='1';file.onclick=()=>{if(window.WA_MODERN_MEDIA?.open)window.WA_MODERN_MEDIA.open('photo').catch?.(()=>{});else input?.click()}}
-  if(input&&!input.dataset.bound){input.dataset.bound='1';input.onchange=async()=>{const f=input.files?.[0];input.value='';if(!f)return;if(window.WA_MEDIA_P2P?.sendFile){try{say('⏳ Envoi…');await window.WA_MEDIA_P2P.sendFile(f);say('Média envoyé')}catch(e){say('⚠️ '+(e.message||'Envoi impossible'))}}else say('⚠️ Transport média indisponible')}}
-  if(voice&&!voice.dataset.bound){voice.dataset.bound='1';voice.onclick=()=>{if(window.WA_MODERN_MEDIA?.open)window.WA_MODERN_MEDIA.open('audio').catch?.(()=>{});else say('⚠️ Enregistreur vocal indisponible')}}
-  try{await load('wa-calls-runtime','/wa-calls-v2.js');const client=window.supabase?.createClient?.(SB,KEY,{auth:{persistSession:false,autoRefreshToken:false}});if(client&&session?.access_token){await client.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token||''}).catch(()=>{});window.WA_CALLS?.init?.(client,user)}}catch(e){console.warn('[WassAfrica] calls unavailable',e);say('Appels indisponibles')}
-  const peer=async()=>{if(!current)return null;try{const rows=await rest('conversation_members','select=user_id&conversation_id=eq.'+encodeURIComponent(current.id));return (rows||[]).map(x=>x.user_id).find(id=>id!==user?.id)||null}catch{return null}};
-  for(const [id,mode] of [['waAudioCallBtn','audio'],['waVideoCallBtn','video']]){const b=$(id);if(!b||b.dataset.bound)continue;b.dataset.bound='1';b.onclick=async()=>{if(!current){say('Choisis une conversation');return}if(!window.WA_CALLS?.start){say('⚠️ Appels indisponibles');return}try{const p=await peer();if(!p)throw Error('Correspondant introuvable');await window.WA_CALLS.start(current.id,p,mode)}catch(e){console.error('[WassAfrica] call',e);say('⚠️ '+(e.message||'Appel impossible'))}}}
-  document.addEventListener('wa:conversation-selected',()=>{try{window.WA_MEDIA_P2P?.setConversation?.(current?.id)}catch{}},{passive:true});
+  if(emoji&&!emoji.dataset.bound){
+    emoji.dataset.bound='1';
+    emoji.onclick=()=>{
+      say('😊 Emoji : choisis un symbole');
+      const choices=['😀','😂','😍','🙏','❤️','🔥','🎉','👍'];
+      const pick=window.prompt('Emoji / sticker : '+choices.join(' '),'❤️');
+      if(pick){$('body').value+=pick;updateComposerState();$('body').focus();say('Emoji ajouté — appuie sur ➤ pour envoyer');}
+    };
+  }
+  if(file&&!file.dataset.bound){
+    file.dataset.bound='1';
+    file.onclick=async()=>{
+      if(!current){say('⚠️ Choisis d’abord une conversation');return;}
+      say('📎 Ouverture des médias…');
+      try{
+        if(window.WA_MODERN_MEDIA?.open) await window.WA_MODERN_MEDIA.open('photo');
+        else input?.click();
+      }catch(e){console.error('[WassAfrica] attachment action',e);say('⚠️ Caméra indisponible — sélection de fichier');input?.click();}
+    };
+  }
+  if(input&&!input.dataset.bound){
+    input.dataset.bound='1';
+    input.onchange=async()=>{
+      const f=input.files?.[0];input.value='';
+      if(!f)return;
+      if(!current){say('⚠️ Choisis d’abord une conversation');return;}
+      if(window.WA_MEDIA_P2P?.sendFile){
+        try{say('⏳ Envoi du fichier…');await window.WA_MEDIA_P2P.sendFile(f);say('✅ Fichier envoyé');await loadMessages();}
+        catch(e){console.error('[WassAfrica] file send',e);say('⚠️ Envoi fichier impossible : '+(e.message||'réessayez'))}
+      }else say('⚠️ Transport média indisponible');
+    };
+  }
+  if(voice&&!voice.dataset.bound){
+    voice.dataset.bound='1';
+    voice.onclick=async()=>{
+      if(!current){say('⚠️ Choisis d’abord une conversation');return;}
+      say('🎙️ Ouverture du message vocal…');
+      try{
+        if(window.WA_MODERN_MEDIA?.open) await window.WA_MODERN_MEDIA.open('audio');
+        else throw Error('ENREGISTREUR_VOCAL_INDISPONIBLE');
+      }catch(e){console.error('[WassAfrica] voice action',e);say('⚠️ Message vocal indisponible : '+(e.message||'réessayez'))}
+    };
+  }
+  let callsReady=false;
+  try{
+    await load('wa-calls-runtime','/wa-calls-v2.js');
+    const client=window.supabase?.createClient?.(SB,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+    if(client&&session?.access_token){
+      await client.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token||''}).catch(()=>{});
+      window.WA_CALLS?.init?.(client,user);
+      callsReady=!!window.WA_CALLS?.start;
+    }
+  }catch(e){console.warn('[WassAfrica] calls unavailable',e);say('⚠️ Appels indisponibles');}
+  const peer=async()=>{
+    if(!current)return null;
+    const rows=await rest('conversation_members','select=user_id&conversation_id=eq.'+encodeURIComponent(current.id));
+    return (rows||[]).map(x=>x.user_id).find(id=>id!==user?.id)||null;
+  };
+  for(const [id,mode,label] of [['waAudioCallBtn','audio','📞 Appel audio'],['waVideoCallBtn','video','📹 Appel vidéo']]){
+    const b=$(id);if(!b||b.dataset.bound)continue;
+    b.dataset.bound='1';
+    b.onclick=async()=>{
+      if(!current){say('⚠️ Choisis d’abord une conversation');return;}
+      if(!callsReady||!window.WA_CALLS?.start){say('⚠️ Service d’appel indisponible');return;}
+      say(label+' : préparation…');
+      try{
+        const p=await peer();
+        if(!p)throw Error('Correspondant introuvable');
+        await window.WA_CALLS.start(current.id,p,mode);
+        say(label+' lancé');
+      }catch(e){console.error('[WassAfrica] call',e);say('⚠️ '+(e.message||'Appel impossible'))}
+    };
+  }
+  document.addEventListener('wa:conversation-selected',()=>{
+    try{window.WA_MEDIA_P2P?.setConversation?.(current?.id)}catch{}
+  },{passive:true});
 }
 }catch(e){console.error('[WassAfrica] inbox auth bootstrap',e);$('gate').hidden=false;$('gate').innerHTML='<div style="font-weight:750;margin-bottom:6px">Connectez-vous pour accéder à vos messages.</div><a href="/auth?next=%2Fmessaging">Se connecter</a>'}}
 // Core messaging only: media/call overlays are intentionally removed until the text path is certified.
