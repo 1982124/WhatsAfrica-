@@ -34,7 +34,7 @@
 <script>
 (async()=>{'use strict';
 const $=id=>document.getElementById(id),SB='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',AUTH='whatsafrica-auth',DB='wassafrica-msg-v20',te=new TextEncoder(),td=new TextDecoder();
-let session=null,user=null,device=null,current=null,timer=null,busy=false,searchTimer=null,directoryMode=false,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}},directoryScope='global';
+let session=null,user=null,device=null,current=null,timer=null,busy=false,searchTimer=null,directoryMode=false,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}},directoryScope='global';\nlet realtimeClient=null,realtimeChannel=null,realtimeRefreshTimer=null,realtimeStarting=false;
 const b64=x=>{let s='';new Uint8Array(x).forEach(b=>s+=String.fromCharCode(b));return btoa(s)};const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const esc=v=>String(v??'').replace(/[<>]/g,'');
 function sessionLike(x){return x&&typeof x==='object'&&typeof x.access_token==='string'&&x.user?.id?x:null}
@@ -115,7 +115,54 @@ async function updateCurrentPresence(){if(!current)return;try{const r=await rpc(
 async function openConv(c){current=c;window.__WA_CURRENT_CONVERSATION_ID=c.id;try{window.WA_MEDIA_P2P?.setConversation?.(c.id)}catch(e){console.warn('[WassAfrica] media conversation context',e)}document.dispatchEvent(new CustomEvent('wa:conversation-selected',{detail:{conversationId:c.id}}));keyCache.clear();$('title').textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');$('subtitle').textContent='Vérification…';$('chatAvatar').textContent=(c.title||'W').trim().charAt(0).toUpperCase();clearReply();if(timer)clearInterval(timer);await loadMessages();await updateCurrentPresence();updateComposerState();document.dispatchEvent(new CustomEvent('wa:conversation-ready',{detail:{conversationId:c.id}}));if(timer)clearInterval(timer);timer=setInterval(()=>{updateCurrentPresence().catch(()=>{})},30000)}
 function updateScrollUI(){const box=$('msgs');if(!box)return;let btn=$('waScrollBottom');if(!btn){btn=document.createElement('button');btn.id='waScrollBottom';btn.type='button';btn.textContent='↓ Nouveaux messages';btn.style.cssText='position:absolute;right:14px;bottom:86px;z-index:8;border:0;border-radius:999px;padding:9px 13px;background:#173d2d;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.18);display:none;font-size:13px';const p=box.parentElement;if(p){if(getComputedStyle(p).position==='static')p.style.position='relative';p.appendChild(btn)}btn.onclick=()=>{box.scrollTo({top:box.scrollHeight,behavior:'smooth'});btn.style.display='none'}}btn.style.display=(box.scrollHeight-box.scrollTop-box.clientHeight>140)?'block':'none'}
 function initMessageScroll(){const box=$('msgs');if(!box||box.dataset.scrollReady)return;box.dataset.scrollReady='1';box.style.overscrollBehavior='contain';box.style.overflowAnchor='none';box.addEventListener('scroll',()=>requestAnimationFrame(updateScrollUI),{passive:true});updateScrollUI()}
-async function boot(){try{await auth();$('app').hidden=false;$('gate').hidden=true;try{await ensureDevice()}catch(e){console.warn('[WassAfrica] device bootstrap deferred',e);device=null}try{await showInterlocutors();heartbeat();setInterval(heartbeat,30000);setTimeout(refreshPresence,250);}catch(e){console.error('[WassAfrica] registered members bootstrap',e);$('list').innerHTML='<div class="empty">Impossible de charger les inscrits. Réessayez.</div>'}document.dispatchEvent(new CustomEvent('wa:inbox-ready'))}catch(e){console.error('[WassAfrica] inbox auth bootstrap',e);$('gate').hidden=false;$('gate').innerHTML='<div style="font-weight:750;margin-bottom:6px">Connectez-vous pour accéder à vos messages.</div><a href="/auth?next=%2Fmessaging">Se connecter</a>'}}
+async function startCanonicalRealtime(){
+  if(realtimeStarting||realtimeChannel)return;
+  if(!window.supabase?.createClient||!session?.access_token||!user?.id)return;
+  realtimeStarting=true;
+  try{
+    realtimeClient=window.supabase.createClient(SB,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+    realtimeClient.realtime.setAuth(session.access_token);
+    const scheduleRefresh=(reason)=>{
+      clearTimeout(realtimeRefreshTimer);
+      realtimeRefreshTimer=setTimeout(()=>{
+        if(current) loadMessages().catch(e=>console.warn('[WassAfrica] realtime refresh',reason,e));
+      },120);
+    };
+    realtimeChannel=realtimeClient.channel('wa-canonical-messaging')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages_v2'},payload=>{
+        const m=payload?.new;
+        if(!m?.id||m.sender_id===user.id)return;
+        document.dispatchEvent(new CustomEvent('wa:incoming-message',{detail:m}));
+        if(String(m.conversation_id)===String(current?.id||'')){
+          rpc('mark_message_delivered',{p_message_id:m.id}).catch(()=>{});
+          scheduleRefresh('message');
+        }
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages_v2'},payload=>{
+        const m=payload?.new;
+        if(m?.conversation_id&&String(m.conversation_id)===String(current?.id||''))scheduleRefresh('message-update');
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'message_receipts'},payload=>{
+        const r=payload?.new;
+        if(!r?.message_id)return;
+        scheduleRefresh('receipt');
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'message_receipts'},payload=>{
+        const r=payload?.new;
+        if(!r?.message_id)return;
+        scheduleRefresh('receipt-update');
+      })
+      .subscribe(status=>{
+        if(status==='SUBSCRIBED')console.info('[WassAfrica] canonical realtime: SUBSCRIBED');
+        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('[WassAfrica] canonical realtime:',status);
+      });
+  }catch(e){
+    realtimeChannel=null;
+    realtimeClient=null;
+    console.error('[WassAfrica] canonical realtime bootstrap',e);
+  }finally{realtimeStarting=false}
+}
+async function boot(){try{await auth();$('app').hidden=false;$('gate').hidden=true;try{await ensureDevice()}catch(e){console.warn('[WassAfrica] device bootstrap deferred',e);device=null};try{await startCanonicalRealtime()}catch(e){console.warn('[WassAfrica] realtime start deferred',e)}try{await showInterlocutors();heartbeat();setInterval(heartbeat,30000);setTimeout(refreshPresence,250);}catch(e){console.error('[WassAfrica] registered members bootstrap',e);$('list').innerHTML='<div class="empty">Impossible de charger les inscrits. Réessayez.</div>'}document.dispatchEvent(new CustomEvent('wa:inbox-ready'))}catch(e){console.error('[WassAfrica] inbox auth bootstrap',e);$('gate').hidden=false;$('gate').innerHTML='<div style="font-weight:750;margin-bottom:6px">Connectez-vous pour accéder à vos messages.</div><a href="/auth?next=%2Fmessaging">Se connecter</a>'}}
 const waBtnStyle='border:1px solid #cfdcd5;border-radius:11px;padding:8px 10px;background:#fff;color:#18231d;font:800 12px system-ui,-apple-system,sans-serif;cursor:pointer';document.querySelectorAll('#waCanonicalMediaDock button,#waCanonicalCallDock button').forEach(b=>b.style.cssText=waBtnStyle);
 (function(){
   const file=$('waCanonicalFileInput'),voice=$('waVoiceBtn'),state=$('waVoiceState'),photo=$('waPhotoBtn'),video=$('waVideoBtn'),attach=$('waFileBtn'),sticker=$('waStickerBtn');
