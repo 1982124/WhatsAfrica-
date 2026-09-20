@@ -30,7 +30,7 @@
   </main>
 </div>
 <div id="forwardModal" class="modal"><div class="modal-card"><h3>Transférer</h3><div id="forwardList" class="modal-list"></div><div class="modal-foot"><button class="ghost" id="closeForward">Fermer</button></div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/wa-message-cache.js"></script><script src="/wa-message-outbox.js"></script><script src="/wa-media-p2p.js"></script><script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/wa-message-cache.js"></script><script src="/wa-message-outbox.js"></script><script>
 (async()=>{'use strict';
 const $=id=>document.getElementById(id),SB='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',AUTH='whatsafrica-auth',DB='wassafrica-msg-v20',te=new TextEncoder(),td=new TextDecoder();
 let session=null,user=null,device=null,current=null,timer=null,busy=false,searchTimer=null,directoryMode=false,keyCache=new Map(),conversationCache=[],messageCache=new Map(),reactionCache=new Map(),replyTo=null,editingId=null,uiState={hidden:{},starred:{}},directoryScope='global';
