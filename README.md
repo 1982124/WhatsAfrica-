@@ -41,4 +41,4 @@ Une interface, une route, une table, un endpoint ou une Edge Function ne constit
 
 Le dépôt contient désormais un socle Android **Trusted Web Activity (TWA)** sous `android/`, centré sur la production `https://wassafrica.vercel.app/`.
 
-<!-- production redeploy trigger: Android PWA icon verification -->
+<!-- production redeploy trigger: Android PWA icon verification; 2026-09-20 production sync -->
