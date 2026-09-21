@@ -35,11 +35,11 @@ async function fetchSourcePage(pageUrl){
     if(!r.ok)throw new Error('SOURCE_FETCH_HTTP_'+r.status);
     const type=(r.headers.get('content-type')||'').toLowerCase();if(!type.includes('text/html')&&!type.includes('application/xhtml+xml'))throw new Error('SOURCE_NOT_HTML');
     const html=await r.text();const clean=html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<noscript[\s\S]*?<\/noscript>/gi,' ');
-    const title=(clean.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
+    const title=(clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
     const metas=[...clean.matchAll(/<meta[^>]+(?:name|property)=["'](?:description|og:title|og:description|og:image|product:price:amount|product:price:currency)["'][^>]+content=["']([^"']*)["'][^>]*>/gi)].map(m=>m[1]).filter(Boolean);
     const images=[...html.matchAll(/<(?:img|source)[^>]+(?:src|srcset)=["']([^"']+)["']/gi)].map(m=>m[1].split(',')[0].trim()).filter(Boolean).map(x=>{try{return new URL(x,url).toString()}catch{return null}}).filter(Boolean).slice(0,10);
-    const jsonld=[...html.matchAll(/<script[^>]+type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1].trim()).filter(Boolean).slice(0,5);
-    const text=clean.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\\s+/g,' ').trim().slice(0,14000);
+    const jsonld=[...html.matchAll(/<script[^>]+type=["']application\/ld\\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1].trim()).filter(Boolean).slice(0,5);
+    const text=clean.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim().slice(0,14000);
     return {url,title,metas,images,jsonld,text};
   }
   throw new Error('SOURCE_TOO_MANY_REDIRECTS')
