@@ -281,7 +281,7 @@ async function activateOptionalMessagingFeatures(){
     };
   }
   // Voice recorder v3: user-controlled recording lifecycle (pause/resume/cancel/preview/send).
-  let waVoiceRecorder=null,waVoiceStream=null,waVoiceChunks=[],waVoiceBlob=null,waVoiceStartedAt=0,waVoiceElapsed=0,waVoiceTimer=null,waVoicePausedAt=0,waVoiceMime='';
+  let waVoiceRecorder=null,waVoiceStream=null,waVoiceChunks=[],waVoiceBlob=null,waVoiceStartedAt=0,waVoiceElapsed=0,waVoiceTimer=null,waVoicePausedAt=0,waVoiceMime='',waVoiceCancelled=false;
   function waVoiceSheet(){
     let el=document.getElementById('wa-voice-recorder');
     if(el)return el;
@@ -303,7 +303,7 @@ async function activateOptionalMessagingFeatures(){
   function waVoiceVoiceStarted(){return waVoiceStartedAt||Date.now()}
   function waVoiceStopStream(){waVoiceStream?.getTracks?.().forEach(t=>{try{t.stop()}catch{}});waVoiceStream=null}
   function waVoiceResetUI(){clearInterval(waVoiceTimer);waVoiceTimer=null;const el=document.getElementById('wa-voice-recorder');if(el)el.style.display='none';voice.textContent='🎙️';}
-  function waVoiceCancel(){try{if(waVoiceRecorder&&waVoiceRecorder.state!=='inactive')waVoiceRecorder.stop()}catch{}waVoiceStopStream();waVoiceRecorder=null;waVoiceChunks=[];waVoiceBlob=null;waVoiceResetUI();say('Vocal annulé.')}
+  function waVoiceCancel(){waVoiceCancelled=true;try{if(waVoiceRecorder&&waVoiceRecorder.state!=='inactive')waVoiceRecorder.stop()}catch{}waVoiceStopStream();waVoiceRecorder=null;waVoiceChunks=[];waVoiceBlob=null;waVoiceResetUI();say('Vocal annulé.')}
   function waVoiceRetake(){waVoiceCancel();setTimeout(()=>voice.click(),60)}
   function waVoiceTogglePause(){
     if(!waVoiceRecorder)return;
@@ -316,10 +316,10 @@ async function activateOptionalMessagingFeatures(){
     waVoiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
     const types=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg','audio/mp4'];waVoiceMime=types.find(x=>MediaRecorder.isTypeSupported?.(x))||'';
     try{waVoiceRecorder=waVoiceMime?new MediaRecorder(waVoiceStream,{mimeType:waVoiceMime}):new MediaRecorder(waVoiceStream)}catch(e){waVoiceStopStream();throw Error('Format audio non compatible avec cet appareil.')}
-    waVoiceChunks=[];waVoiceBlob=null;waVoiceStartedAt=Date.now();waVoiceElapsed=0;waVoicePausedAt=0;waVoiceShow();
+    waVoiceCancelled=false;waVoiceChunks=[];waVoiceBlob=null;waVoiceStartedAt=Date.now();waVoiceElapsed=0;waVoicePausedAt=0;waVoiceShow();
     waVoiceRecorder.ondataavailable=e=>{if(e.data?.size)waVoiceChunks.push(e.data)};
     waVoiceRecorder.onerror=e=>{waVoiceStopStream();waVoiceRecorder=null;waVoiceResetUI();say('⚠️ Enregistrement vocal impossible : '+(e.error?.message||'erreur microphone'))};
-    waVoiceRecorder.onstop=()=>{
+    waVoiceRecorder.onstop=()=>{if(waVoiceCancelled){waVoiceStopStream();waVoiceRecorder=null;waVoiceChunks=[];waVoiceBlob=null;return;}
       const actual=waVoiceRecorder?.mimeType||waVoiceMime||'audio/webm';waVoiceBlob=new Blob(waVoiceChunks,{type:actual});waVoiceStopStream();
       const el=document.getElementById('wa-voice-recorder');if(el){el.querySelector('#waVoiceState').textContent='▶ Aperçu prêt — écoutez avant d’envoyer';el.querySelector('#waVoicePause').disabled=true;el.querySelector('#waVoiceSend').disabled=!waVoiceBlob.size;el.querySelector('#waVoiceRetake').disabled=false;const p=el.querySelector('#waVoicePreview');p.src=URL.createObjectURL(waVoiceBlob);p.style.display='block';}
       clearInterval(waVoiceTimer);voice.textContent='🎙️';
