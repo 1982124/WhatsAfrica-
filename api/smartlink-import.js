@@ -19,6 +19,31 @@ async function fetchImportedImage(imageUrl,res){
   res.setHeader('Content-Type',type);res.setHeader('Cache-Control','private, max-age=300');res.setHeader('X-Content-Type-Options','nosniff');
   return res.status(200).send(buf)
 }
+async function fetchSourcePage(pageUrl){
+  const first=new URL(pageUrl);
+  if(!['http:','https:'].includes(first.protocol)||first.username||first.password)throw new Error('INVALID_SOURCE_URL');
+  if(first.port&&first.port!=='80'&&first.port!=='443')throw new Error('INVALID_SOURCE_PORT');
+  const isBlockedHost=(host)=>host==='localhost'||host.endsWith('.localhost')||host==='127.0.0.1'||host==='::1'||host.startsWith('127.')||host.startsWith('10.')||host.startsWith('192.168.')||host.startsWith('169.254.')||/^172\.(1[6-9]|2[0-9]|3[01])\./.test(host)||host.endsWith('.internal');
+  if(isBlockedHost(first.hostname.toLowerCase()))throw new Error('BLOCKED_SOURCE_HOST');
+  let url=pageUrl;
+  for(let hop=0;hop<4;hop++){
+    const u=new URL(url);if(isBlockedHost(u.hostname.toLowerCase()))throw new Error('BLOCKED_SOURCE_HOST');
+    const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),10000);let r;
+    try{r=await fetch(url,{redirect:'manual',signal:ac.signal,headers:{'User-Agent':'WASSAFRICA Smart Link Analyzer/1.0','Accept':'text/html,application/xhtml+xml'}})}
+    catch(e){throw new Error('SOURCE_FETCH_FAILED:'+((e&&e.message)||'fetch failed'))}finally{clearTimeout(timer)}
+    if(r.status>=300&&r.status<400){const loc=r.headers.get('location');if(!loc)throw new Error('SOURCE_REDIRECT_INVALID');url=new URL(loc,url).toString();continue}
+    if(!r.ok)throw new Error('SOURCE_FETCH_HTTP_'+r.status);
+    const type=(r.headers.get('content-type')||'').toLowerCase();if(!type.includes('text/html')&&!type.includes('application/xhtml+xml'))throw new Error('SOURCE_NOT_HTML');
+    const html=await r.text();const clean=html.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<noscript[\\s\\S]*?<\\/noscript>/gi,' ');
+    const title=(clean.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
+    const metas=[...clean.matchAll(/<meta[^>]+(?:name|property)=["'](?:description|og:title|og:description|og:image|product:price:amount|product:price:currency)["'][^>]+content=["']([^"']*)["'][^>]*>/gi)].map(m=>m[1]).filter(Boolean);
+    const images=[...html.matchAll(/<(?:img|source)[^>]+(?:src|srcset)=["']([^"']+)["']/gi)].map(m=>m[1].split(',')[0].trim()).filter(Boolean).map(x=>{try{return new URL(x,url).toString()}catch{return null}}).filter(Boolean).slice(0,10);
+    const jsonld=[...html.matchAll(/<script[^>]+type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1].trim()).filter(Boolean).slice(0,5);
+    const text=clean.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\\s+/g,' ').trim().slice(0,14000);
+    return {url,title,metas,images,jsonld,text};
+  }
+  throw new Error('SOURCE_TOO_MANY_REDIRECTS')
+}
 function extractResponseText(j){
   if(typeof j?.output_text==='string'&&j.output_text.trim())return j.output_text.trim();
   const parts=[];
@@ -46,7 +71,13 @@ export default async function handler(req,res){
     console.info('[SMARTLINK_AI]',requestId,'START','url_count='+urls.length);
     const key=process.env.OPENAI_API_KEY;
     if(!key){console.error('[SMARTLINK_AI]',requestId,'CONFIG_MISSING');return res.status(503).json({error:'AI_NOT_CONFIGURED',message:'L’IA Smart Link nécessite OPENAI_API_KEY dans Vercel.'})}
-    const prompt=`Tu es l'assistant commercial de WASSAFRICA. Analyse les pages correspondant aux URLs fournies avec la recherche web. Pour chaque URL, crée UNE offre exploitable dans un Smart Link. Ne fabrique jamais un prix, une caractéristique, un stock ou une disponibilité absente de la source. Si une donnée manque, mets null ou une chaîne vide. Retourne uniquement un objet JSON avec une clé "offers", tableau de 1 à 20 objets. Champs: title, description, price(number|null), currency(string), stock(number|null), category, product_type(physical|digital|service), source_url, image_urls(array of up to 5 public image URLs). Ne renvoie que des images publiques réellement présentes sur la page si elles sont identifiables. URLs:\n${urls.join('\n')}`;
+    const sourcePages=[];
+    for(const url of urls){
+      try{sourcePages.push(await fetchSourcePage(url))}
+      catch(e){sourcePages.push({url,error:e?.message||'SOURCE_FETCH_FAILED'})}
+    }
+    const sourceContext=sourcePages.map((p,i)=>`SOURCE ${i+1} URL: ${p.url}\nTITLE: ${p.title||''}\nMETA: ${(p.metas||[]).join(' | ')}\nIMAGE_URLS: ${(p.images||[]).join(' | ')}\nJSON_LD: ${(p.jsonld||[]).join(' | ')}\nPAGE_TEXT: ${p.text||''}\nFETCH_ERROR: ${p.error||''}`).join('\n\n').slice(0,180000);
+    const prompt=`Tu es l'assistant commercial de WASSAFRICA. Les URLs ci-dessous ont été fournies directement par l'utilisateur. Analyse en priorité le contenu extrait de CHAQUE page fournie. Utilise la recherche web seulement comme complément si l'extrait est insuffisant. Pour chaque URL, crée UNE offre exploitable dans un Smart Link. Ne fabrique jamais un prix, une caractéristique, un stock ou une disponibilité absente de la source. Si une donnée manque, mets null ou une chaîne vide. Retourne uniquement un objet JSON avec une clé "offers", tableau de 1 à 20 objets. Champs: title, description, price(number|null), currency(string), stock(number|null), category, product_type(physical|digital|service), source_url, image_urls(array of up to 5 public image URLs). Les image_urls doivent privilégier les images réellement présentes dans IMAGE_URLS ou JSON_LD. URLs originales:\n${urls.join('\n')}\n\nCONTENU DES PAGES:\n${sourceContext}`;
     console.info('[SMARTLINK_AI]',requestId,'OPENAI_REQUEST');
     const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({
       model:'gpt-5.6-luna',
