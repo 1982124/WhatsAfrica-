@@ -141,7 +141,12 @@ function updateComposerState(){$('send').disabled=!(current&&$('body').value.tri
 async function send(e){e.preventDefault();const text=$('body').value.trim();if(!text||!current)return;$('send').disabled=true;try{const x=await ensureKey(current.id),id=crypto.randomUUID(),e2=await encryptText(current.id,id,text,x.key,x.version);const meta={v:2,alg:'AES-256-GCM',iv:e2.iv,conversation_id:current.id,message_id:id,key_version:x.version};if(replyTo)meta.reply_to_id=replyTo.id;const queuedPayload={id,conversation_id:current.id,sender_id:user.id,body:null,message_type:'text',encryption_version:1,ciphertext:e2.ciphertext,encryption_metadata:meta};
       let delivery={sent:false,queued:false};
       if(window.WA_MESSAGE_OUTBOX?.enqueue){
-        delivery=await window.WA_MESSAGE_OUTBOX.enqueue(queuedPayload);
+        try{
+          delivery=await window.WA_MESSAGE_OUTBOX.enqueue(queuedPayload);
+        }catch(outboxError){
+          console.warn('[WassAfrica] outbox failed, using canonical direct insert',outboxError);
+          delivery={sent:false,queued:false};
+        }
       }
       if(!delivery.sent){
         const r=await rest('messages_v2','',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(queuedPayload)});
