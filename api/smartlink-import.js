@@ -81,32 +81,33 @@ export default async function handler(req,res){
     if(!urls.length)return res.status(400).json({error:'NO_URLS',message:'Collez au moins un lien.'});
     if(urls.some(u=>!/^https?:\/\//i.test(u)))return res.status(400).json({error:'INVALID_URL',message:'Chaque lien doit commencer par http:// ou https://.'});
     console.info('[SMARTLINK_AI]',requestId,'START','url_count='+urls.length);
-    const key=process.env.OPENAI_API_KEY;
-    if(!key){console.error('[SMARTLINK_AI]',requestId,'CONFIG_MISSING');return res.status(503).json({error:'AI_NOT_CONFIGURED',message:'L’IA Smart Link nécessite OPENAI_API_KEY dans Vercel.'})}
+    const openAiKey=process.env.OPENAI_API_KEY||'';
+    const openRouterKey=process.env.OPENROUTER_API_KEY||'';
+    if(!openAiKey&&!openRouterKey){console.error('[SMARTLINK_AI]',requestId,'CONFIG_MISSING');return res.status(503).json({error:'AI_NOT_CONFIGURED',message:'Aucun moteur IA Smart Link n’est configuré sur Vercel.'})}
     const sourcePages=[];
     for(const url of urls){
       try{sourcePages.push(await fetchSourcePage(url))}
       catch(e){sourcePages.push({url,error:e?.message||'SOURCE_FETCH_FAILED'})}
     }
     const sourceContext=sourcePages.map((p,i)=>`SOURCE ${i+1} URL: ${p.url}\nTITLE: ${p.title||''}\nMETA: ${(p.metas||[]).join(' | ')}\nIMAGE_URLS: ${(p.images||[]).join(' | ')}\nJSON_LD: ${(p.jsonld||[]).join(' | ')}\nPAGE_TEXT: ${p.text||''}\nFETCH_ERROR: ${p.error||''}`).join('\n\n').slice(0,180000);
-    const prompt=`Tu es l'assistant commercial de WASSAFRICA. Les URLs ci-dessous ont été fournies directement par l'utilisateur. Analyse en priorité le contenu extrait de CHAQUE page fournie. Utilise la recherche web seulement comme complément si l'extrait est insuffisant. Pour chaque URL, crée UNE offre exploitable dans un Smart Link. Ne fabrique jamais un prix, une caractéristique, un stock ou une disponibilité absente de la source. Si une donnée manque, mets null ou une chaîne vide. Retourne uniquement un objet JSON avec une clé "offers", tableau de 1 à 20 objets. Champs: title, description, price(number|null), currency(string), stock(number|null), category, product_type(physical|digital|service), source_url, image_urls(array of up to 5 public image URLs). Les image_urls doivent privilégier les images réellement présentes dans IMAGE_URLS ou JSON_LD. URLs originales:\n${urls.join('\n')}\n\nCONTENU DES PAGES:\n${sourceContext}`;
-    console.info('[SMARTLINK_AI]',requestId,'OPENAI_REQUEST');
-    const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({
-      model:'gpt-5.6-luna',
-      tools:[{type:'web_search'}],
-      input:prompt,
-      text:{format:{type:'json_schema',name:'smartlink_offers',strict:true,schema:{
-        type:'object',
-        properties:{offers:{type:'array',minItems:0,maxItems:20,items:{type:'object',properties:{
-          title:{type:'string'},description:{type:'string'},price:{type:['number','null']},currency:{type:'string'},stock:{type:['number','null']},category:{type:'string'},product_type:{type:'string',enum:['physical','digital','service']},source_url:{type:'string'},image_urls:{type:'array',items:{type:'string'},maxItems:5}
-        },required:['title','description','price','currency','stock','category','product_type','source_url','image_urls'],additionalProperties:false}}},
-        required:['offers'],additionalProperties:false
-      }}}
-    })});
-    const j=await r.json();
-    console.info('[SMARTLINK_AI]',requestId,'OPENAI_RESPONSE','status='+r.status);
-    if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENAI_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',detail:j?.error?.message||'Erreur IA lors de l’analyse des liens.'})}
-    const out=extractResponseText(j);
+    const prompt=`Tu es l'assistant commercial de WASSAFRICA. Les URLs ci-dessous ont été fournies directement par l'utilisateur. Analyse en priorité le contenu extrait de CHAQUE page fournie. N’invente jamais un prix, une caractéristique, un stock ou une disponibilité absente de la source. Si une donnée manque, mets null ou une chaîne vide. Retourne uniquement un objet JSON avec une clé "offers", tableau de 0 à 20 objets. Champs: title, description, price(number|null), currency(string), stock(number|null), category, product_type(physical|digital|service), source_url, image_urls(array de 0 à 5 URLs publiques). Les image_urls doivent privilégier exclusivement les images réellement présentes dans IMAGE_URLS ou JSON_LD. URLs originales:\n${urls.join('\n')}\n\nCONTENU DES PAGES:\n${sourceContext}`;
+    let j;
+    if(openAiKey){
+      console.info('[SMARTLINK_AI]',requestId,'OPENAI_REQUEST');
+      const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':'Bearer '+openAiKey,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-5.6-luna',tools:[{type:'web_search'}],input:prompt,text:{format:{type:'json_schema',name:'smartlink_offers',strict:true,schema:{type:'object',properties:{offers:{type:'array',maxItems:20,items:{type:'object',properties:{title:{type:'string'},description:{type:'string'},price:{type:['number','null']},currency:{type:'string'},stock:{type:['number','null']},category:{type:'string'},product_type:{type:'string',enum:['physical','digital','service']},source_url:{type:'string'},image_urls:{type:'array',items:{type:'string'},maxItems:5}},required:['title','description','price','currency','stock','category','product_type','source_url','image_urls'],additionalProperties:false}}},required:['offers'],additionalProperties:false}}}})});
+      j=await r.json();
+      console.info('[SMARTLINK_AI]',requestId,'OPENAI_RESPONSE','status='+r.status);
+      if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENAI_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',detail:j?.error?.message||'Erreur IA lors de l’analyse des liens.'})}
+    }else{
+      const models=(process.env.OPENROUTER_MODELS||'qwen/qwen3.6-flash,qwen/qwen3.5-9b').split(',').map(x=>x.trim()).filter(Boolean).slice(0,4);
+      console.info('[SMARTLINK_AI]',requestId,'OPENROUTER_REQUEST','model='+models[0]);
+      const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+openRouterKey,'Content-Type':'application/json','HTTP-Referer':'https://wassafrica.vercel.app','X-Title':'WassAfrica Smart Link'},body:JSON.stringify({model:models[0],models,messages:[{role:'system',content:'Tu es un assistant commercial fiable. Réponds uniquement en JSON valide. Ne fabrique aucune donnée absente des sources.'},{role:'user',content:prompt}],temperature:0.1,max_tokens:4000,response_format:{type:'json_object'}})});
+      j=await r.json();
+      console.info('[SMARTLINK_AI]',requestId,'OPENROUTER_RESPONSE','status='+r.status);
+      if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',detail:j?.error?.message||'Erreur IA lors de l’analyse des liens.'})}
+    }
+    let out=extractResponseText(j);
+    if(!out&&j?.choices?.[0]?.message?.content)out=j.choices[0].message.content;
     if(!out){console.error('[SMARTLINK_AI]',requestId,'EMPTY_OUTPUT');return res.status(502).json({error:'AI_EMPTY_OUTPUT',message:'L’IA a répondu sans produire de données exploitables.'})}
     let data;try{data=JSON.parse(out)}catch(e){console.error('[SMARTLINK_AI]',requestId,'PARSE_FAILED');return res.status(502).json({error:'AI_INVALID_JSON',message:'La réponse IA n’a pas pu être interprétée.'})}
     const offers=Array.isArray(data?.offers)?data.offers.filter(o=>o&&typeof o==='object').slice(0,20):[];
