@@ -274,9 +274,9 @@ async function activateOptionalMessagingFeatures(){
       const f=input.files?.[0];input.value='';
       if(!f)return;
       if(!current){say('⚠️ Choisis d’abord une conversation');return;}
-      if(window.WA_MEDIA_P2P?.sendFile){
-        try{say('⏳ Envoi du fichier…');await window.WA_MEDIA_P2P.sendFile(f);say('✅ Fichier envoyé');await loadMessages();}
-        catch(e){console.error('[WassAfrica] file send',e);say('⚠️ Envoi fichier impossible : '+(e.message||'réessayez'))}
+      if(window.WA_MEDIA_P2P&&typeof window.WA_MEDIA_P2P.sendFile==='function'){
+        try{say('⏳ Envoi et confirmation du fichier…');const result=await window.WA_MEDIA_P2P.sendFile(f);if(result?.queued)say('📥 Fichier conservé localement — en attente de connexion');else if(result?.id){say('✅ Fichier envoyé et confirmé');await loadMessages();}else throw Error('MEDIA_SEND_NOT_CONFIRMED');}
+        catch(e){console.error('[WassAfrica] file send',e);say('⚠️ Envoi fichier non confirmé : '+(e.message||'réessayez'))}
       }else say('⚠️ Transport média indisponible');
     };
   }
@@ -287,9 +287,10 @@ async function activateOptionalMessagingFeatures(){
     if(el)return el;
     el=document.createElement('div');el.id='wa-voice-recorder';
     el.style.cssText='position:fixed;inset:0;z-index:12000;background:rgba(5,10,8,.62);display:none;align-items:flex-end;justify-content:center;padding:12px';
-    el.innerHTML='<div style="width:min(560px,100%);background:#fff;border-radius:22px;padding:16px;box-shadow:0 -18px 60px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;gap:10px"><b id="waVoiceTitle">🎙️ Enregistreur vocal</b><span id="waVoiceTimer" style="margin-left:auto;font-variant-numeric:tabular-nums">00:00</span></div><div id="waVoiceState" style="margin-top:8px;color:#68756d;font-size:13px">Prêt</div><div style="margin-top:12px;padding:12px;border-radius:14px;background:#f3f7f4"><div id="waVoiceMeter" style="height:7px;border-radius:99px;background:#d9e4dd;overflow:hidden"><i id="waVoiceMeterBar" style="display:block;width:0;height:100%;background:#18864b"></i></div><audio id="waVoicePreview" controls style="display:none;width:100%;margin-top:10px"></audio></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px"><button id="waVoicePause" type="button" class="btn ghost">⏸ Pause</button><button id="waVoiceCancel" type="button" class="btn ghost">✕ Annuler</button><button id="waVoiceRetake" type="button" class="btn ghost">↻ Refaire</button><button id="waVoiceSend" type="button" class="btn gold">➤ Envoyer</button></div><div style="margin-top:8px;text-align:center;color:#7a867f;font-size:12px">Vous contrôlez entièrement le vocal : pause, reprise, annulation, écoute, refaire ou envoyer.</div></div>';
+    el.innerHTML='<div style="width:min(560px,100%);background:#fff;border-radius:22px;padding:16px;box-shadow:0 -18px 60px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;gap:10px"><b id="waVoiceTitle">🎙️ Enregistreur vocal</b><span id="waVoiceTimer" style="margin-left:auto;font-variant-numeric:tabular-nums">00:00</span></div><div id="waVoiceState" style="margin-top:8px;color:#68756d;font-size:13px">Prêt</div><div style="margin-top:12px;padding:12px;border-radius:14px;background:#f3f7f4"><div id="waVoiceMeter" style="height:7px;border-radius:99px;background:#d9e4dd;overflow:hidden"><i id="waVoiceMeterBar" style="display:block;width:0;height:100%;background:#18864b"></i></div><audio id="waVoicePreview" controls style="display:none;width:100%;margin-top:10px"></audio></div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px"><button id="waVoicePause" type="button" class="btn ghost">⏸ Pause</button><button id="waVoiceStop" type="button" class="btn ghost">⏹ Terminer</button><button id="waVoiceCancel" type="button" class="btn ghost">✕ Annuler</button><button id="waVoiceRetake" type="button" class="btn ghost">↻ Refaire</button><button id="waVoiceSend" type="button" class="btn gold" disabled>➤ Envoyer</button></div><div style="margin-top:8px;text-align:center;color:#7a867f;font-size:12px">Vous contrôlez entièrement le vocal : pause, reprise, annulation, écoute, refaire ou envoyer.</div></div>';
     document.body.appendChild(el);
     el.querySelector('#waVoicePause').onclick=()=>waVoiceTogglePause();
+    el.querySelector('#waVoiceStop').onclick=()=>waVoiceStopForPreview();
     el.querySelector('#waVoiceCancel').onclick=()=>waVoiceCancel();
     el.querySelector('#waVoiceRetake').onclick=()=>waVoiceRetake();
     el.querySelector('#waVoiceSend').onclick=()=>waVoiceSend().catch(e=>say('⚠️ Envoi vocal impossible : '+(e.message||e)));
@@ -321,20 +322,26 @@ async function activateOptionalMessagingFeatures(){
     waVoiceRecorder.onerror=e=>{waVoiceStopStream();waVoiceRecorder=null;waVoiceResetUI();say('⚠️ Enregistrement vocal impossible : '+(e.error?.message||'erreur microphone'))};
     waVoiceRecorder.onstop=()=>{if(waVoiceCancelled){waVoiceStopStream();waVoiceRecorder=null;waVoiceChunks=[];waVoiceBlob=null;return;}
       const actual=waVoiceRecorder?.mimeType||waVoiceMime||'audio/webm';waVoiceBlob=new Blob(waVoiceChunks,{type:actual});waVoiceStopStream();
-      const el=document.getElementById('wa-voice-recorder');if(el){el.querySelector('#waVoiceState').textContent='▶ Aperçu prêt — écoutez avant d’envoyer';el.querySelector('#waVoicePause').disabled=true;el.querySelector('#waVoiceSend').disabled=!waVoiceBlob.size;el.querySelector('#waVoiceRetake').disabled=false;const p=el.querySelector('#waVoicePreview');p.src=URL.createObjectURL(waVoiceBlob);p.style.display='block';}
+      const el=document.getElementById('wa-voice-recorder');if(el){el.querySelector('#waVoiceState').textContent='▶ Aperçu prêt — écoutez avant d’envoyer';el.querySelector('#waVoicePause').disabled=true;el.querySelector('#waVoiceStop').disabled=true;el.querySelector('#waVoiceSend').disabled=!waVoiceBlob.size;el.querySelector('#waVoiceRetake').disabled=false;const p=el.querySelector('#waVoicePreview');p.src=URL.createObjectURL(waVoiceBlob);p.style.display='block';}
       clearInterval(waVoiceTimer);voice.textContent='🎙️';
     };
     waVoiceRecorder.start(200);waVoiceSetTimer();say('🔴 Enregistrement vocal en cours — contrôlez-le dans le panneau.');
   }
   async function waVoiceStopForPreview(){if(!waVoiceRecorder)return;if(waVoiceRecorder.state!=='inactive')waVoiceRecorder.stop()}
   async function waVoiceSend(){
-    if(!waVoiceBlob?.size||!current)return;
-    const ext=/ogg/.test(waVoiceBlob.type)?'ogg':/mp4/.test(waVoiceBlob.type)?'m4a':'webm';
-    const f=new File([waVoiceBlob],'vocal-'+Date.now()+'.'+ext,{type:waVoiceBlob.type||'audio/webm'});
-    const el=document.getElementById('wa-voice-recorder');if(el){el.querySelector('#waVoiceSend').disabled=true;el.querySelector('#waVoiceState').textContent='⏳ Chiffrement et envoi…';}
-    await window.WA_MEDIA_P2P?.sendFile?.(f);
-    if(el){const p=el.querySelector('#waVoicePreview');try{if(p.src)URL.revokeObjectURL(p.src)}catch{}}
-    waVoiceBlob=null;waVoiceChunks=[];waVoiceRecorder=null;waVoiceResetUI();say('✅ Message vocal envoyé');await loadMessages();
+    if(!waVoiceBlob?.size||!current)throw Error('VOCAL_PREVIEW_REQUIRED');
+    if(!window.WA_MEDIA_P2P||typeof window.WA_MEDIA_P2P.sendFile!=='function')throw Error('TRANSPORT_MEDIA_INDISPONIBLE');
+    const blobAtSend=waVoiceBlob;
+    const ext=/ogg/.test(blobAtSend.type)?'ogg':/mp4/.test(blobAtSend.type)?'m4a':'webm';
+    const f=new File([blobAtSend],'vocal-'+Date.now()+'.'+ext,{type:blobAtSend.type||'audio/webm'});
+    const el=document.getElementById('wa-voice-recorder');if(el){el.querySelector('#waVoiceSend').disabled=true;el.querySelector('#waVoiceState').textContent='⏳ Chiffrement, persistance et confirmation…';}
+    try{
+      const result=await window.WA_MEDIA_P2P.sendFile(f);
+      if(!result||(!result.id&&!result.queued))throw Error('MEDIA_SEND_NOT_CONFIRMED');
+      if(result.queued){if(el)el.querySelector('#waVoiceState').textContent='📥 Vocal conservé localement — en attente de connexion';say('📥 Vocal conservé, en attente de connexion.');return;}
+      if(el){const p=el.querySelector('#waVoicePreview');try{if(p.src)URL.revokeObjectURL(p.src)}catch{}}
+      waVoiceBlob=null;waVoiceChunks=[];waVoiceRecorder=null;waVoiceResetUI();say('✅ Message vocal envoyé et confirmé');await loadMessages();
+    }catch(e){if(el){el.querySelector('#waVoiceSend').disabled=false;el.querySelector('#waVoiceState').textContent='⚠️ Envoi non confirmé — votre vocal est conservé, réessayez.';}throw e;}
   }
   if(voice&&!voice.dataset.bound){
     voice.dataset.bound='1';
