@@ -125,7 +125,7 @@ async function startPhone(phone){const r=await rpc('start_direct_conversation_by
 function isPhone(v){return /^(?:00|\+)[1-9][0-9\s().-]{7,18}$/.test(v)}
 function isEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
 async function start(){const v=$('target').value.trim();if(!v)return;$('start').disabled=true;busy=true;try{if(isPhone(v)||isEmail(v)){await startPhone(v);return}await find(v)}catch(e){if(String(e.code)==='CONTACT_NOT_FOUND'||String(e.message||'').includes('CONTACT_NOT_FOUND')){try{window.WA_MESSAGE_INVITES?.init?.()}catch{} }else{$('list').innerHTML='<div class="empty">Recherche impossible. Réessayez.</div>';$('target').focus()}}finally{busy=false;updateComposerState()}}
-async function loadMessages(){if(!current)return;messageCache.clear();reactionCache.clear();let rows=[];try{rows=await rest('messages_v2','select=id,sender_id,created_at,ciphertext,encryption_metadata,message_type,media_path,media_mime,media_duration_ms&conversation_id=eq.'+encodeURIComponent(current.id)+'&order=created_at.asc&limit=300');try{await window.WA_MESSAGE_CACHE?.put?.(current.id,rows)}catch(e){console.warn('[WassAfrica] message cache write',e)}}catch(e){rows=await window.WA_MESSAGE_CACHE?.get?.(current.id).catch(()=>[])||[];if(!rows.length){$('msgs').innerHTML='<div class="empty">Impossible de charger les messages. Réessayez.</div>';console.error('[WassAfrica] loadMessages rows',e);return}$('subtitle').textContent='Hors connexion · historique local';}let latest=null;try{latest=await latestKey(current.id)}catch(e){console.warn('[WassAfrica] latestKey',e)}if(rows?.length){try{const reactions=await rest('message_reactions','select=message_id,user_id,reaction&message_id=in.('+rows.map(r=>r.id).join(',')+')');for(const rr of reactions||[]){(reactionCache[rr.message_id]??=[]).push(rr)}}catch(e){console.warn('[WassAfrica] reactions skipped',e)}}const visible=[];for(const r of rows||[]){if(uiState.hidden[r.id])continue;let text='';let unavailable=false;if(r.message_type!=='text'){text='';}else{try{const v=Number(r.encryption_metadata?.key_version);const exact=(latest&&v===latest.version)?latest:await fetchKey(current.id,v);if(!exact)throw Error('NO_KEY');text=await decrypt(r,exact.key);messageCache.set(r.id,text)}catch(e){unavailable=true;text='Message indisponible';console.warn('[WassAfrica] decrypt message',r.id,e)}}visible.push({r,text,unavailable})}renderMessages(visible)}
+async function loadMessages(){if(!current)return;messageCache.clear();reactionCache.clear();let rows=[];try{rows=await rest('messages_v2','select=id,sender_id,created_at,ciphertext,encryption_metadata,message_type,media_path,media_mime,media_duration_ms&conversation_id=eq.'+encodeURIComponent(current.id)+'&order=created_at.asc&limit=1000');try{await window.WA_MESSAGE_CACHE?.put?.(current.id,rows)}catch(e){console.warn('[WassAfrica] message cache write',e)}}catch(e){rows=await window.WA_MESSAGE_CACHE?.get?.(current.id).catch(()=>[])||[];if(!rows.length){$('msgs').innerHTML='<div class="empty">Impossible de charger les messages. Réessayez.</div>';console.error('[WassAfrica] loadMessages rows',e);return}$('subtitle').textContent='Hors connexion · historique local';}let latest=null;try{latest=await latestKey(current.id)}catch(e){console.warn('[WassAfrica] latestKey',e)}if(rows?.length){try{const reactions=await rest('message_reactions','select=message_id,user_id,reaction&message_id=in.('+rows.map(r=>r.id).join(',')+')');for(const rr of reactions||[]){(reactionCache[rr.message_id]??=[]).push(rr)}}catch(e){console.warn('[WassAfrica] reactions skipped',e)}}const visible=[];for(const r of rows||[]){if(uiState.hidden[r.id])continue;let text='';let unavailable=false;if(r.message_type!=='text'){text='';}else{try{const v=Number(r.encryption_metadata?.key_version);const exact=(latest&&v===latest.version)?latest:await fetchKey(current.id,v);if(!exact)throw Error('NO_KEY');text=await decrypt(r,exact.key);messageCache.set(r.id,text)}catch(e){unavailable=true;text='Message indisponible';console.warn('[WassAfrica] decrypt message',r.id,e)}}visible.push({r,text,unavailable})}renderMessages(visible)}
 function fmtTime(ts){try{return new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit'}).format(new Date(ts))}catch{return ''}}
 function renderMessages(items){const box=$('msgs');const distanceFromBottom=box.scrollHeight-box.scrollTop-box.clientHeight;const keepBottom=distanceFromBottom<96;const oldAnchor=[...box.children].find(el=>el.dataset?.id&&el.getBoundingClientRect().bottom>box.getBoundingClientRect().top+8);const anchorId=oldAnchor?.dataset.id||null;const anchorOffset=oldAnchor?oldAnchor.getBoundingClientRect().top-box.getBoundingClientRect().top:0;const term=$('chatSearch').value.trim().toLowerCase();box.innerHTML='';let found=0;for(const {r,text,unavailable} of items){if(term&&!(text||'').toLowerCase().includes(term))continue;found++;const b=document.createElement('div');b.className='bubble '+(r.sender_id===user.id?'mine':'');b.dataset.id=r.id;if(uiState.starred[r.id])b.title='Message enregistré';const meta=r.encryption_metadata||{};const quoteId=meta.reply_to_id;if(quoteId&&messageCache.has(quoteId)){const q=document.createElement('div');q.className='quoted';q.textContent=messageCache.get(quoteId);b.appendChild(q)}const content=document.createElement('div');if(r.message_type!=='text'){content.textContent='Fichier partagé';}else content.textContent=text;b.appendChild(content);if(r.message_type!=='text')window.WA_MEDIA_P2P?.decorate?.(r,content);const reactionBox=document.createElement('div');reactionBox.className='reactions';for(const [emoji,count] of Object.entries((reactionCache[r.id]||[]).reduce((a,x)=>(a[x.reaction]=(a[x.reaction]||0)+1,a),{}))) {const chip=document.createElement('span');chip.className='reaction';chip.textContent=emoji+' '+count;reactionBox.appendChild(chip)}b.appendChild(reactionBox);const m=document.createElement('div');m.className='meta';m.textContent=fmtTime(r.created_at)+(meta.edited_at?' · modifié':'');b.appendChild(m);const menu=document.createElement('div');menu.className='actions';const actions=[['↩ Répondre',()=>setReply(r,text)],['⧉ Copier',()=>copyText(text)],['🙂 Réagir',()=>reactMessage(r.id)],['↗ Transférer',()=>showForward(r,text)],['☆ Enregistrer',()=>toggleStar(r.id)],['🗑 Supprimer pour moi',()=>deleteForMe(r.id)]];if(r.sender_id===user.id){actions.splice(1,0,['✎ Modifier',()=>editMessage(r,text)]);actions.push(['🗑 Supprimer pour tous',()=>deleteForEveryone(r.id)])}for(const [label,fn] of actions){const x=document.createElement('button');x.textContent=label;x.onclick=async e=>{e.stopPropagation();menu.classList.remove('show');await fn()};menu.appendChild(x)}b.appendChild(menu);let press=null;b.onclick=e=>{if(e.target.closest('.actions'))return;document.querySelectorAll('.bubble.show-actions').forEach(x=>x!==b&&x.classList.remove('show-actions'));b.classList.toggle('show-actions');clearTimeout(press);press=setTimeout(()=>b.classList.remove('show-actions'),4500)};b.addEventListener('touchstart',()=>{press=setTimeout(()=>b.classList.add('show-actions'),550)},{passive:true});b.addEventListener('touchend',()=>clearTimeout(press));box.appendChild(b)}if(!found)box.innerHTML='<div class="empty">Aucun message correspondant.</div>';requestAnimationFrame(()=>{if(keepBottom){box.scrollTop=box.scrollHeight}else if(anchorId){const next=box.querySelector('[data-id="'+CSS.escape(anchorId)+'"]');if(next){const delta=(next.getBoundingClientRect().top-box.getBoundingClientRect().top)-anchorOffset;box.scrollTop=Math.max(0,box.scrollTop+delta)}}updateScrollUI()})}
 async function copyText(text){try{await navigator.clipboard.writeText(text)}catch{}}
@@ -158,7 +158,7 @@ async function send(e){e.preventDefault();const text=$('body').value.trim();if(!
   if(insertError)throw insertError
   const confirmed=await readBackMessage(id,conversationId);sentToDb=true;sendDiag('insert_confirmed',{message_id:id,conversation_id:conversationId,created_at:confirmed.created_at});
   sendDiag('decrypt_local_confirm_start',{message_id:id,conversation_id:conversationId});const localText=await decrypt({id,conversation_id:conversationId,sender_id:user.id,ciphertext:e2.ciphertext,encryption_metadata:meta},x.key);if(localText!==text)throw Error('LOCAL_DECRYPT_MISMATCH');sendDiag('decrypt_local_confirmed',{message_id:id,conversation_id:conversationId});
-  sendDiag('send_success',{message_id:id,conversation_id:conversationId});$('body').value='';clearReply();$('subtitle').textContent='✓ Envoyé';
+  sendDiag('send_success',{message_id:id,conversation_id:conversationId});waSoundSent();$('body').value='';clearReply();$('subtitle').textContent='✓ Envoyé';
   try{await loadMessages();sendDiag('ui_refresh_success',{message_id:id,conversation_id:conversationId})}catch(refreshError){console.warn('[WassAfrica] message sent but UI refresh failed',refreshError);sendDiag('ui_refresh_error',{message_id:id,code:String(refreshError?.code||refreshError?.message||'REFRESH_FAILED').slice(0,120)})}
   setTimeout(()=>{if(current?.id===conversationId)$('subtitle').textContent='● temps réel'},2500);
 }catch(err){console.error('[WassAfrica] send',err);const code=sendErrorCode(err);sendDiag('send_failed',{message_id:id,conversation_id:conversationId,code});$('subtitle').textContent=sentToDb?'✓ Envoyé':'⚠️ Envoi impossible · '+code;setTimeout(()=>{if(current?.id===conversationId)$('subtitle').textContent='● temps réel'},4000)}finally{updateComposerState();$('send').disabled=false;$('body').focus()}}
@@ -166,6 +166,14 @@ async function updateCurrentPresence(){if(!current)return;try{const r=await rpc(
 async function openConv(c){setMobileChat(true);current=c;window.__WA_CURRENT_CONVERSATION_ID=c.id;try{window.WA_MEDIA_P2P?.setConversation?.(c.id)}catch(e){console.warn('[WassAfrica] media conversation context',e)}document.dispatchEvent(new CustomEvent('wa:conversation-selected',{detail:{conversationId:c.id}}));keyCache.clear();$('title').textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');$('subtitle').textContent='Vérification…';$('chatAvatar').textContent=(c.title||'W').trim().charAt(0).toUpperCase();clearReply();if(timer)clearInterval(timer);await loadMessages();await updateCurrentPresence();updateComposerState();document.dispatchEvent(new CustomEvent('wa:conversation-ready',{detail:{conversationId:c.id}}));if(timer)clearInterval(timer);timer=setInterval(()=>{updateCurrentPresence().catch(()=>{})},30000)}
 function updateScrollUI(){const box=$('msgs');if(!box)return;let btn=$('waScrollBottom');if(!btn){btn=document.createElement('button');btn.id='waScrollBottom';btn.type='button';btn.textContent='↓ Nouveaux messages';btn.style.cssText='position:absolute;right:14px;bottom:86px;z-index:8;border:0;border-radius:999px;padding:9px 13px;background:#173d2d;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.18);display:none;font-size:13px';const p=box.parentElement;if(p){if(getComputedStyle(p).position==='static')p.style.position='relative';p.appendChild(btn)}btn.onclick=()=>{box.scrollTo({top:box.scrollHeight,behavior:'smooth'});btn.style.display='none'}}btn.style.display=(box.scrollHeight-box.scrollTop-box.clientHeight>140)?'block':'none'}
 function initMessageScroll(){const box=$('msgs');if(!box||box.dataset.scrollReady)return;box.dataset.scrollReady='1';box.style.overscrollBehavior='contain';box.style.overflowAnchor='none';box.addEventListener('scroll',()=>requestAnimationFrame(updateScrollUI),{passive:true});updateScrollUI()}
+  // UX sound system: outgoing/incoming message chimes + call tones, unlocked by the user's first gesture.
+  const WA_SOUND={ctx:null,enabled:true};
+  function waSoundUnlock(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;if(!WA_SOUND.ctx)WA_SOUND.ctx=new C();if(WA_SOUND.ctx.state==='suspended')WA_SOUND.ctx.resume().catch(()=>{});}catch{}}
+  function waTone(freq,dur=.12,delay=0){try{waSoundUnlock();const c=WA_SOUND.ctx;if(!c)return;const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(.0001,c.currentTime+delay);g.gain.exponentialRampToValueAtTime(.08,c.currentTime+delay+.015);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+delay+dur);o.connect(g).connect(c.destination);o.start(c.currentTime+delay);o.stop(c.currentTime+delay+dur+.02);}catch{}}
+  function waSoundSent(){if(WA_SOUND.enabled){waTone(740,.08);waTone(980,.10,.08)}}
+  function waSoundReceived(){if(WA_SOUND.enabled){waTone(620,.10);waTone(820,.14,.10)}}
+  window.WA_SOUND={unlock:waSoundUnlock,sent:waSoundSent,received:waSoundReceived,toggle:()=>{WA_SOUND.enabled=!WA_SOUND.enabled;return WA_SOUND.enabled}};
+  ['pointerdown','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,waSoundUnlock,{once:true,passive:true}));
 async function startCanonicalRealtime(){
   if(realtimeStarting||realtimeChannel)return;
   if(!window.supabase?.createClient||!session?.access_token||!user?.id)return;
@@ -183,7 +191,7 @@ async function startCanonicalRealtime(){
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages_v2'},payload=>{
         const m=payload?.new;
         if(!m?.id||m.sender_id===user.id)return;
-        document.dispatchEvent(new CustomEvent('wa:incoming-message',{detail:m}));
+        document.dispatchEvent(new CustomEvent('wa:incoming-message',{detail:m}));waSoundReceived();
         if(String(m.conversation_id)===String(current?.id||'')){
           rpc('mark_message_receipt',{p_message_id:m.id,p_state:'delivered'}).then(()=>sendDiag('recipient_delivered',{message_id:m.id,conversation_id:m.conversation_id})).catch(e=>sendDiag('recipient_receipt_error',{message_id:m.id,code:String(e?.code||e?.message||'RECEIPT_FAILED').slice(0,120)}));
           scheduleRefresh('message');
@@ -272,32 +280,70 @@ async function activateOptionalMessagingFeatures(){
       }else say('⚠️ Transport média indisponible');
     };
   }
-  let waVoiceRecorder=null,waVoiceStream=null,waVoiceChunks=[];
+  // Voice recorder v3: user-controlled recording lifecycle (pause/resume/cancel/preview/send).
+  let waVoiceRecorder=null,waVoiceStream=null,waVoiceChunks=[],waVoiceBlob=null,waVoiceStartedAt=0,waVoiceElapsed=0,waVoiceTimer=null,waVoicePausedAt=0,waVoiceMime='';
+  function waVoiceSheet(){
+    let el=document.getElementById('wa-voice-recorder');
+    if(el)return el;
+    el=document.createElement('div');el.id='wa-voice-recorder';
+    el.style.cssText='position:fixed;inset:0;z-index:12000;background:rgba(5,10,8,.62);display:none;align-items:flex-end;justify-content:center;padding:12px';
+    el.innerHTML='<div style="width:min(560px,100%);background:#fff;border-radius:22px;padding:16px;box-shadow:0 -18px 60px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;gap:10px"><b id="waVoiceTitle">🎙️ Enregistreur vocal</b><span id="waVoiceTimer" style="margin-left:auto;font-variant-numeric:tabular-nums">00:00</span></div><div id="waVoiceState" style="margin-top:8px;color:#68756d;font-size:13px">Prêt</div><div style="margin-top:12px;padding:12px;border-radius:14px;background:#f3f7f4"><div id="waVoiceMeter" style="height:7px;border-radius:99px;background:#d9e4dd;overflow:hidden"><i id="waVoiceMeterBar" style="display:block;width:0;height:100%;background:#18864b"></i></div><audio id="waVoicePreview" controls style="display:none;width:100%;margin-top:10px"></audio></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px"><button id="waVoicePause" type="button" class="btn ghost">⏸ Pause</button><button id="waVoiceCancel" type="button" class="btn ghost">✕ Annuler</button><button id="waVoiceRetake" type="button" class="btn ghost">↻ Refaire</button><button id="waVoiceSend" type="button" class="btn gold">➤ Envoyer</button></div><div style="margin-top:8px;text-align:center;color:#7a867f;font-size:12px">Vous contrôlez entièrement le vocal : pause, reprise, annulation, écoute, refaire ou envoyer.</div></div>';
+    document.body.appendChild(el);
+    el.querySelector('#waVoicePause').onclick=()=>waVoiceTogglePause();
+    el.querySelector('#waVoiceCancel').onclick=()=>waVoiceCancel();
+    el.querySelector('#waVoiceRetake').onclick=()=>waVoiceRetake();
+    el.querySelector('#waVoiceSend').onclick=()=>waVoiceSend().catch(e=>say('⚠️ Envoi vocal impossible : '+(e.message||e)));
+    return el;
+  }
+  function waVoiceShow(){const el=waVoiceSheet();el.style.display='flex';el.querySelector('#waVoicePreview').style.display='none';el.querySelector('#waVoiceSend').disabled=true;el.querySelector('#waVoiceRetake').disabled=true;el.querySelector('#waVoicePause').disabled=false;el.querySelector('#waVoiceState').textContent='🔴 Enregistrement en cours';}
+  function waVoiceSetTimer(){
+    clearInterval(waVoiceTimer);
+    waVoiceTimer=setInterval(()=>{if(!waVoiceRecorder||waVoiceRecorder.state==='paused')return;waVoiceElapsed=Math.max(0,Date.now()-waVoiceVoiceStarted());const sec=Math.floor(waVoiceElapsed/1000),mm=String(Math.floor(sec/60)).padStart(2,'0'),ss=String(sec%60).padStart(2,'0');const el=document.getElementById('wa-voice-recorder');if(el)el.querySelector('#waVoiceTimer').textContent=mm+':'+ss;},250);
+  }
+  function waVoiceVoiceStarted(){return waVoiceStartedAt||Date.now()}
+  function waVoiceStopStream(){waVoiceStream?.getTracks?.().forEach(t=>{try{t.stop()}catch{}});waVoiceStream=null}
+  function waVoiceResetUI(){clearInterval(waVoiceTimer);waVoiceTimer=null;const el=document.getElementById('wa-voice-recorder');if(el)el.style.display='none';voice.textContent='🎙️';}
+  function waVoiceCancel(){try{if(waVoiceRecorder&&waVoiceRecorder.state!=='inactive')waVoiceRecorder.stop()}catch{}waVoiceStopStream();waVoiceRecorder=null;waVoiceChunks=[];waVoiceBlob=null;waVoiceResetUI();say('Vocal annulé.')}
+  function waVoiceRetake(){waVoiceCancel();setTimeout(()=>voice.click(),60)}
+  function waVoiceTogglePause(){
+    if(!waVoiceRecorder)return;
+    if(waVoiceRecorder.state==='recording'){waVoiceRecorder.pause();document.getElementById('wa-voice-recorder').querySelector('#waVoicePause').textContent='▶ Reprendre';document.getElementById('wa-voice-recorder').querySelector('#waVoiceState').textContent='⏸ En pause';}
+    else if(waVoiceRecorder.state==='paused'){waVoiceRecorder.resume();document.getElementById('wa-voice-recorder').querySelector('#waVoicePause').textContent='⏸ Pause';document.getElementById('wa-voice-recorder').querySelector('#waVoiceState').textContent='🔴 Enregistrement en cours';}
+  }
+  async function waVoiceBegin(){
+    if(!current){say('⚠️ Choisis d’abord une conversation');return;}
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw Error('ENREGISTREUR_VOCAL_INDISPONIBLE');
+    waVoiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+    const types=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg','audio/mp4'];waVoiceMime=types.find(x=>MediaRecorder.isTypeSupported?.(x))||'';
+    try{waVoiceRecorder=waVoiceMime?new MediaRecorder(waVoiceStream,{mimeType:waVoiceMime}):new MediaRecorder(waVoiceStream)}catch(e){waVoiceStopStream();throw Error('Format audio non compatible avec cet appareil.')}
+    waVoiceChunks=[];waVoiceBlob=null;waVoiceStartedAt=Date.now();waVoiceElapsed=0;waVoicePausedAt=0;waVoiceShow();
+    waVoiceRecorder.ondataavailable=e=>{if(e.data?.size)waVoiceChunks.push(e.data)};
+    waVoiceRecorder.onerror=e=>{waVoiceStopStream();waVoiceRecorder=null;waVoiceResetUI();say('⚠️ Enregistrement vocal impossible : '+(e.error?.message||'erreur microphone'))};
+    waVoiceRecorder.onstop=()=>{
+      const actual=waVoiceRecorder?.mimeType||waVoiceMime||'audio/webm';waVoiceBlob=new Blob(waVoiceChunks,{type:actual});waVoiceStopStream();
+      const el=document.getElementById('wa-voice-recorder');if(el){el.querySelector('#waVoiceState').textContent='▶ Aperçu prêt — écoutez avant d’envoyer';el.querySelector('#waVoicePause').disabled=true;el.querySelector('#waVoiceSend').disabled=!waVoiceBlob.size;el.querySelector('#waVoiceRetake').disabled=false;const p=el.querySelector('#waVoicePreview');p.src=URL.createObjectURL(waVoiceBlob);p.style.display='block';}
+      clearInterval(waVoiceTimer);voice.textContent='🎙️';
+    };
+    waVoiceRecorder.start(200);waVoiceSetTimer();say('🔴 Enregistrement vocal en cours — contrôlez-le dans le panneau.');
+  }
+  async function waVoiceStopForPreview(){if(!waVoiceRecorder)return;if(waVoiceRecorder.state!=='inactive')waVoiceRecorder.stop()}
+  async function waVoiceSend(){
+    if(!waVoiceBlob?.size||!current)return;
+    const ext=/ogg/.test(waVoiceBlob.type)?'ogg':/mp4/.test(waVoiceBlob.type)?'m4a':'webm';
+    const f=new File([waVoiceBlob],'vocal-'+Date.now()+'.'+ext,{type:waVoiceBlob.type||'audio/webm'});
+    const el=document.getElementById('wa-voice-recorder');if(el){el.querySelector('#waVoiceSend').disabled=true;el.querySelector('#waVoiceState').textContent='⏳ Chiffrement et envoi…';}
+    await window.WA_MEDIA_P2P?.sendFile?.(f);
+    if(el){const p=el.querySelector('#waVoicePreview');try{if(p.src)URL.revokeObjectURL(p.src)}catch{}}
+    waVoiceBlob=null;waVoiceChunks=[];waVoiceRecorder=null;waVoiceResetUI();say('✅ Message vocal envoyé');await loadMessages();
+  }
   if(voice&&!voice.dataset.bound){
     voice.dataset.bound='1';
     voice.onclick=async()=>{
-      if(!current){say('⚠️ Choisis d’abord une conversation');return;}
       try{
-        if(waVoiceRecorder?.state==='recording'){
-          waVoiceRecorder.stop();say('⏳ Préparation du vocal…');return;
-        }
-        if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw Error('ENREGISTREUR_VOCAL_INDISPONIBLE');
-        waVoiceStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-        waVoiceChunks=[];
-        const preferred=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(x=>window.MediaRecorder.isTypeSupported?.(x));
-        waVoiceRecorder=preferred?new MediaRecorder(waVoiceStream,{mimeType:preferred}):new MediaRecorder(waVoiceStream);
-        waVoiceRecorder.ondataavailable=e=>{if(e.data?.size)waVoiceChunks.push(e.data)};
-        waVoiceRecorder.onstop=async()=>{
-          try{
-            waVoiceStream?.getTracks?.().forEach(t=>t.stop());waVoiceStream=null;
-            const type=waVoiceRecorder?.mimeType||'audio/webm';
-            const f=new File([new Blob(waVoiceChunks,{type})],'vocal-'+Date.now()+'.webm',{type});
-            say('⏳ Envoi du vocal…');await window.WA_MEDIA_P2P?.sendFile?.(f);say('✅ Message vocal envoyé');
-          }catch(e){console.error('[WassAfrica] voice send',e);say('⚠️ Envoi vocal impossible : '+(e.message||e))}
-          finally{clearInterval(voice._timer);waVoiceRecorder=null;waVoiceChunks=[];voice.textContent='🎙️';}
-        };
-        waVoiceRecorder.start(250);voice.textContent='⏹️';let startedAt=Date.now();clearInterval(voice._timer);voice._timer=setInterval(()=>{const sec=Math.floor((Date.now()-startedAt)/1000),mm=String(Math.floor(sec/60)).padStart(2,'0'),ss=String(sec%60).padStart(2,'0');say('🔴 Enregistrement vocal · '+mm+':'+ss+' · Appuie pour envoyer')},250);say('🔴 Enregistrement vocal · 00:00 · Appuie pour envoyer');
-      }catch(e){console.error('[WassAfrica] voice action',e);say('⚠️ Message vocal indisponible : '+(e.message||'réessayez'));voice.textContent='🎙️';}
+        if(waVoiceRecorder?.state==='recording'){await waVoiceStopForPreview();return;}
+        if(waVoiceRecorder?.state==='paused'){await waVoiceStopForPreview();return;}
+        await waVoiceBegin();
+      }catch(e){console.error('[WassAfrica] voice action',e);say('⚠️ Message vocal indisponible : '+(e.message||'réessayez'));voice.textContent='🎙️';waVoiceStopStream();}
     };
   }
   let callsReady=false;
