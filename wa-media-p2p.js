@@ -32,8 +32,8 @@ async function decryptChunk(key,id,frame){const a=new Uint8Array(frame),index=ne
 async function loadTurn(){if(turnConfig!==null)return turnConfig;turnConfig=Array.isArray(window.WA_TURN_CONFIG)?window.WA_TURN_CONFIG.slice():[];return turnConfig}
 async function iceServers(){const s=[{urls:['stun:stun.l.google.com:19302']}];for(const x of await loadTurn())if(x?.urls)s.push(x);return s}
 
-function relayPath(id){return currentConversation+'/relay/'+user.id+'/'+id+'.bin'}
-async function relayUpload(path,blob){const s=sess(),r=await fetch(SB+'/storage/v1/object/private-chat-media/'+path,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+s.access_token,'Content-Type':'application/octet-stream','x-upsert':'true'},body:blob});if(!r.ok){let d={};try{d=await r.json()}catch{}throw Error(d?.message||'RELAY_UPLOAD_FAILED')}return path}
+function relayPath(id){return currentConversation+'/'+user.id+'/'+id+'.bin'}
+async function relayUpload(path,blob){const s=sess(),r=await fetch(SB+'/storage/v1/object/private-chat-media/'+path,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+s.access_token,'Content-Type':'application/octet-stream'},body:blob});if(!r.ok){let d={};try{d=await r.json()}catch{}const e=Error(d?.message||d?.error||('RELAY_UPLOAD_FAILED_HTTP_'+r.status));e.code=d?.code||('HTTP_'+r.status);throw e}return path}
 async function relayDownload(path){const s=sess(),r=await fetch(SB+'/storage/v1/object/authenticated/private-chat-media/'+path,{headers:{apikey:KEY,Authorization:'Bearer '+s.access_token}});if(!r.ok)throw Error('RELAY_DOWNLOAD_FAILED');return new Uint8Array(await r.arrayBuffer())}
 async function legacyDownload(path){const s=sess(),r=await fetch(SB+'/storage/v1/object/authenticated/private-chat-media/'+path,{headers:{apikey:KEY,Authorization:'Bearer '+s.access_token}});if(!r.ok)throw Error('LEGACY_MEDIA_DOWNLOAD_FAILED');return new Uint8Array(await r.arrayBuffer())}
 async function relayDelete(path){const s=sess();await fetch(SB+'/storage/v1/object/private-chat-media/'+path,{method:'DELETE',headers:{apikey:KEY,Authorization:'Bearer '+s.access_token}}).catch(()=>{})}
