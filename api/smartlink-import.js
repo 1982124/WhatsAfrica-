@@ -56,6 +56,18 @@ function extractResponseText(j){
   return parts.join('').trim();
 }
 export default async function handler(req,res){
+  const route=String(req.query?.__route||'');
+  if(req.method==='GET'&&route==='turn'){
+    res.setHeader('Cache-Control','no-store');
+    res.setHeader('Access-Control-Allow-Origin','*');
+    const urlsRaw=process.env.TURN_URLS||process.env.TURN_URL||'';
+    const username=process.env.TURN_USERNAME||'';
+    const credential=process.env.TURN_PASSWORD||process.env.TURN_CREDENTIAL||'';
+    const urls=urlsRaw.split(',').map(x=>x.trim()).filter(Boolean);
+    const iceServers=[];
+    if(urls.length&&username&&credential)iceServers.push({urls:urls.length===1?urls[0]:urls,username,credential});
+    return res.status(200).json({iceServers,configured:iceServers.length>0});
+  }
   if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   const requestId=Math.random().toString(36).slice(2,10);res.setHeader('X-WassAfrica-Request-Id',requestId);res.setHeader('X-Content-Type-Options','nosniff');
   try{
