@@ -110,7 +110,8 @@ export default async function handler(req,res){
     if(!out&&j?.choices?.[0]?.message?.content)out=j.choices[0].message.content;
     if(!out){console.error('[SMARTLINK_AI]',requestId,'EMPTY_OUTPUT');return res.status(502).json({error:'AI_EMPTY_OUTPUT',message:'L’IA a répondu sans produire de données exploitables.'})}
     let data;try{data=JSON.parse(out)}catch(e){console.error('[SMARTLINK_AI]',requestId,'PARSE_FAILED');return res.status(502).json({error:'AI_INVALID_JSON',message:'La réponse IA n’a pas pu être interprétée.'})}
-    const offers=Array.isArray(data?.offers)?data.offers.filter(o=>o&&typeof o==='object').slice(0,20):[];
+    const rawOffers=Array.isArray(data?.offers)?data.offers.filter(o=>o&&typeof o==='object').slice(0,20):[];
+    const offers=rawOffers.map(o=>{const source=sourcePages.find(p=>p&&p.url&&String(p.url).replace(/\\/$/,'')===String(o.source_url||'').replace(/\\/$/,''))||sourcePages.find(p=>p&&p.url&&String(o.source_url||'').includes(p.url));const imgs=Array.isArray(o.image_urls)?o.image_urls.filter(x=>typeof x==='string'&&/^https?:\\/\\//i.test(x)).slice(0,5):[];const fallback=Array.isArray(source?.images)?source.images.filter(x=>typeof x==='string'&&/^https?:\\/\\//i.test(x)).slice(0,5):[];return {...o,image_urls:imgs.length?imgs:fallback}});
     if(!offers.length){console.warn('[SMARTLINK_AI]',requestId,'NO_OFFERS');return res.status(200).json({offers:[],message:'L’IA a analysé les liens mais aucune offre exploitable n’a été trouvée.'})}
     console.info('[SMARTLINK_AI]',requestId,'SUCCESS','offers='+offers.length);
     return res.status(200).json({offers})
