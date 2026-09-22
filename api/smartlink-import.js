@@ -34,7 +34,7 @@ async function fetchSourcePage(pageUrl){
     if(r.status>=300&&r.status<400){const loc=r.headers.get('location');if(!loc)throw new Error('SOURCE_REDIRECT_INVALID');url=new URL(loc,url).toString();continue}
     if(!r.ok)throw new Error('SOURCE_FETCH_HTTP_'+r.status);
     const type=(r.headers.get('content-type')||'').toLowerCase();if(!type.includes('text/html')&&!type.includes('application/xhtml+xml'))throw new Error('SOURCE_NOT_HTML');
-    const html=await r.text();const clean=html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<noscript[\s\S]*?<\/noscript>/gi,' ');
+    const declaredLength=Number(r.headers.get('content-length')||0);\n    if(declaredLength>4*1024*1024)throw new Error('SOURCE_TOO_LARGE');\n    const htmlBuffer=Buffer.from(await r.arrayBuffer());\n    if(htmlBuffer.length>4*1024*1024)throw new Error('SOURCE_TOO_LARGE');\n    const html=htmlBuffer.toString('utf8');const clean=html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<noscript[\s\S]*?<\/noscript>/gi,' ');
     const title=(clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
     const metas=[...clean.matchAll(/<meta[^>]+(?:name|property)=["'](?:description|og:title|og:description|og:image|product:price:amount|product:price:currency)["'][^>]+content=["']([^"']*)["'][^>]*>/gi)].map(m=>m[1]).filter(Boolean);
     const images=[...html.matchAll(/<(?:img|source)[^>]+(?:src|srcset)=["']([^"']+)["']/gi)].map(m=>m[1].split(',')[0].trim()).filter(Boolean).map(x=>{try{return new URL(x,url).toString()}catch{return null}}).filter(Boolean).slice(0,10);
@@ -90,7 +90,7 @@ async function handler(req,res){
       catch(e){sourcePages.push({url,error:e?.message||'SOURCE_FETCH_FAILED'})}
     }
     const sourceContext=sourcePages.map((p,i)=>`SOURCE ${i+1} URL: ${p.url}\nTITLE: ${p.title||''}\nMETA: ${(p.metas||[]).join(' | ')}\nIMAGE_URLS: ${(p.images||[]).join(' | ')}\nJSON_LD: ${(p.jsonld||[]).join(' | ')}\nPAGE_TEXT: ${p.text||''}\nFETCH_ERROR: ${p.error||''}`).join('\n\n').slice(0,180000);
-    const prompt=`Tu es l'assistant commercial de WASSAFRICA. Les URLs ci-dessous ont été fournies directement par l'utilisateur. Analyse en priorité le contenu extrait de CHAQUE page fournie. N’invente jamais un prix, une caractéristique, un stock ou une disponibilité absente de la source. Si une donnée manque, mets null ou une chaîne vide. Retourne uniquement un objet JSON avec une clé "offers", tableau de 0 à 20 objets. Champs: title, description, price(number|null), currency(string), stock(number|null), category, product_type(physical|digital|service), source_url, image_urls(array de 0 à 5 URLs publiques). Les image_urls doivent privilégier exclusivement les images réellement présentes dans IMAGE_URLS ou JSON_LD. URLs originales:\n${urls.join('\n')}\n\nCONTENU DES PAGES:\n${sourceContext}`;
+    const prompt=`Tu es l'assistant commercial de WASSAFRICA. Les URLs ci-dessous ont été fournies directement par l'utilisateur. Analyse UNIQUEMENT les informations effectivement présentes dans le contenu extrait de chaque page. Ne devine, n’estime et n’invente jamais un prix, une caractéristique, un stock, une disponibilité, une devise, une catégorie ou une image. Si une donnée manque, mets null ou une chaîne vide. Si une source contient FETCH_ERROR, ne crée aucune offre à partir de cette source. source_url doit être exactement l'une des URLs originales fournies. image_urls doit contenir uniquement des URLs présentes dans IMAGE_URLS ou explicitement présentes dans JSON_LD de la même source. Retourne uniquement un objet JSON avec une clé "offers", tableau de 0 à 20 objets. Champs: title, description, price(number|null), currency(string), stock(number|null), category, product_type(physical|digital|service), source_url, image_urls(array de 0 à 5 URLs publiques). URLs originales:\n${urls.join('\n')}\n\nCONTENU DES PAGES:\n${sourceContext}`;
     let j;
     if(openAiKey){
       console.info('[SMARTLINK_AI]',requestId,'OPENAI_REQUEST');
@@ -110,7 +110,24 @@ async function handler(req,res){
     if(!out){console.error('[SMARTLINK_AI]',requestId,'EMPTY_OUTPUT');return res.status(502).json({error:'AI_EMPTY_OUTPUT',message:'L’IA a répondu sans produire de données exploitables.'})}
     let data;try{data=JSON.parse(out)}catch(e){console.error('[SMARTLINK_AI]',requestId,'PARSE_FAILED');return res.status(502).json({error:'AI_INVALID_JSON',message:'La réponse IA n’a pas pu être interprétée.'})}
     const rawOffers=Array.isArray(data?.offers)?data.offers.filter(o=>o&&typeof o==='object').slice(0,20):[];
-    const offers=rawOffers.map(o=>{const source=sourcePages.find(p=>p&&p.url&&String(p.url).replace(/\\/$/,'')===String(o.source_url||'').replace(/\\/$/,''))||sourcePages.find(p=>p&&p.url&&String(o.source_url||'').includes(p.url));const imgs=Array.isArray(o.image_urls)?o.image_urls.filter(x=>typeof x==='string'&&/^https?:\\/\\//i.test(x)).slice(0,5):[];const fallback=Array.isArray(source?.images)?source.images.filter(x=>typeof x==='string'&&/^https?:\\/\\//i.test(x)).slice(0,5):[];return {...o,image_urls:imgs.length?imgs:fallback}});
+    const normalizeUrl=x=>{try{return new URL(String(x)).toString().replace(/\/$/,'')}catch{return ''}};
+    const allowedSourceUrls=new Set(urls.map(normalizeUrl));
+    const offers=[];
+    for(const o of rawOffers){
+      const sourceUrl=normalizeUrl(o.source_url);
+      if(!sourceUrl||!allowedSourceUrls.has(sourceUrl))continue;
+      const source=sourcePages.find(p=>normalizeUrl(p?.url)===sourceUrl);
+      if(!source||source.error)continue;
+      const jsonldUrls=(source.jsonld||[]).flatMap(x=>String(x).match(/https?:\/\/[^\s\"'<>]+/gi)||[]);
+      const allowedImages=new Set([...(source.images||[]),...jsonldUrls].map(normalizeUrl).filter(Boolean));
+      const imgs=Array.isArray(o.image_urls)?o.image_urls.map(normalizeUrl).filter(x=>x&&allowedImages.has(x)).slice(0,5):[];
+      const title=typeof o.title==='string'?o.title.trim().slice(0,180):'';
+      if(!title)continue;
+      const price=(typeof o.price==='number'&&Number.isFinite(o.price)&&o.price>=0)?o.price:null;
+      const stock=(typeof o.stock==='number'&&Number.isInteger(o.stock)&&o.stock>=0)?o.stock:null;
+      const productType=['digital','service','physical'].includes(o.product_type)?o.product_type:'physical';
+      offers.push({...o,title,description:typeof o.description==='string'?o.description.slice(0,3000):'',price,stock,product_type:productType,source_url:source.url,image_urls:imgs});
+    }
     if(!offers.length){console.warn('[SMARTLINK_AI]',requestId,'NO_OFFERS');return res.status(200).json({offers:[],message:'L’IA a analysé les liens mais aucune offre exploitable n’a été trouvée.'})}
     console.info('[SMARTLINK_AI]',requestId,'SUCCESS','offers='+offers.length);
     return res.status(200).json({offers})
