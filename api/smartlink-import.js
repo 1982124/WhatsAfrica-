@@ -4,7 +4,7 @@ async function fetchImportedImage(imageUrl,res){
   if(u.port&&u.port!=='80'&&u.port!=='443')return res.status(400).json({error:'INVALID_IMAGE_PORT'});
   const host=u.hostname.toLowerCase();
   if(host==='localhost'||host.endsWith('.localhost')||host==='127.0.0.1'||host==='::1'||host.startsWith('127.')||host.startsWith('10.')||host.startsWith('192.168.')||host.startsWith('169.254.')||host.startsWith('172.16.')||host.startsWith('172.17.')||host.startsWith('172.18.')||host.startsWith('172.19.')||host.startsWith('172.2')||host.startsWith('172.30.')||host.startsWith('172.31.')||host.endsWith('.internal'))return res.status(400).json({error:'BLOCKED_HOST'});
-  const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),10000);let r;
+  const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),5000);let r;
   try{r=await fetch(imageUrl,{method:'GET',redirect:'manual',signal:ac.signal,headers:{'User-Agent':'WASSAFRICA Smart Link Image Import/1.0','Accept':'image/avif,image/webp,image/png,image/jpeg,image/gif'}})}
   catch(e){return res.status(502).json({error:'IMAGE_FETCH_FAILED',message:e?.message||'Image fetch failed'})}
   finally{clearTimeout(timer)}
@@ -89,10 +89,18 @@ async function handler(req,res){
     const openRouterKey=process.env.OPENROUTER_API_KEY||'';
     if(!openAiKey&&!openRouterKey){console.error('[SMARTLINK_AI]',requestId,'CONFIG_MISSING');return res.status(503).json({error:'AI_NOT_CONFIGURED',message:'Aucun moteur IA Smart Link n’est configuré sur Vercel.'})}
     const sourcePages=[];
-    for(const url of urls){
-      try{sourcePages.push(await fetchSourcePage(url))}
-      catch(e){sourcePages.push({url,error:e?.message||'SOURCE_FETCH_FAILED'})}
+    const concurrency=Math.min(6,urls.length);
+    let cursor=0;
+    async function fetchWorker(){
+      while(true){
+        const index=cursor++;
+        if(index>=urls.length)return;
+        const url=urls[index];
+        try{sourcePages[index]=await fetchSourcePage(url)}
+        catch(e){sourcePages[index]={url,error:e?.message||'SOURCE_FETCH_FAILED'}}
+      }
     }
+    await Promise.all(Array.from({length:concurrency},()=>fetchWorker()));
     const sourceContext=sourcePages.map((p,i)=>`SOURCE ${i+1} URL: ${p.url}\nTITLE: ${p.title||''}\nMETA: ${(p.metas||[]).join(' | ')}\nIMAGE_URLS: ${(p.images||[]).join(' | ')}\nJSON_LD: ${(p.jsonld||[]).join(' | ')}\nPAGE_TEXT: ${p.text||''}\nFETCH_ERROR: ${p.error||''}`).join('\n\n').slice(0,180000);
     const prompt=`Tu es l'assistant commercial de WASSAFRICA. Les URLs ci-dessous ont été fournies directement par l'utilisateur. Analyse UNIQUEMENT les informations effectivement présentes dans le contenu extrait de chaque page. Ne devine, n’estime et n’invente jamais un prix, une caractéristique, un stock, une disponibilité, une devise, une catégorie ou une image. Si une donnée manque, mets null ou une chaîne vide. Si une source contient FETCH_ERROR, ne crée aucune offre à partir de cette source. source_url doit être exactement l'une des URLs originales fournies. image_urls doit contenir uniquement des URLs présentes dans IMAGE_URLS ou explicitement présentes dans JSON_LD de la même source. Retourne uniquement un objet JSON avec une clé "offers", tableau de 0 à 20 objets. Champs: title, description, price(number|null), currency(string), stock(number|null), category, product_type(physical|digital|service), source_url, image_urls(array de 0 à 5 URLs publiques). URLs originales:\n${urls.join('\n')}\n\nCONTENU DES PAGES:\n${sourceContext}`;
     let j;
@@ -105,7 +113,7 @@ async function handler(req,res){
     }else{
       const models=(process.env.OPENROUTER_MODELS||'qwen/qwen3.6-flash,qwen/qwen3.5-9b').split(',').map(x=>x.trim()).filter(Boolean).slice(0,4);
       console.info('[SMARTLINK_AI]',requestId,'OPENROUTER_REQUEST','model='+models[0]);
-      const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),45000);let r;let raw='';try{r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+openRouterKey,'Content-Type':'application/json','HTTP-Referer':'https://wassafrica.vercel.app','X-Title':'WassAfrica Smart Link'},body:JSON.stringify({model:models[0],models,messages:[{role:'system',content:'Tu es un assistant commercial fiable. Réponds uniquement en JSON valide. Ne fabrique aucune donnée absente des sources.'},{role:'user',content:prompt}],temperature:0.1,max_tokens:4000,response_format:{type:'json_object'}}),signal:ac.signal});raw=await r.text()}catch(e){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_FETCH_FAILED',e?.name||'Error',e?.message||'');return res.status(502).json({error:'AI_REQUEST_FAILED',message:e?.name==='AbortError'?'Le moteur IA a dépassé le délai autorisé.':'Le moteur IA est momentanément inaccessible.'})}finally{clearTimeout(timer)}try{j=raw?JSON.parse(raw):null}catch(e){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_NON_JSON','status='+r?.status);return res.status(502).json({error:'AI_REQUEST_FAILED',message:'Le moteur IA a renvoyé une réponse invalide.'})}
+      const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),30000);let r;let raw='';try{r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+openRouterKey,'Content-Type':'application/json','HTTP-Referer':'https://wassafrica.vercel.app','X-Title':'WassAfrica Smart Link'},body:JSON.stringify({model:models[0],models,messages:[{role:'system',content:'Tu es un assistant commercial fiable. Réponds uniquement en JSON valide. Ne fabrique aucune donnée absente des sources.'},{role:'user',content:prompt}],temperature:0.1,max_tokens:4000,response_format:{type:'json_object'}}),signal:ac.signal});raw=await r.text()}catch(e){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_FETCH_FAILED',e?.name||'Error',e?.message||'');return res.status(502).json({error:'AI_REQUEST_FAILED',message:e?.name==='AbortError'?'Le moteur IA a dépassé le délai autorisé.':'Le moteur IA est momentanément inaccessible.'})}finally{clearTimeout(timer)}try{j=raw?JSON.parse(raw):null}catch(e){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_NON_JSON','status='+r?.status);return res.status(502).json({error:'AI_REQUEST_FAILED',message:'Le moteur IA a renvoyé une réponse invalide.'})}
       console.info('[SMARTLINK_AI]',requestId,'OPENROUTER_RESPONSE','status='+r.status);
       if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',detail:j?.error?.message||'Erreur IA lors de l’analyse des liens.'})}
     }
