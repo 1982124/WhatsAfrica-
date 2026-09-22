@@ -4,7 +4,7 @@ function json(res, status, body) {
   res.status(status).setHeader('Cache-Control','private, no-store, max-age=0').json(body);
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'method_not_allowed' });
 
   const auth = String(req.headers.authorization || '');
@@ -79,3 +79,5 @@ export default async function handler(req, res) {
     max_downloads: item.max_downloads
   });
 }
+
+module.exports = handler;
