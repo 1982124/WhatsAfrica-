@@ -55,7 +55,7 @@ function extractResponseText(j){
   }
   return parts.join('').trim();
 }
-export default async function handler(req,res){
+async function handler(req,res){
   const route=String(req.query?.__route||'');
   if(req.method==='GET'&&route==='turn'){
     res.setHeader('Cache-Control','no-store');
@@ -119,3 +119,5 @@ export default async function handler(req,res){
     return res.status(500).json({error:'IMPORT_FAILED',message:'L’importation IA a rencontré une erreur serveur.',detail:e?.message||'Erreur import IA'})
   }
 }
+
+module.exports = handler;
