@@ -9,7 +9,6 @@ const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replac
 const safe=v=>WAMedia.safe(v);
 const money=(v,c)=>v==null?'Prix sur demande':new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v||0))+' '+(c||'XOF');
 const slug=decodeURIComponent(location.pathname.replace(/^\/+/, '').split('/')[0]||'');
-if(['','auth','dashboard','inbox','market','smartlink','vitrine','universe','groups','commerce','product','service'].includes(slug))return;
 let smartLinkId=null;
 async function query(table,params){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
