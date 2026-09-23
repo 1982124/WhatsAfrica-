@@ -15,3 +15,15 @@ function installAutoEnhancement(){const run=e=>{const t=e.target;if(t?.tagName==
 window.WhatsAfricaMedia={RULES,validate,validateMedia,preview,videoPreview,enhanceImage,enhanceForUpload,replaceInputFiles,installAutoEnhancement};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installAutoEnhancement,{once:true});else installAutoEnhancement();
 })();
+
+// Canonical public presentation layer: publication must remain visible even when an origin is slow.
+(function(){
+  const FALLBACKS={product:'/assets/illustration-smartlink-produit.svg',service:'/assets/wassafrica-vitrine-realistic.svg',vitrine:'/assets/wassafrica-vitrine-realistic.svg',smartlink:'/assets/wassafrica-smartlink-realistic.svg',profile:'/assets/wassafrica-profile-realistic.svg',hero:'/assets/wassafrica-hero-showcase.svg'};
+  const safe=url=>{try{const u=new URL(String(url||''),location.origin);return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}};
+  const fallback=kind=>FALLBACKS[kind]||FALLBACKS.product;
+  const resolve=(url,kind)=>safe(url)||fallback(kind);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const image=(url,alt,kind)=>{const k=kind||'product';return '<img loading="lazy" decoding="async" src="'+esc(resolve(url,k))+'" alt="'+esc(alt||'')+'" data-wa-media-kind="'+esc(k)+'" onerror="this.onerror=null;this.src=\''+fallback(k)+'\';">'};
+  const serviceImage=(metadata,title)=>{const m=metadata&&typeof metadata==='object'?metadata:{},url=m.cover_url||m.coverUrl||m.image_url||m.imageUrl||'',t=String(title||'').toLowerCase(),kind=t.includes('smart link')?'smartlink':(t.includes('profil')||t.includes('présence')?'profile':'vitrine');return{url:safe(url),kind}};
+  window.WAMedia={safe,fallback,resolve,image,serviceImage};
+})();
