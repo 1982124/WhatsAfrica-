@@ -33,7 +33,7 @@ async function load(){
   const products=await query('products',{select:'id,title,description,price,currency,image_url,category,business_id,product_type,content_kind,is_published,stock,created_at,author_name,language,page_count',is_published:'eq.true',order:'created_at.desc',limit:'100'});
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   let media=[];try{
-    media=productIds.length?await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'):[];
+    media=productIds.length?await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'}):[];
   }catch(e){console.warn('[WassAfrica] product media unavailable; rendering products without media',e)}
   let services=[];try{services=await query('marketplace_services',{select:'id,title,description,category,price,currency,seller_id,status',status:'eq.published',order:'created_at.desc',limit:'100'});}catch(e){console.warn('[WassAfrica] services unavailable',e)}
   const businessIds=[...new Set((products||[]).map(x=>x.business_id).filter(Boolean))];
