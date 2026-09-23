@@ -3,6 +3,7 @@
 'use strict';
 const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
 const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+function dbPublicUrl(bucket,path){try{const base=SB+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/';return base+String(path).split('/').map(encodeURIComponent).join('/')}catch{return ''}}
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
 const safe=v=>WAMedia.safe(v);
@@ -28,7 +29,7 @@ function contact(owner){
   location.href='/inbox?recipient='+encodeURIComponent(owner);
 }
 function productCard(p){
-  const rawImage=slug==='wassafrica'?(p.title==='Smart Link WASSAFRICA'?'/assets/product-smartlink.jpg':p.title==='Présence commerciale WASSAFRICA'?'/assets/product-presence.jpg':p.title==='Vitrine WASSAFRICA'?'/assets/product-vitrine.jpg':safe(p.image_url)):safe(p.image_url);const image=WAMedia.resolve(rawImage,p.title==='Vitrine WASSAFRICA'?'vitrine':p.title==='Smart Link WASSAFRICA'?'smartlink':'product');
+  const rawImage=slug==='wassafrica'?(p.title==='Smart Link WASSAFRICA'?'/assets/product-smartlink.jpg':p.title==='Présence commerciale WASSAFRICA'?'/assets/product-presence.jpg':p.title==='Vitrine WASSAFRICA'?'/assets/product-vitrine.jpg':safe(p._cover_url||p.image_url)):safe(p._cover_url||p.image_url);const image=WAMedia.resolve(rawImage,p.title==='Vitrine WASSAFRICA'?'vitrine':p.title==='Smart Link WASSAFRICA'?'smartlink':'product');
   return '<article class="card">'+(image?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(p.title)+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback(p.title==='Vitrine WASSAFRICA'?'vitrine':p.title==='Smart Link WASSAFRICA'?'smartlink':'product')+'\';"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">🛍️</div>')+'<div class="body"><span class="tag">'+(p.product_type==='digital'?'PRODUIT DIGITAL':'PRODUIT')+'</span><h3>'+esc(p.title)+'</h3><p class="muted">'+esc(p.description||'')+'</p>'+(p.price!=null?'<div class="price">'+money(p.price,p.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" href="/product/'+encodeURIComponent(p.id)+'">Voir la page</a></div></div></article>';
 }
 function serviceCard(s){
@@ -50,6 +51,20 @@ async function load(){
     query('products',{select:'id,title,description,price,currency,image_url,product_type',business_id:'eq.'+b.id,is_published:'eq.true',order:'created_at.desc',limit:'60'}),
     query('marketplace_services',{select:'id,title,description,price,currency,status,metadata',seller_id:'eq.'+b.owner_id,status:'eq.published',order:'created_at.desc',limit:'60'})
   ]);
+  const productIds=(products||[]).map(x=>x.id).filter(Boolean);
+  if(productIds.length){
+    const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'});
+    const byProduct=new Map();
+    for(const m of (pm||[])){
+      if(m.media_type!=='cover') continue;
+      if(!byProduct.has(m.product_id)){
+        const bucket=m.storage_bucket||'public-media';
+        const path=m.storage_path;
+        if(path) byProduct.set(m.product_id,dbPublicUrl(bucket,path));
+      }
+    }
+    for(const p of (products||[])) p._cover_url=byProduct.get(p.id)||null;
+  }
   const cover=safe(b.cover_image_url)||WAMedia.fallback('vitrine');
   const gallery=(media||[]).filter(x=>x.kind==='gallery'||x.kind==='image').map(x=>safe(x.public_url)).filter(Boolean).slice(0,6);
   const videos=(media||[]).filter(x=>x.kind==='video').map(x=>safe(x.public_url)).filter(Boolean).slice(0,3);
