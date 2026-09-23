@@ -14,7 +14,7 @@ async function init(){
    db.from('products').select('id',{count:'exact',head:true}).eq('business_id',b.data.id),
    db.from('products').select('id',{count:'exact',head:true}).eq('business_id',b.data.id).eq('product_type','digital'),
    db.from('marketplace_services').select('id',{count:'exact',head:true}).eq('seller_id',s.user.id),
-   db.from('business_live_sessions').select('id',{count:'exact',true}).eq('host_id',s.user.id)
+   db.from('business_live_sessions').select('id',{count:'exact',head:true}).eq('host_id',s.user.id)
   ]);
   $('pc').textContent=p.count??0;$('dc').textContent=d.count??0;$('sc').textContent=sv.count??0;$('lc').textContent=l.count??0;
  }catch(e){$('user').textContent='Impossible de charger votre session. Réessayez.';$('loginState').hidden=false;}
