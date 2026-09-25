@@ -146,11 +146,11 @@
     },
     {
       "source": "/digital-products",
-      "destination": "/offer-create-free-v3.html?type=digital"
+      "destination": "/offer-create.html?type=digital"
     },
     {
       "source": "/services",
-      "destination": "/offer-create-free-v3.html?type=service"
+      "destination": "/offer-create.html?type=service"
     },
     {
       "source": "/digital-market",
