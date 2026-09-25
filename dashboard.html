@@ -1,55 +1,23 @@
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f7f2e9">
-<meta name="robots" content="noindex,nofollow">
-<title>WASSAFRICA — Mon espace</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<style>
-:root{--bg:#f7f2e9;--surface:#fffdf9;--ink:#20242b;--muted:#77766f;--line:#e7dfd3;--green:#287b36;--green2:#e4f1df;--gold:#e5aa2f;--orange:#e96b27;--red:#d93d32;--shadow:0 12px 30px rgba(38,34,25,.08)}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}a{text-decoration:none;color:inherit}.app{max-width:1180px;margin:auto;min-height:100vh}.top{position:sticky;top:0;z-index:20;background:rgba(247,242,233,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.toprow{min-height:68px;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{display:flex;align-items:center;gap:9px;font-size:22px;font-weight:950;letter-spacing:-.6px}.mark{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#287b36,#174c24);color:#fff}.brand b{color:var(--gold)}.actions{display:flex;gap:8px;align-items:center}.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 13px;font-weight:800;cursor:pointer}.btn.primary{background:var(--green);border-color:var(--green);color:#fff}.btn.ghost{background:transparent}.shell{padding:20px 18px 40px}.eyebrow{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;font-weight:900;color:var(--green)}h1{font:700 clamp(34px,6vw,54px)/1 Georgia,serif;margin:8px 0 10px;letter-spacing:-1px}.lead{max-width:720px;color:var(--muted);font-size:16px;line-height:1.55}.user{margin-top:16px;padding:12px 14px;border:1px solid var(--line);background:var(--surface);border-radius:14px;color:var(--muted)}.user strong{color:var(--ink)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:22px}.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);min-height:170px;display:flex;flex-direction:column}.icon{font-size:28px}.card h2{font-size:19px;margin:9px 0 5px}.card p{color:var(--muted);line-height:1.45;margin:0 0 14px}.card .btn{margin-top:auto;width:max-content}.section{margin-top:30px}.section h2{font-size:20px;margin:0 0 10px}.quick{display:flex;gap:8px;flex-wrap:wrap}.status{margin-top:15px;color:var(--muted);font-size:13px}.status.err{color:var(--red)}.bottom{display:flex;gap:8px;flex-wrap:wrap;margin-top:30px;padding-top:18px;border-top:1px solid var(--line)}@media(max-width:820px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.toprow{padding:9px 12px}.top-actions .home{display:none}.shell{padding:16px 12px 30px}.grid{grid-template-columns:1fr}.card{min-height:145px}.btn{padding:10px 12px}}
-</style>
-<script src="/brand-normalizer.js"></script>
-<script src="/brand-observer.js"></script></head>
-<body>
-<div class="app">
-<header class="top"><div class="toprow"><a class="brand" href="/"><span class="mark">💬</span><span>WASSAFRICA</span></a><div class="actions"><a class="btn home" href="/">Accueil</a><button id="logout" class="btn ghost" type="button">Se déconnecter</button></div></div></header>
-<main class="shell">
-<div class="eyebrow">Espace sécurisé</div>
-<h1>Mon espace WASSAFRICA</h1>
-<p class="lead">Un cockpit unique pour gérer votre identité, vos conversations, vos communautés, votre activité commerciale et vos Smart Links.</p>
-<div id="user" class="user">Vérification de votre session…</div>
-<div id="status" class="status" aria-live="polite"></div>
-<section class="grid" aria-label="Modules WASSAFRICA">
-<article class="card"><div class="icon">🔗</div><h2>Smart Link</h2><p>Créez et gérez vos liens publics de découverte et d'acquisition.</p><a class="btn primary" href="/smartlink">Ouvrir Smart Link</a></article>
-<article class="card"><div class="icon">💬</div><h2>Inbox</h2><p>Retrouvez vos conversations et vos prospects dans un même espace.</p><a class="btn primary" href="/inbox">Ouvrir l'Inbox</a></article>
-<article class="card"><div class="icon">👥</div><h2>Communautés</h2><p>Découvrez, rejoignez et gérez les groupes WASSAFRICA.</p><a class="btn primary" href="/groups">Ouvrir les groupes</a></article>
-<article class="card"><div class="icon">🔴</div><h2>Business Live</h2><p>Présentez une activité en direct et transformez l'intérêt en leads.</p><a class="btn primary" href="/live">Ouvrir Business Live</a></article>
-<article class="card"><div class="icon">🛍️</div><h2>Marché</h2><p>Publiez, découvrez et gérez les produits et services disponibles.</p><a class="btn primary" href="/market">Ouvrir le Marché</a><a class="btn" href="/offers.html">Gérer mes offres</a></article>
-<article class="card"><div class="icon">🧾</div><h2>Commerce</h2><p>Accédez aux outils de commande et aux flux commerciaux.</p><a class="btn primary" href="/commerce">Ouvrir Commerce</a></article>\n<article class="card"><div class="icon">👥</div><h2>Abonnés</h2><p>Retrouvez les personnes qui suivent votre profil WASSAFRICA.</p><a class="btn primary" href="/followers">Voir mes abonnés</a></article>\n<article class="card"><div class="icon">🧑🏾‍🤝‍🧑🏾</div><h2>Membres inscrits</h2><p>Retrouvez les comptes WASSAFRICA existants, sans perdre les inscriptions.</p><a class="btn primary" href="/members">Voir les membres</a></article>
-</section>
-<section class="section"><h2>Outils professionnels</h2><div class="quick"><a class="btn" href="/crm">CRM</a><a class="btn" href="/analytics">Analytics</a><a class="btn" href="/assistant">Assistant commercial</a><a class="btn" href="/vitrine">Vitrine business</a><a class="btn" href="/account-security">Sécurité du compte</a></div></section>
-<div class="bottom"><a class="btn" href="/share">Centre de partage</a><a class="btn" href="/calls">Appels</a><a class="btn" href="/">Retour à l'accueil</a></div>
-</main>
-</div>
-<script>
-const URL='https://dzifpwqrqnvssfhwjccj.supabase.co';
-const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
-const db=window.supabase.createClient(URL,KEY);
+<!doctype html><html lang="fr"><head><script src="/i18n.js" defer></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>WASSAFRICA — Mon compte</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>:root{--bg:#f7f7f5;--card:#fff;--ink:#20272b;--muted:#68737b;--line:#dfe4e6;--accent:#1f2933}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1160px;margin:auto;padding:16px}.nav{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.brand{font-weight:950;font-size:22px}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);text-decoration:none;font-weight:850}.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.hero,.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;margin-top:15px}.hero{background:linear-gradient(135deg,#fff,#eef1f2)}h1{font:800 clamp(35px,6vw,58px)/1.03 Georgia,serif;margin:7px 0}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.card h2{margin:8px 0 5px}.card p{color:var(--muted);line-height:1.5}.card .btn{margin-top:12px}.commerce{grid-column:1/-1}.commerce .actions{margin-top:12px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:14px}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}.login-state{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}.login-state .btn{margin-top:0}@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}}@media(max-width:560px){.grid{grid-template-columns:1fr}.actions .btn{width:100%}.login-state .btn{width:100%}}</style></head><body><main class="wrap"><nav class="nav"><div class="brand">WASSAFRICA / Mon compte</div><div class="actions"><a class="btn" href="/">Accueil</a><a class="btn" href="/inbox">💬 Messages</a><a class="btn" href="/discover">🔎 Découvrir</a><a class="btn" href="/vitrine">Vitrine</a></div></nav><section class="hero"><div class="muted">🌍 VOTRE ESPACE WASSAFRICA</div><h1>Tout créer. Tout gérer. Depuis un seul cockpit.</h1><p class="muted">Communiquez, présentez votre activité, créez vos produits et services, publiez des opportunités et ouvrez la conversation avec vos clients.</p><div id="user" class="muted">Vérification de la session…</div><div id="loginState" class="login-state" hidden><a class="btn primary" href="/auth?next=/dashboard">Se connecter</a><span class="muted">La page reste stable même si la session a expiré.</span></div></section><section class="card commerce"><h2>🛍️ Créer maintenant</h2><p>La création commerciale de base ne doit pas être cachée derrière plusieurs pages.</p><div class="actions"><a class="btn primary" href="/offer-create?type=physical">＋ Produit physique</a><a class="btn primary" href="/offer-create?type=digital">＋ Produit digital</a><a class="btn primary" href="/offer-create?type=service">＋ Service</a><a class="btn" href="/vitrine">Gérer ma vitrine</a><a class="btn" href="/market">Ouvrir le marché</a></div></section><div class="stats"><div class="stat"><b id="pc">—</b><span>Produits</span></div><div class="stat"><b id="dc">—</b><span>Produits digitaux</span></div><div class="stat"><b id="sc">—</b><span>Services</span></div><div class="stat"><b id="lc">—</b><span>Lives</span></div></div><section class="grid"><article class="card"><div>💬</div><h2>Messages</h2><p>Une conversation unique pour texte, photo, vidéo, audio et appels.</p><a class="btn primary" href="/inbox">Ouvrir Messages</a></article><article class="card"><div>🔗</div><h2>Smart Link</h2><p>Votre présence publique et votre identité visuelle.</p><a class="btn primary" href="/smartlink">Gérer Smart Link</a></article><article class="card"><div>🏢</div><h2>Vitrine</h2><p>Produits, services, médias et présentation.</p><a class="btn primary" href="/vitrine">Gérer la vitrine</a></article><article class="card"><div>🤖</div><h2>Smart Link IA</h2><p>Préparez un brouillon à partir d’une page existante sans inventer les faits.</p><a class="btn primary" href="/smartlink-ai">Construire avec l’IA</a></article><article class="card"><div>🔎</div><h2>Découvrir</h2><p>Trouvez qui vend quoi, où, et contactez directement.</p><a class="btn primary" href="/discover">Découvrir</a></article><article class="card"><div>🔴</div><h2>Business Live</h2><p>Publiez une demande, une offre ou un partenariat en temps réel.</p><a class="btn primary" href="/live">Ouvrir Live</a></article><article class="card"><div>👥</div><h2>Communautés</h2><p>Créez et rejoignez des espaces autour des métiers et intérêts.</p><a class="btn primary" href="/groups">Communautés</a></article><article class="card"><div>📊</div><h2>Analytics</h2><p>Mesurez les interactions de votre présence.</p><a class="btn primary" href="/analytics">Analytics</a></article><article class="card"><div>💳</div><h2>Paiements</h2><p>Accédez aux opérations et partenaires de paiement disponibles.</p><a class="btn primary" href="/payments">Paiements</a></article><article class="card"><div>🔐</div><h2>Sécurité</h2><p>Protégez votre compte et vos sessions.</p><a class="btn primary" href="/account-security">Sécurité</a></article><article class="card"><div>✨</div><h2>Studio Visuel IA</h2><p>Transformez vos visuels en créations professionnelles pour vos Smart Links. Fonction Premium avec crédits IA.</p><a class="btn primary" href="/studio-visuel-ia">Ouvrir le Studio IA</a></article><article class="card"><div>🎨</div><h2>Identité visuelle</h2><p>Choisissez votre couleur Smart Link sans imposer une couleur à tous.</p><a class="btn primary" href="/smartlink-theme">Personnaliser</a></article></section></main><script>
+const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}});
 const $=id=>document.getElementById(id);
-function goAuth(){const next=encodeURIComponent(location.pathname+location.search);location.replace('/auth?next='+next)}
 async function init(){
+ try{
   const {data,error}=await db.auth.getSession();
-  if(error||!data.session){goAuth();return}
-  const user=data.session.user;
-  $('user').innerHTML='Connecté avec <strong>'+String(user.email||'votre compte').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))+'</strong>';
-  $('status').textContent='🟢 Session active. Votre espace est prêt.';
+  if(error) throw error;
+  const s=data?.session;
+  if(!s){$('user').textContent='Votre session n’est plus active.';$('loginState').hidden=false;return;}
+  $('user').textContent='Compte actif — '+(s.user.email||s.user.phone||'membre WASSAFRICA');
+  const b=await db.from('businesses').select('id').eq('owner_id',s.user.id).maybeSingle();
+  if(!b.data)return;
+  const [p,d,sv,l]=await Promise.all([
+   db.from('products').select('id',{count:'exact',head:true}).eq('business_id',b.data.id),
+   db.from('products').select('id',{count:'exact',head:true}).eq('business_id',b.data.id).eq('product_type','digital'),
+   db.from('marketplace_services').select('id',{count:'exact',head:true}).eq('seller_id',s.user.id),
+   db.from('business_live_sessions').select('id',{count:'exact',head:true}).eq('host_id',s.user.id)
+  ]);
+  $('pc').textContent=p.count??0;$('dc').textContent=d.count??0;$('sc').textContent=sv.count??0;$('lc').textContent=l.count??0;
+ }catch(e){$('user').textContent='Impossible de charger votre session. Réessayez.';$('loginState').hidden=false;}
 }
-$('logout').onclick=async()=>{ $('logout').disabled=true; const {error}=await db.auth.signOut(); if(error){$('logout').disabled=false;$('status').textContent='Impossible de fermer la session. Réessayez.';$('status').className='status err';return} location.replace('/') };
-db.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'||!session)goAuth()});
-init().catch(()=>goAuth());
-</script>
-</body>
-</html>
+init();
+</script></body></html>
