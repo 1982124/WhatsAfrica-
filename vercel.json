@@ -14,47 +14,47 @@
     },
     {
       "source": "/inbox",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/messages",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/messagerie",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/messaging",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/chat",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/calls",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/call",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/appels",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/audio-call",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/video-call",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/messaging-final.html",
-      "destination": "/inbox-v25.html"
+      "destination": "/inbox.html"
     },
     {
       "source": "/",
@@ -62,7 +62,7 @@
     },
     {
       "source": "/auth",
-      "destination": "/auth-v8.html"
+      "destination": "/auth.html"
     },
     {
       "source": "/profile",
@@ -78,7 +78,7 @@
     },
     {
       "source": "/dashboard",
-      "destination": "/dashboard-v3.html"
+      "destination": "/dashboard.html"
     },
     {
       "source": "/studio-visuel-ia",
@@ -86,7 +86,7 @@
     },
     {
       "source": "/cockpit",
-      "destination": "/admin-cockpit-v3.html"
+      "destination": "/cockpit.html"
     },
     {
       "source": "/admin-commercial-controls",
@@ -142,7 +142,7 @@
     },
     {
       "source": "/offer-create",
-      "destination": "/offer-create-free-v3.html"
+      "destination": "/offer-create.html"
     },
     {
       "source": "/digital-products",
@@ -154,7 +154,7 @@
     },
     {
       "source": "/digital-market",
-      "destination": "/market-v4.html"
+      "destination": "/market.html"
     },
     {
       "source": "/library",
@@ -174,7 +174,7 @@
     },
     {
       "source": "/groups",
-      "destination": "/groups-v5.html"
+      "destination": "/groups.html"
     },
     {
       "source": "/groups/:id",
@@ -190,11 +190,11 @@
     },
     {
       "source": "/marketplace",
-      "destination": "/market-v4.html"
+      "destination": "/market.html"
     },
     {
       "source": "/market",
-      "destination": "/market-v4.html"
+      "destination": "/market.html"
     },
     {
       "source": "/marche",
@@ -222,15 +222,15 @@
     },
     {
       "source": "/marche/boutique/:slug",
-      "destination": "/smartlink-public-v7.html"
+      "destination": "/smartlink-public.html"
     },
     {
       "source": "/commerce",
-      "destination": "/market-v4.html"
+      "destination": "/market.html"
     },
     {
       "source": "/product",
-      "destination": "/market-v4.html"
+      "destination": "/market.html"
     },
     {
       "source": "/product/:id",
@@ -274,7 +274,7 @@
     },
     {
       "source": "/admin",
-      "destination": "/admin-cockpit-v3.html"
+      "destination": "/cockpit.html"
     },
     {
       "source": "/design-settings",
@@ -370,7 +370,7 @@
     },
     {
       "source": "/:slug",
-      "destination": "/smartlink-public-v7.html"
+      "destination": "/smartlink-public.html"
     }
   ],
   "headers": [
