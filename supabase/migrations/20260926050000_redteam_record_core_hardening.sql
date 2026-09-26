@@ -1,0 +1,38 @@
+-- Red-team hardening record: these statements are idempotent and document the
+-- already-applied production database hardening.
+drop trigger if exists trg_orders_after_insert_digital_entitlements on public.orders;
+drop trigger if exists trg_orders_issue_digital_entitlements on public.orders;
+drop function if exists private.trg_orders_after_insert_digital_entitlements();
+drop function if exists private.trg_issue_digital_entitlements();
+drop index if exists public.payment_events_provider_event_unique;
+revoke execute on function public.start_call_session(uuid,uuid,text) from public;
+grant execute on function public.start_call_session(uuid,uuid,text) to authenticated;
+create index if not exists smart_link_assets_smart_link_id_idx on public.smart_link_assets (smart_link_id);
+create index if not exists smart_link_assets_asset_id_idx on public.smart_link_assets (asset_id);
+create index if not exists smart_link_assets_user_id_idx on public.smart_link_assets (user_id);
+create index if not exists demand_clusters_product_id_idx on public.demand_clusters (product_id);
+create index if not exists demand_observations_product_id_idx on public.demand_observations (product_id);
+create index if not exists demand_observations_source_id_idx on public.demand_observations (source_id);
+create index if not exists demand_report_items_report_id_idx on public.demand_report_items (report_id);
+create index if not exists demand_report_items_cluster_id_idx on public.demand_report_items (cluster_id);
+create index if not exists demand_report_items_observation_id_idx on public.demand_report_items (observation_id);
+create index if not exists product_demand_requests_created_by_idx on public.product_demand_requests (created_by);
+create index if not exists product_demand_requests_duplicate_of_idx on public.product_demand_requests (duplicate_of);
+create index if not exists wassafrica_partner_activities_business_id_idx on public.wassafrica_partner_activities (business_id);
+create index if not exists wassafrica_partner_activities_user_id_idx on public.wassafrica_partner_activities (user_id);
+create index if not exists wassafrica_partner_referrals_referred_business_id_idx on public.wassafrica_partner_referrals (referred_business_id);
+create index if not exists wassafrica_partner_referrals_referred_user_id_idx on public.wassafrica_partner_referrals (referred_user_id);
+create index if not exists wassafrica_partner_commissions_referral_id_idx on public.wassafrica_partner_commissions (referral_id);
+create index if not exists ai_assets_project_id_idx on public.ai_assets (project_id);
+create index if not exists ai_assets_user_id_idx on public.ai_assets (user_id);
+create index if not exists ai_credit_transactions_user_id_idx on public.ai_credit_transactions (user_id);
+create index if not exists ai_generations_project_id_idx on public.ai_generations (project_id);
+create index if not exists ai_generations_source_asset_id_idx on public.ai_generations (source_asset_id);
+create index if not exists ai_generations_user_id_idx on public.ai_generations (user_id);
+create index if not exists ai_projects_smart_link_id_idx on public.ai_projects (smart_link_id);
+create index if not exists ai_projects_user_id_idx on public.ai_projects (user_id);
+create index if not exists brand_profiles_logo_asset_id_idx on public.brand_profiles (logo_asset_id);
+create index if not exists demand_actions_cluster_id_idx on public.demand_actions (cluster_id);
+create index if not exists demand_actions_observation_id_idx on public.demand_actions (observation_id);
+create index if not exists product_demand_requests_reviewed_by_idx on public.product_demand_requests (reviewed_by);
+create index if not exists wassafrica_partners_user_id_idx on public.wassafrica_partners (user_id);
