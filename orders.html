@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Commandes — WASSAFRICA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f7f2e9;--s:#fffdf9;--i:#20242b;--m:#77766f;--l:#e5ddd1;--g:#287b36;--d:#173c22;--r:#b94a48}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--i);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1100px;margin:auto;padding:0 14px}.top{position:sticky;top:0;z-index:10;background:#f7f2e9ee;backdrop-filter:blur(14px);border-bottom:1px solid var(--l)}.row{min-height:62px;display:flex;align-items:center;justify-content:space-between;gap:10px}.brand{font-size:22px;font-weight:950;color:inherit;text-decoration:none}.nav{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid var(--l);background:var(--s);color:var(--i);border-radius:11px;padding:9px 12px;font-weight:850;text-decoration:none;cursor:pointer}.primary{background:var(--g);border-color:var(--g);color:#fff}.danger{color:#fff;background:var(--r);border-color:var(--r)}.hero{margin:16px 0;padding:22px;border-radius:22px;background:linear-gradient(120deg,var(--d),#2d7835);color:#fff}.hero h1{font:700 clamp(32px,6vw,52px)/1.05 Georgia,serif;margin:6px 0}.hero p{color:#edf5ea;max-width:760px}.tabs{display:flex;gap:7px;overflow:auto;margin:12px 0}.tab{white-space:nowrap}.tab.active{background:var(--g);color:#fff;border-color:var(--g)}.list{display:grid;gap:12px}.card{background:var(--s);border:1px solid var(--l);border-radius:18px;padding:16px}.head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.status{display:inline-flex;padding:5px 9px;border-radius:999px;background:#e8f2e5;color:var(--g);font-size:12px;font-weight:900}.muted{color:var(--m)}.meta{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0}.line{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--l);padding:9px 0}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.empty{text-align:center;padding:40px;color:var(--m);background:var(--s);border:1px dashed var(--l);border-radius:18px}.hidden{display:none}.review{margin-top:12px;padding-top:12px;border-top:1px solid var(--l)}.review textarea{width:100%;min-height:80px;padding:10px;border:1px solid var(--l);border-radius:10px;background:#fff;font:inherit}.stars button{border:0;background:none;font-size:25px;cursor:pointer;padding:2px}.small{font-size:12px}.sellerBadge{color:#805f12;font-weight:900}
+@media(max-width:600px){.head{flex-direction:column}.actions .btn{width:100%}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap row"><a class="brand" href="/">WASSAFRICA</a><nav class="nav"><a class="btn" href="/commerce">Commerce</a><a class="btn" href="/cart">Panier</a><a class="btn" href="/dashboard">Mon compte</a></nav></div></header>
+<main class="wrap"><section class="hero"><div>🧾 COMMERCE</div><h1>Mes commandes</h1><p>Suivez vos achats et gérez les commandes reçues par votre activité depuis le même espace.</p></section>
+<div class="tabs"><button class="btn tab active" data-mode="buyer">Mes achats</button><button class="btn tab" data-mode="seller">Commandes reçues</button></div>
+<section id="state" class="muted">Vérification de la session…</section><section id="list" class="list"></section></main>
+<script>
+const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}});
+const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const labels={pending:'En attente',confirmed:'Confirmée',processing:'En préparation',ready:'Prête',shipped:'Expédiée',delivered:'Livrée',cancelled:'Annulée'};
+const fmt=(v,c)=>new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v||0))+' '+(c||'XOF');
+let mode='buyer',uid=null,orders=[],selectedRating=5;
+function status(s){return '<span class="status">'+esc(labels[s]||s)+'</span>'}
+function itemLines(items){return (items||[]).map(i=>'<div class="line"><span>'+esc(i.title_snapshot)+' × '+i.quantity+'</span><b>'+fmt(i.line_total,i.currency)+'</b></div>').join('')}
+function sellerActions(o){
+ const next={pending:[['confirmed','Confirmer'],['cancelled','Annuler']],confirmed:[['processing','Prendre en charge'],['cancelled','Annuler']],processing:[['ready','Marquer prête'],['shipped','Expédier'],['cancelled','Annuler']],ready:[['shipped','Expédier'],['cancelled','Annuler']],shipped:[['delivered','Marquer livrée']],delivered:[]}[o.status]||[];
+ return next.map(x=>'<button class="btn '+(x[0]==='cancelled'?'danger':'primary')+'" data-action="status" data-id="'+o.id+'" data-status="'+x[0]+'">'+x[1]+'</button>').join('');
+}
+function buyerActions(o){
+ let html='<a class="btn" href="/commande/'+encodeURIComponent(o.tracking_token)+'?order_id='+encodeURIComponent(o.id)+'">Suivre</a>';
+ if(o.status==='delivered') html+='<button class="btn primary" data-action="received" data-id="'+o.id+'">✓ Confirmer réception</button><button class="btn" data-action="review" data-id="'+o.id+'">⭐ Laisser un avis</button>';
+ return html;
+}
+function reviewForm(o){return '<div class="review hidden" id="review-'+o.id+'"><div class="small">Votre avis concerne la transaction et le vendeur.</div><div class="stars" data-stars="'+o.id+'">'+[1,2,3,4,5].map(n=>'<button type="button" data-action="rating" data-id="'+o.id+'" data-rating="'+n+'">★</button>').join('')+'</div><textarea id="body-'+o.id+'" placeholder="Votre retour (facultatif)"></textarea><div class="actions"><button class="btn primary" data-action="submit-review" data-id="'+o.id+'">Publier l’avis</button><button class="btn" data-action="close-review" data-id="'+o.id+'">Fermer</button></div></div>'}
+function render(){
+ if(!orders.length){$('list').innerHTML='<div class="empty">'+(mode==='buyer'?'Aucune commande achetée avec ce compte.':'Aucune commande reçue par votre activité.')+'</div>';return}
+ $('list').innerHTML=orders.map(o=>'<article class="card"><div class="head"><div><b>#'+esc(o.id.slice(0,8))+'</b><div class="muted">'+new Date(o.created_at).toLocaleString('fr-FR')+'</div></div><div>'+status(o.status)+(mode==='seller'?'<div class="sellerBadge">Vendeur</div>':'')+'</div></div><div class="meta"><span>💰 '+fmt(o.total,o.currency)+'</span><span>📦 '+esc(o.delivery_method)+'</span><span>💳 '+esc(o.payment_method)+'</span></div><div class="muted">'+(mode==='seller'?'Client : '+esc(o.buyer_name)+' · '+esc(o.buyer_phone):'Vendeur : '+esc(o.business_name||'WASSAFRICA'))+'</div>'+itemLines(o.order_items)+'<div class="actions">'+(mode==='seller'?sellerActions(o):buyerActions(o))+'</div>'+ (mode==='buyer'&&o.status==='delivered'?reviewForm(o):'')+'</article>').join('');
+}
+async function load(){
+ const {data:{session}}=await db.auth.getSession();
+ if(!session){uid=null;$('state').innerHTML='Connectez-vous pour consulter vos commandes. <a class="btn primary" href="/auth?next=/orders">Se connecter</a>';return}
+ uid=session.user.id;$('state').textContent=mode==='buyer'?'Commandes liées à votre compte.':'Commandes de votre activité.';
+ let query=db.from('orders').select('id,business_id,buyer_user_id,buyer_name,buyer_phone,delivery_city,delivery_method,payment_method,payment_status,status,currency,total,tracking_token,created_at,order_items(id,title_snapshot,unit_price,currency,quantity,line_total),businesses(name)').order('created_at',{ascending:false}).limit(100);
+ query=mode==='buyer'?query.eq('buyer_user_id',uid):query;
+ if(mode==='seller'){
+   const {data:bs,error:be}=await db.from('businesses').select('id').eq('owner_id',uid);
+   if(be)throw be;if(!bs?.length){orders=[];render();return}
+   query=query.in('business_id',bs.map(x=>x.id));
+ }
+ const {data,error}=await query;if(error)throw error;
+ orders=(data||[]).map(o=>({...o,business_name:o.businesses?.name,order_items:o.order_items||[]}));render();
+}
+async function action(e){
+ const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;
+ try{
+  b.disabled=true;
+  if(a==='status'){
+   const note=prompt('Note vendeur (facultatif) :')||null;
+   const {error}=await db.rpc('seller_update_order_status',{p_order_id:id,p_status:b.dataset.status,p_note:note});if(error)throw error;
+  } else if(a==='received'){
+   const {error}=await db.rpc('buyer_confirm_order_received',{p_order_id:id});if(error)throw error;
+  } else if(a==='review'){
+   $('review-'+id)?.classList.remove('hidden');return;
+  } else if(a==='close-review'){
+   $('review-'+id)?.classList.add('hidden');return;
+  } else if(a==='rating'){
+   selectedRating=Number(b.dataset.rating);
+   document.querySelectorAll('[data-stars="'+id+'"] button').forEach((x,i)=>x.textContent=i<selectedRating?'★':'☆');return;
+  } else if(a==='submit-review'){
+   const o=orders.find(x=>x.id===id);const body=$('body-'+id)?.value?.trim()||null;
+   const {error}=await db.from('commerce_reviews').insert({order_id:id,order_item_id:o?.order_items?.[0]?.id||null,product_id:o?.order_items?.[0]?.product_id||null,business_id:o.business_id,reviewer_user_id:uid,review_type:'transaction',rating:selectedRating,body,is_published:true});
+   if(error)throw error;
+  }
+  await load();
+ }catch(err){console.error(err);alert(err?.message||'Opération impossible.');b.disabled=false}
+}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=async()=>{mode=b.dataset.mode;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));try{await load()}catch(e){$('list').innerHTML='<div class="empty">Impossible de charger les commandes.</div>';console.error(e)}});
+document.addEventListener('click',action);
+load().catch(e=>{$('state').textContent='Erreur de chargement.';$('list').innerHTML='<div class="empty">Impossible de charger les commandes.</div>';console.error(e)});
+</script></body></html>
