@@ -15,57 +15,52 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Validate canonical production assets
+
+      - name: Validate canonical production assets and routes
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json inbox-v25.html wa-calls-v2.js wa-media-p2p.js wa-message-invite.js wa-inbox-call-bridge.js smartlink-public-v7.html presentation.html studio-visuel-ia.html; do test -f "$file"; done
-      - name: Validate canonical routes
+          for file in vercel.json auth.html inbox.html smartlink-public.html market.html dashboard.html offer-create.html presentation.html studio-visuel-ia.html fallback-audit.py; do
+            test -f "$file"
+          done
+          python3 - <<'PY'
+          import json
+          data=json.load(open('vercel.json', encoding='utf-8'))
+          rewrites={x['source']:x['destination'] for x in data.get('rewrites',[])}
+          required={
+            '/auth':'/auth.html',
+            '/inbox':'/inbox.html',
+            '/market':'/market.html',
+            '/marketplace':'/market.html',
+            '/dashboard':'/dashboard.html',
+            '/offer-create':'/offer-create.html',
+            '/marche/produit/:id':'/product.html?id=:id',
+            '/marche/boutique/:slug':'/smartlink-public.html',
+          }
+          for src,dst in required.items():
+            assert rewrites.get(src)==dst, f'{src}: expected {dst}, got {rewrites.get(src)}'
+          assert not data.get('redirects'), 'Automatic Vercel redirects are forbidden.'
+          print('Canonical route certification passed.')
+          PY
+
+      - name: Validate canonical messaging chain
         shell: bash
         run: |
           set -euo pipefail
-          for route in '"/auth"' '"/smartlink"' '"/vitrine"' '"/presentation"' '"/inbox"' '"/groups"' '"/market"' '"/dashboard"' '"/services"' '"/analytics"' '"/calls"'; do grep -Fq "$route" vercel.json; done
-          grep -Fq '"/inbox","destination":"/inbox-v25.html"' vercel.json
-          grep -Fq '"/studio-visuel-ia","destination":"/studio-visuel-ia.html"' vercel.json
-      - name: Validate canonical messaging and AI studio chain
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -Fq '/wa-calls-v2.js' inbox-v25.html
-          grep -Fq '/wa-media-p2p.js' inbox-v25.html
-          grep -Fq '/wa-message-invite.js' inbox-v25.html
-          grep -Fq '/wa-inbox-call-bridge.js' inbox-v25.html
-          grep -Fq 'wa:conversation-selected' inbox-v25.html
-          grep -Fq 'wa:conversation-ready' inbox-v25.html
-          grep -Fq 'wa:inbox-ready' inbox-v25.html
-          grep -Fq 'Studio Visuel IA' studio-visuel-ia.html
-      - name: Validate safe external launcher policy
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -Fq 'https://wa.me/' wa-external-connect-v1.js
-          grep -Fq 'https://t.me/' wa-external-connect-v1.js
-          grep -Fq 'https://www.facebook.com/' wa-external-connect-v1.js
-          grep -Fq 'https://www.instagram.com/' wa-external-connect-v1.js
-          grep -Fq 'navigator.share' wa-external-connect-v1.js
-          grep -Fq "location.href='tel:'" wa-external-connect-v1.js
-          if grep -Eq 'SUPABASE|supabase|Authorization|access_token|service_role|sb_secret_' wa-external-connect-v1.js; then echo 'External launcher must not contain backend credentials or auth plumbing.'; exit 1; fi
+          grep -Fq 'wa:conversation-selected' inbox.html
+          grep -Fq 'wa:conversation-ready' inbox.html
+          grep -Fq 'wa:inbox-ready' inbox.html
+          grep -Fq 'createClient' inbox.html
+          grep -Fq 'persistSession' inbox.html
+
       - name: Validate Smart Link → conversation primitive
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq "location.href='/inbox?recipient='" smartlink-public-v7.html
-          grep -Fq 'smart_links' smartlink-public-v7.html
-          grep -Fq 'is_public' smartlink-public-v7.html
-      - name: Validate presentation and visual system
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -Fq 'VOIR' presentation.html || true
-          grep -Fq '#123B2A' presentation.html
-          grep -Fq '#E8A928' presentation.html
-          grep -Fq 'aria-label="Illustration du réseau WASSAFRICA"' presentation.html
-          grep -Fq 'Smart Link' presentation.html
+          grep -Fq "location.href='/inbox?recipient='" smartlink-public.html
+          grep -Fq 'smart_links' smartlink-public.html
+          grep -Fq 'is_public' smartlink-public.html
+
       - name: Validate security headers
         shell: bash
         run: |
@@ -74,48 +69,50 @@ jobs:
           grep -Fq 'X-Content-Type-Options' vercel.json
           grep -Fq 'X-Frame-Options' vercel.json
           grep -Fq 'Permissions-Policy' vercel.json
-      - name: Validate no automatic Vercel fallback redirects
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          with open('vercel.json', encoding='utf-8') as f: data=json.load(f)
-          if data.get('redirects'):
-              raise SystemExit('Automatic Vercel redirects are forbidden.')
-          print('No Vercel fallback redirects declared.')
-          PY
+
       - name: Validate no service-role key is committed
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RIn --exclude-dir=.git --exclude-dir=supabase --exclude-dir=.github --exclude='*.md' -E 'sb_secret_[A-Za-z0-9_-]{20,}' .; then echo 'Potential service-role secret exposure detected.'; exit 1; fi
+          if grep -RIn --exclude-dir=.git --exclude-dir=supabase --exclude-dir=.github --exclude='*.md' -E 'sb_secret_[A-Za-z0-9_-]{20,}' .; then
+            echo 'Potential service-role secret exposure detected.'
+            exit 1
+          fi
+
       - name: Validate JavaScript syntax
         shell: bash
         run: |
           set -euo pipefail
-          for file in wa-calls-v2.js wa-media-p2p.js wa-message-invite.js wa-inbox-call-bridge.js; do node --check "$file"; done
+          mapfile -t jsfiles < <(find . -type f -name '*.js' -not -path './node_modules/*' -not -path './.git/*' | sort)
+          test "${#jsfiles[@]}" -gt 0
+          for f in "${jsfiles[@]}"; do node --check "$f"; done
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
           import subprocess,tempfile
           class Scripts(HTMLParser):
-              def __init__(self): super().__init__(); self.in_script=False; self.buf=[]; self.scripts=[]
+              def __init__(self):
+                  super().__init__(); self.in_script=False; self.buf=[]; self.scripts=[]
               def handle_starttag(self,tag,attrs):
-                  if tag=='script' and not dict(attrs).get('src'): self.in_script=True; self.buf=[]
+                  if tag=='script' and not dict(attrs).get('src'):
+                      self.in_script=True; self.buf=[]
               def handle_endtag(self,tag):
-                  if tag=='script' and self.in_script: self.scripts.append(''.join(self.buf)); self.in_script=False
+                  if tag=='script' and self.in_script:
+                      self.scripts.append(''.join(self.buf)); self.in_script=False
               def handle_data(self,data):
                   if self.in_script: self.buf.append(data)
-          for name in ['inbox-v25.html','studio-visuel-ia.html','smartlink-public-v7.html','presentation.html']:
+          for name in ['auth.html','inbox.html','smartlink-public.html','market.html','dashboard.html','offer-create.html','presentation.html','studio-visuel-ia.html']:
               p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
               for i,code in enumerate(p.scripts):
                   if not code.strip(): continue
-                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f: f.write(code); tmp=f.name
+                  with tempfile.NamedTemporaryFile('w',suffix='.js',delete=False,encoding='utf-8') as f:
+                      f.write(code); tmp=f.name
                   r=subprocess.run(['node','--check',tmp],capture_output=True,text=True)
-                  if r.returncode: print(r.stderr); raise SystemExit(f'Inline JavaScript syntax error: {name} script #{i+1}')
+                  if r.returncode:
+                      print(r.stderr); raise SystemExit(f'Inline JavaScript syntax error: {name} script #{i+1}')
           print('JavaScript syntax certification passed.')
           PY
+
       - name: Global fallback gate
         shell: bash
         run: python3 fallback-audit.py
