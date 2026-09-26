@@ -186,7 +186,7 @@
     },
     {
       "source": "/community",
-      "destination": "/community-v7.html"
+      "destination": "/groups.html"
     },
     {
       "source": "/groups/:id",
