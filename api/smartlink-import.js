@@ -81,6 +81,7 @@ async function paymentServiceGet(path,params){
   Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
   const r=await fetch(u,{headers:{apikey:key,Authorization:'Bearer '+key}});if(!r.ok)throw new Error('service_get_'+r.status);return r.json();
 }
+function paymentUrlSafe(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password&&u.hostname&&!['localhost','127.0.0.1','::1'].includes(u.hostname.toLowerCase())}catch{return false}}
 async function paymentStart(req,res){
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});
   const sk=process.env.SUPABASE_SERVICE_ROLE_KEY,pk=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -93,10 +94,11 @@ async function paymentStart(req,res){
   const creds=await paymentRpc('get_payment_connection_secret_for_service',{p_user_id:user.id},sk,sk);const connection=Array.isArray(creds)?creds[0]:creds;
   const apiUrl=String(connection?.secret||process.env.MONEYFUSION_API_URL||'').trim(),apiKey=String(process.env.MONEYFUSION_API_KEY||'').trim();
   if(!apiUrl||!/^https?:\\/\\//i.test(apiUrl))return res.status(503).json({ok:false,error:'moneyfusion_not_configured',message:'Connectez Money Fusion ou configurez MONEYFUSION_API_URL.'});
-  const orders=await paymentServiceGet('orders',{id:'eq.'+orderId,select:'id,buyer_name,buyer_phone,total,currency'});if(!orders[0])return res.status(404).json({ok:false,error:'order_not_found'});const order=orders[0];
+  if(!paymentUrlSafe(apiUrl))return res.status(400).json({ok:false,error:'moneyfusion_api_url_invalid'});
+  const orders=await paymentServiceGet('orders',{id:'eq.'+orderId,select:'id,buyer_name,buyer_phone,total,currency,tracking_token'});if(!orders[0])return res.status(404).json({ok:false,error:'order_not_found'});const order=orders[0];
   const items=await paymentServiceGet('order_items',{order_id:'eq.'+orderId,select:'title_snapshot,unit_price,quantity'});
   const base=process.env.PUBLIC_APP_URL||'https://wassafrica.vercel.app';
-  const payload={totalPrice:Number(order.total),article:items.map(i=>({name:String(i.title_snapshot||'Article').slice(0,120),price:Number(i.unit_price||0),quantity:Number(i.quantity||1)})),numeroSend:String(order.buyer_phone||''),nomclient:String(order.buyer_name||'Client'),personal_Info:[{userId:user.id,orderId:order.id}],return_url:base+'/commande/'+encodeURIComponent(b.tracking_token||'')+'?order_id='+encodeURIComponent(order.id),webhook_url:base+'/api/payment-moneyfusion-webhook'};
+  const payload={totalPrice:Number(order.total),article:items.map(i=>({name:String(i.title_snapshot||'Article').slice(0,120),price:Number(i.unit_price||0),quantity:Number(i.quantity||1)})),numeroSend:String(order.buyer_phone||''),nomclient:String(order.buyer_name||'Client'),personal_Info:[{userId:user.id,orderId:order.id}],return_url:base+'/commande/'+encodeURIComponent(b.tracking_token||order.tracking_token||'')+'?order_id='+encodeURIComponent(order.id),webhook_url:base+'/api/payment-moneyfusion-webhook'};
   const headers={'Content-Type':'application/json'};if(apiKey)headers['moneyfusion-private-key']=apiKey;
   const pr=await fetch(apiUrl,{method:'POST',headers,body:JSON.stringify(payload)}),pd=await pr.json().catch(()=>null);
   if(!pr.ok||pd?.statut===false)return res.status(502).json({ok:false,error:'moneyfusion_payment_request_failed',provider_status:pr.status,provider_message:pd?.message||null});
