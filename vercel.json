@@ -197,6 +197,10 @@
       "destination": "/market.html"
     },
     {
+      "source": "/cart",
+      "destination": "/cart.html"
+    },
+    {
       "source": "/marche",
       "destination": "/marche.html"
     },
