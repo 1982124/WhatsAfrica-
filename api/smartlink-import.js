@@ -61,7 +61,7 @@ function extractResponseText(j){
 }
 async function paymentAuthUser(auth){
   if(!auth?.startsWith('Bearer '))return null;const token=auth.slice(7).trim();if(!token)return null;
-  const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
   const r=await fetch((process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co')+'/auth/v1/user',{headers:{apikey:key,Authorization:'Bearer '+token}});
   return r.ok?await r.json().catch(()=>null):null;
 }
