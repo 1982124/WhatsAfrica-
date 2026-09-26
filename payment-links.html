@@ -22,7 +22,7 @@
 </div>
 <div class="actions"><button class="btn primary" id="save" type="button">Enregistrer le lien</button><a class="btn" href="/market">Voir le marché</a></div><p id="msg" class="status"></p>
 </section>
-<section class="card"><h2>Mes liens d'encaissement</h2><div id="list" class="hint">Chargement…</div></section>
+<section id="moneyfusion" class="card" hidden><h2>⚡ Connexion API Money Fusion</h2><p class="hint">Pour le paiement automatique, saisissez l’URL API générée dans votre tableau de bord Money Fusion. Elle est conservée dans le coffre-fort Supabase, pas dans le navigateur.</p><div class="grid"><div class="field"><label>Pays</label><input id="mfCountry" class="input" value="ml" maxlength="2"></div><div class="field"><label>Type de compte</label><select id="mfType" class="input"><option value="mobile_money">Mobile Money</option><option value="bank">Banque</option><option value="card">Carte</option><option value="other">Autre</option></select></div><div class="field" style="grid-column:1/-1"><label>URL API Money Fusion *</label><input id="mfSecret" class="input" type="url" placeholder="https://…"></div></div><div class="actions"><button class="btn primary" id="mfSave" type="button">Connecter Money Fusion</button></div><p id="mfMsg" class="status"></p></section><section class="card"><h2>Mes liens d'encaissement</h2><div id="list" class="hint">Chargement…</div></section>
 </main>
 <script>
 'use strict';
@@ -40,7 +40,7 @@ async function boot(){
  if(!businesses.length){$('gate').innerHTML='<b>Aucune activité.</b><div class="hint">Créez d’abord votre activité depuis votre cockpit.</div>';return}
  $('business').innerHTML=businesses.map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name||'Mon activité')+'</option>').join('');
  const pr=await db.from('products').select('id,title,business_id').eq('is_published',true).in('business_id',businesses.map(b=>b.id)).order('created_at',{ascending:false});
- if(pr.error)throw pr.error; products=pr.data||[]; renderProducts(); $('editor').hidden=false; $('gate').innerHTML='<b>🟢 Encaissement prêt.</b><div class="hint">Vous pouvez relier plusieurs prestataires et plusieurs offres.</div>'; await load()
+ if(pr.error)throw pr.error; products=pr.data||[]; renderProducts(); $('editor').hidden=false; $('moneyfusion').hidden=false; $('gate').innerHTML='<b>🟢 Encaissement prêt.</b><div class="hint">Vous pouvez relier plusieurs prestataires et plusieurs offres.</div>'; await load()
 }
 function renderProducts(){
  const bid=$('business').value;
@@ -56,6 +56,15 @@ async function load(){
  $('list').innerHTML=r.data.map(x=>'<div class="item"><span class="pill">'+esc(x.provider)+'</span> <b>'+esc(x.label)+'</b><div class="hint">'+esc(bmap.get(x.business_id)||'Activité')+(x.product_id?' · '+esc(pmap.get(x.product_id)||'Offre'):' · Toute la vitrine')+'</div><a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">'+esc(x.url)+'</a><div class="actions"><button class="btn" data-toggle="'+esc(x.id)+'">'+(x.is_active?'Désactiver':'Activer')+'</button></div></div>').join('');
  document.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.toggle;const item=r.data.find(x=>x.id===id);if(!item)return;const u=await db.from('external_payment_links').update({is_active:!item.is_active,updated_at:new Date().toISOString()}).eq('id',id);if(u.error)msg(u.error.message);else await load()})
 }
+$('mfSave').onclick=async()=>{
+ try{
+  const secret=$('mfSecret').value.trim(),country=$('mfCountry').value.trim().toLowerCase();
+  if(!/^https?:\/\//i.test(secret))throw Error('L’URL API Money Fusion doit commencer par http:// ou https://.');
+  const r=await db.rpc('connect_payment_provider',{p_provider:'moneyfusion',p_country_code:country,p_account_type:$('mfType').value,p_secret:secret});
+  if(r.error)throw r.error;
+  $('mfMsg').innerHTML='<span class="ok">Money Fusion est connecté. Le paiement automatique peut maintenant être initié.</span>'; $('mfSecret').value='';
+ }catch(e){$('mfMsg').innerHTML='<span class="err">'+esc(e?.message||'Connexion Money Fusion impossible.')+'</span>'}
+};
 $('save').onclick=async()=>{
  try{
   const url=$('url').value.trim(),businessId=$('business').value,productId=$('product').value||null;
