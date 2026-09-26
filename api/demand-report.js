@@ -123,6 +123,59 @@ Retourne UNIQUEMENT ce JSON:
   return {ok:true,scope:{countries,zones,products,hours},demand_count:demands.length,signal_count:demands.length+offers.length+uncertain.length,offer_count:offers.length,uncertain_count:uncertain.length,demands:demands.slice(0,30),offers:offers.slice(0,30),uncertain,sources:sources.slice(0,30),summary:cleanWeb(parsed.summary,1200),generated_at:new Date().toISOString(),note:'Les résultats web sont des signaux publics sourcés. Les offres/vendeurs ne sont jamais comptés comme demandes. Une vente réelle doit être confirmée par une transaction ou un signal WassAfrica.',search_method:'OpenAI Responses API + web search'};
 }
 
+async function generateGlobalDemandRadar({hours,target=100}){
+  const OPENAI_KEY=process.env.OPENAI_API_KEY||process.env.wassAfrica;
+  if(!OPENAI_KEY)return {ok:false,status:503,reason:'OPENAI_API_KEY_missing'};
+  const safeTarget=Math.max(25,Math.min(Number(target)||100,150));
+  const prompt=`Tu es WASSAFRICA GLOBAL DEMAND RADAR. Découvre sur le web public les produits et besoins faisant l'objet des SIGNAUX DE DEMANDE les plus documentés. Tu dois viser ${safeTarget} produits/besoins distincts si les sources disponibles le permettent.
+
+Périmètre: MONDE ENTIER. Fenêtre cible: ${hours} heures, mais utilise les pages publiques récentes disponibles et indique leur date. Explore plusieurs familles: agriculture/agroalimentaire, alimentation, construction, immobilier, machines, automobile/pièces, énergie/solaire, textile, beauté, santé, emballage, fournitures professionnelles, électronique, téléphonie, maison, transport/logistique, services professionnels, numérique, livres/culture, formation, tourisme, artisanat, B2B et autres catégories détectées.
+
+RÈGLES ABSOLUES:
+- DEMANDE = intention d'achat/recherche d'approvisionnement explicitement exprimée publiquement: demande de devis, recherche de fournisseur, acheteur recherchant un produit, appel d'offres, besoin B2B, importateur recherchant un produit, personne/entreprise disant vouloir acheter ou obtenir un produit/service.
+- OFFRE = vendeur, boutique, catalogue, annonce, stock, prix affiché, fabricant ou distributeur qui propose.
+- Une OFFRE ne compte JAMAIS comme DEMANDE.
+- Ne fabrique aucune donnée, aucune URL, aucun contact, aucun groupe.
+- Les contacts doivent être uniquement professionnels et publiquement affichés; rattache chaque contact à sa source.
+- Les communautés/groupes doivent être publics et vérifiables.
+- Si un champ n'est pas disponible, mets [] ou null, jamais une supposition.
+- Regroupe les variantes d'un même besoin, mais conserve plusieurs preuves/sources.
+- Classe les produits par force documentaire de la demande, sans inventer de volume.
+- Ne prétends pas que « 100 » a été trouvé si moins de 100 résultats distincts sont vérifiables.
+
+Retourne UNIQUEMENT ce JSON:
+{"products":[{"rank":1,"product":"","category":"","demand_signal_count":0,"demand_intent":"","countries":[],"locations":[],"evidence":[{"text":"","source_title":"","source_url":"","date":""}],"communities":[{"name":"","type":"","url":"","country":""}],"professional_contacts":[{"organization":"","name":"","role":"","email":"","phone":"","website":"","source_url":""}],"confidence":"high|medium|low","last_seen":""}],"offers":[{"product":"","location":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","location":"","reason":"","source_title":"","source_url":""}],"summary":"","search_method":"OpenAI Responses API + web search"}`;
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){
+    const providerMessage=String(data?.error?.message||'').toLowerCase();
+    const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(providerMessage);
+    return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};
+  }
+  const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\n'))||'');
+  const parsed=parseWebJson(outputText)||{products:[],offers:[],uncertain:[],summary:outputText.slice(0,1600),search_method:'web_search'};
+  const cleanUrl=(v)=>{try{const u=new URL(String(v||''));return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}};
+  const cleanArr=(v,max=20)=>Array.isArray(v)?v.map(x=>cleanWeb(x,max)).filter(Boolean).slice(0,max):[];
+  const products=Array.isArray(parsed.products)?parsed.products.map((p,i)=>({
+    rank:i+1,product:cleanWeb(p.product,180),category:cleanWeb(p.category,120),
+    demand_signal_count:Math.max(0,Number(p.demand_signal_count)||0),demand_intent:cleanWeb(p.demand_intent,300),
+    countries:cleanArr(p.countries,20),locations:cleanArr(p.locations,20),
+    evidence:Array.isArray(p.evidence)?p.evidence.map(e=>({text:cleanWeb(e.text,500),source_title:cleanWeb(e.source_title,220),source_url:cleanUrl(e.source_url),date:cleanWeb(e.date,80)})).filter(e=>e.source_url).slice(0,8):[],
+    communities:Array.isArray(p.communities)?p.communities.map(c=>({name:cleanWeb(c.name,160),type:cleanWeb(c.type,80),url:cleanUrl(c.url),country:cleanWeb(c.country,80)})).filter(c=>c.name&&c.url).slice(0,8):[],
+    professional_contacts:Array.isArray(p.professional_contacts)?p.professional_contacts.map(c=>({organization:cleanWeb(c.organization,180),name:cleanWeb(c.name,140),role:cleanWeb(c.role,120),email:cleanWeb(c.email,180),phone:cleanWeb(c.phone,80),website:cleanUrl(c.website),source_url:cleanUrl(c.source_url)})).filter(c=>c.organization||c.email||c.phone).slice(0,8):[],
+    confidence:/^(high|medium|low)$/i.test(String(p.confidence))?String(p.confidence).toLowerCase():'low',last_seen:cleanWeb(p.last_seen,80)
+  })).filter(p=>p.product&&p.evidence.length).slice(0,safeTarget):[];
+  const offers=Array.isArray(parsed.offers)?parsed.offers.map(x=>({product:cleanWeb(x.product,180),location:cleanWeb(x.location,140),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url),date:cleanWeb(x.date,80)})).filter(x=>x.product&&x.source_url).slice(0,50):[];
+  const uncertain=Array.isArray(parsed.uncertain)?parsed.uncertain.map(x=>({product:cleanWeb(x.product,180),location:cleanWeb(x.location,140),reason:cleanWeb(x.reason,350),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url)})).filter(x=>x.product&&x.source_url).slice(0,50):[];
+  const sourceSet=new Map();
+  for(const p of products)for(const e of p.evidence)sourceSet.set(e.source_url,{url:e.source_url,title:e.source_title||e.source_url});
+  for(const p of products)for(const c of p.communities)sourceSet.set(c.url,{url:c.url,title:c.name});
+  for(const p of products)for(const c of p.professional_contacts)if(c.source_url)sourceSet.set(c.source_url,{url:c.source_url,title:c.organization||c.source_url});
+  for(const x of [...offers,...uncertain])sourceSet.set(x.source_url,{url:x.source_url,title:x.source_title||x.source_url});
+  for(const s of webAnnotations(data))sourceSet.set(s.url,s);
+  return {ok:true,mode:'radar',target:safeTarget,discovered_count:products.length,signal_count:products.reduce((n,p)=>n+p.demand_signal_count,0),community_count:products.reduce((n,p)=>n+p.communities.length,0),contact_count:products.reduce((n,p)=>n+p.professional_contacts.length,0),products,offers,uncertain,sources:[...sourceSet.values()].slice(0,120),summary:cleanWeb(parsed.summary,1600),generated_at:new Date().toISOString(),note:'Radar fondé uniquement sur des signaux publics sourcés. Les offres ne sont jamais comptées comme demandes. Les contacts sont limités aux informations professionnelles publiquement affichées.',search_method:'OpenAI Responses API + web search'};
+}
+
 // Shared web intelligence keeps the Hobby deployment within the serverless function budget.
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
@@ -131,12 +184,19 @@ module.exports = async function handler(req, res) {
   const auth = req.headers.authorization || ''; const cronAuthorized = Boolean(process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`);
   let result;
   if (cronAuthorized) result = await generateForCron({ hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'cron_generation_failed' }));
-  else if (String(req.query?.web || '') === '1') result = await generateExternalWebDemand({ hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'web_search_failed' }));
   else {
     const admin = await validateAdminBearer(auth).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'authorization_error' }));
     if (!admin.ok) return res.status(admin.status).json({ ok: false, error: admin.reason });
-    result = await generateForAdmin({ token: admin.token, hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'admin_generation_failed' }));
+    if (String(req.query?.mode || '') === 'radar') {
+      const target = Number(req.query?.target || 100);
+      result = await generateGlobalDemandRadar({ hours, target }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'radar_search_failed' }));
+    } else if (String(req.query?.web || '') === '1' || String(req.query?.mode || '') === 'radar') {
+      result = await generateExternalWebDemand({ hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'web_search_failed' }));
+    } else {
+      result = await generateForAdmin({ token: admin.token, hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'admin_generation_failed' }));
+    }
   }
+
   if (!result?.ok) {
     if (String(req.query?.web || '') === '1') {
       const quota = result.reason === 'web_quota_exhausted';
@@ -145,7 +205,8 @@ module.exports = async function handler(req, res) {
         available: false,
         web_available: false,
         web_error_code: quota ? 'quota_exhausted' : 'provider_unavailable',
-        web_error_message: quota ? 'Analyse web externe temporairement indisponible.' : 'Recherche web externe temporairement indisponible.',
+        web_error_message: quota ? 'Recherche web externe temporairement indisponible (quota fournisseur épuisé).' : 'Recherche web externe temporairement indisponible.',
+        mode: String(req.query?.mode || '') === 'radar' ? 'radar' : 'web',
         demand_count: 0,
         signal_count: 0,
         offer_count: 0,
