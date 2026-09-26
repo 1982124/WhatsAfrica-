@@ -41,6 +41,11 @@
       "source": "/product",
       "destination": "/marche",
       "permanent": false
+    },
+    {
+      "source": "/vitrine",
+      "destination": "/smartlink",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -155,10 +160,6 @@
     {
       "source": "/smartlink-theme",
       "destination": "/smartlink-theme-v2.html"
-    },
-    {
-      "source": "/vitrine",
-      "destination": "/smartlink-free-v3.html"
     },
     {
       "source": "/wassafrica",
