@@ -123,6 +123,41 @@ Retourne UNIQUEMENT ce JSON:
   return {ok:true,scope:{countries,zones,products,hours},demand_count:demands.length,signal_count:demands.length+offers.length+uncertain.length,offer_count:offers.length,uncertain_count:uncertain.length,demands:demands.slice(0,30),offers:offers.slice(0,30),uncertain,sources:sources.slice(0,30),summary:cleanWeb(parsed.summary,1200),generated_at:new Date().toISOString(),note:'Les résultats web sont des signaux publics sourcés. Les offres/vendeurs ne sont jamais comptés comme demandes. Une vente réelle doit être confirmée par une transaction ou un signal WassAfrica.',search_method:'OpenAI Responses API + web search'};
 }
 
+async function generateGeoDemandRadar({hours,locations,products}) {
+  const OPENAI_KEY=process.env.OPENAI_API_KEY||process.env.wassAfrica;
+  if(!OPENAI_KEY)return {ok:false,status:503,reason:'OPENAI_API_KEY_missing'};
+  const safeLocations=Array.isArray(locations)?locations.filter(x=>x&&x.country&&x.location).slice(0,30):[];
+  if(!safeLocations.length)return {ok:false,status:400,reason:'locations_required'};
+  const productLabel=products.length?products.join(', '):'AUCUN PRODUIT IMPOSÉ — découvrir automatiquement les produits/services demandés';
+  const locationLabel=safeLocations.map(x=>x.country+' — '+x.location).join(' | ');
+  const prompt=`Tu es WASSAFRICA GEO DEMAND INTELLIGENCE. Recherche sur le web public des SIGNAUX RÉCENTS DE DEMANDE pour chacune des zones suivantes: ${locationLabel}.
+Produits/services: ${productLabel}. Si aucun produit n'est fourni, découvre toi-même les produits/services demandés dans chaque zone. Fenêtre cible: ${hours} heures; utilise les sources publiques récentes disponibles et conserve leurs dates.
+
+RÈGLES:
+- DEMANDE = personne/entreprise qui cherche, veut acheter, demande un devis/prix, cherche un fournisseur ou exprime explicitement un besoin.
+- OFFRE = vendeur, boutique, catalogue, stock, prix affiché, fabricant/distributeur. Une offre n'est JAMAIS une demande.
+- Ne fabrique rien: aucun produit, volume, contact, groupe, date ou URL.
+- Chaque résultat doit être rattaché à une zone précise et avoir une source URL publique.
+- Contacts uniquement professionnels et explicitement publics.
+- Groupes/communautés uniquement publics et vérifiables.
+- Regroupe les demandes similaires mais conserve les preuves.
+- Si une zone n'a pas de signal fiable, retourne une liste vide pour cette zone.
+- Les résultats doivent être séparés par zone.
+
+Retourne UNIQUEMENT ce JSON:
+{"zones":[{"country":"","location":"","demand_count":0,"products":[{"product":"","category":"","signal_count":0,"intent":"","evidence":[{"text":"","source_title":"","source_url":"","date":""}],"communities":[{"name":"","type":"","url":""}],"professional_contacts":[{"organization":"","name":"","role":"","email":"","phone":"","website":"","source_url":""}],"confidence":"high|medium|low","last_seen":""}],"offers":[{"product":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","reason":"","source_title":"","source_url":""}]}],"summary":"","search_method":"OpenAI Responses API + web search"}`;
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){const msg=String(data?.error?.message||'').toLowerCase();const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(msg);return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};}
+  const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\\n'))||'');
+  const parsed=parseWebJson(outputText)||{zones:[],summary:outputText.slice(0,1600),search_method:'web_search'};
+  const cleanUrl=(v)=>{try{const u=new URL(String(v||''));return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}};
+  const cleanArr=(v,max=20)=>Array.isArray(v)?v.map(x=>cleanWeb(x,max)).filter(Boolean).slice(0,max):[];
+  const zones=safeLocations.map(loc=>{const z=(Array.isArray(parsed.zones)?parsed.zones:[]).find(x=>String(x.country||'').toLowerCase()===loc.country.toLowerCase()&&String(x.location||'').toLowerCase()===loc.location.toLowerCase())||{};return {country:loc.country,location:loc.location,demand_count:Math.max(0,Number(z.demand_count)||0),products:(Array.isArray(z.products)?z.products:[]).map(p=>({product:cleanWeb(p.product,180),category:cleanWeb(p.category,120),signal_count:Math.max(0,Number(p.signal_count)||0),intent:cleanWeb(p.intent,280),evidence:(Array.isArray(p.evidence)?p.evidence:[]).map(e=>({text:cleanWeb(e.text,500),source_title:cleanWeb(e.source_title,220),source_url:cleanUrl(e.source_url),date:cleanWeb(e.date,80)})).filter(e=>e.source_url).slice(0,8),communities:(Array.isArray(p.communities)?p.communities:[]).map(x=>({name:cleanWeb(x.name,160),type:cleanWeb(x.type,80),url:cleanUrl(x.url)})).filter(x=>x.name&&x.url).slice(0,8),professional_contacts:(Array.isArray(p.professional_contacts)?p.professional_contacts:[]).map(x=>({organization:cleanWeb(x.organization,180),name:cleanWeb(x.name,140),role:cleanWeb(x.role,120),email:cleanWeb(x.email,180),phone:cleanWeb(x.phone,80),website:cleanUrl(x.website),source_url:cleanUrl(x.source_url)})).filter(x=>x.organization||x.email||x.phone).slice(0,8),confidence:/^(high|medium|low)$/i.test(String(p.confidence))?String(p.confidence).toLowerCase():'low',last_seen:cleanWeb(p.last_seen,80)})).filter(p=>p.product&&p.evidence.length).slice(0,50),offers:(Array.isArray(z.offers)?z.offers:[]).map(x=>({product:cleanWeb(x.product,180),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url),date:cleanWeb(x.date,80)})).filter(x=>x.product&&x.source_url).slice(0,30),uncertain:(Array.isArray(z.uncertain)?z.uncertain:[]).map(x=>({product:cleanWeb(x.product,180),reason:cleanWeb(x.reason,350),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url)})).filter(x=>x.product&&x.source_url).slice(0,30)};});
+  const sources=new Map();for(const z of zones){for(const p of z.products){for(const e of p.evidence)sources.set(e.source_url,{url:e.source_url,title:e.source_title||e.source_url});for(const x of p.communities)sources.set(x.url,{url:x.url,title:x.name});for(const x of p.professional_contacts)if(x.source_url)sources.set(x.source_url,{url:x.source_url,title:x.organization||x.source_url});}for(const x of [...z.offers,...z.uncertain])sources.set(x.source_url,{url:x.source_url,title:x.source_title||x.source_url});}
+  return {ok:true,mode:'geo-radar',hours,locations:safeLocations,products,discovered_count:zones.reduce((n,z)=>n+z.products.length,0),signal_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.signal_count,0),0),community_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.communities.length,0),0),contact_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.professional_contacts.length,0),0),zones,summary:cleanWeb(parsed.summary,1600),sources:[...sources.values()].slice(0,120),generated_at:new Date().toISOString(),search_method:'OpenAI Responses API + web search'};
+}
+
 async function generateGlobalDemandRadar({hours,target=100}){
   const OPENAI_KEY=process.env.OPENAI_API_KEY||process.env.wassAfrica;
   if(!OPENAI_KEY)return {ok:false,status:503,reason:'OPENAI_API_KEY_missing'};
@@ -180,14 +215,16 @@ Retourne UNIQUEMENT ce JSON:
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   const requestedHours = Number(req.query?.hours || 6); const hours = Number.isFinite(requestedHours) && requestedHours > 0 && requestedHours <= 168 ? requestedHours : 6;
-  const countries = normalizeArray(csv(req.query?.countries || process.env.DEMAND_COUNTRIES)); const zones = normalizeArray(csv(req.query?.zones || process.env.DEMAND_ZONES)); const products = normalizeArray(csv(req.query?.products || req.query?.product || process.env.DEMAND_PRODUCTS));
+  const countries = normalizeArray(csv(req.query?.countries || process.env.DEMAND_COUNTRIES)); const zones = normalizeArray(csv(req.query?.zones || process.env.DEMAND_ZONES)); const products = normalizeArray(csv(req.query?.products || req.query?.product || process.env.DEMAND_PRODUCTS)); const locations = (()=>{ try { const raw=String(req.query?.locations||''); return raw ? JSON.parse(raw).filter(x=>x&&x.country&&x.location) : []; } catch { return []; } })();
   const auth = req.headers.authorization || ''; const cronAuthorized = Boolean(process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`);
   let result;
   if (cronAuthorized) result = await generateForCron({ hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'cron_generation_failed' }));
   else {
     const admin = await validateAdminBearer(auth).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'authorization_error' }));
     if (!admin.ok) return res.status(admin.status).json({ ok: false, error: admin.reason });
-    if (String(req.query?.mode || '') === 'radar') {
+    if (String(req.query?.mode || '') === 'geo-radar') {
+      result = await generateGeoDemandRadar({ hours, locations, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'geo_radar_search_failed' }));
+    } else if (String(req.query?.mode || '') === 'radar' || String(req.query?.mode || '') === 'geo-radar') {
       const target = Number(req.query?.target || 100);
       result = await generateGlobalDemandRadar({ hours, target }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'radar_search_failed' }));
     } else if (String(req.query?.web || '') === '1') {
@@ -206,7 +243,7 @@ module.exports = async function handler(req, res) {
         web_available: false,
         web_error_code: quota ? 'quota_exhausted' : 'provider_unavailable',
         web_error_message: quota ? 'Recherche web externe temporairement indisponible (quota fournisseur épuisé).' : 'Recherche web externe temporairement indisponible.',
-        mode: String(req.query?.mode || '') === 'radar' ? 'radar' : 'web',
+        mode: String(req.query?.mode || '') === 'radar' ? 'radar' : (String(req.query?.mode || '') === 'geo-radar' ? 'geo-radar' : 'web'),
         demand_count: 0,
         signal_count: 0,
         offer_count: 0,
@@ -220,7 +257,7 @@ module.exports = async function handler(req, res) {
     }
     return res.status(result?.status || 500).json({ ok: false, error: result?.reason || 'demand_generation_failed' });
   }
-  if (String(req.query?.mode || '') === 'radar') return res.status(200).json(result);
+  if (String(req.query?.mode || '') === 'radar' || String(req.query?.mode || '') === 'geo-radar') return res.status(200).json(result);
   const scopeLabel = [...(countries || []), ...(zones || [])].join(', ') || 'Monde entier'; const productLabel = products.length ? products.join(', ') : 'Tous produits / besoins'; const clusters = Array.isArray(result.clusters) ? result.clusters : [];
   const lines = clusters.map((x) => `- ${x.product}: ${x.quantity || 0} ${x.unit || ''} — ${x.count} demande(s) — ${x.contacts || 0} contact(s) public(s)`);
   const text = ['WASSAFRICA — RAPPORT DES BESOINS', `Période: ${result.window_start} → ${result.window_end}`, `Durée: ${result.hours} h`, `Zone(s): ${scopeLabel}`, `Produit(s): ${productLabel}`, `Demandes: ${result.demand_count}`, `Produits regroupés: ${result.cluster_count}`, '', ...(lines.length ? lines : ['Aucune demande détectée sur ce périmètre.']), '', `Rapport ID: ${result.report_id || 'n/a'}`].join('\n');
