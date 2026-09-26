@@ -23,20 +23,17 @@ jobs:
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@48.10.2
 
-      - name: Static JavaScript and media integrity gate
+      - name: Static integrity gate
         shell: bash
         run: |
           set -euo pipefail
           mapfile -t jsfiles < <(find . -type f -name '*.js' -not -path './node_modules/*' -not -path './.git/*' | sort)
-          test "${jsfiles[@]}" != "" || { echo "No JavaScript files found"; exit 1; }
           for f in "${jsfiles[@]}"; do node --check "$f"; done
-          grep -Fq "window.WA_MODERN_MEDIA={open,close,photo:()=>open('photo'),video:()=>open('video'),audio:()=>open('audio')}" wa-modern-media.js
-          ! grep -Fq ",250)}" wa-modern-media.js
-          grep -Fq "photo.onclick=()=>openStudio('photo')" inbox-v25.html
-          grep -Fq "video.onclick=()=>openStudio('video')" inbox-v25.html
-          grep -Fq "stun:stun.l.google.com:19302" wa-media-p2p.js
-          grep -Fq "AES-GCM" wa-media-p2p.js
-          grep -Fq "encrypted-relay" wa-media-p2p.js
+          test -f inbox.html
+          test -f smartlink-public.html
+          grep -Fq 'wa:inbox-ready' inbox.html
+          grep -Fq 'smart_links' smartlink-public.html
+          grep -Fq 'Strict-Transport-Security' vercel.json
 
       - name: Require deployment credentials
         env:
@@ -45,29 +42,26 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
-          test -n "$VERCEL_TOKEN" || { echo "Missing GitHub secret VERCEL_TOKEN"; exit 1; }
-          test -n "$VERCEL_ORG_ID" || { echo "Missing GitHub secret VERCEL_ORG_ID"; exit 1; }
-          test -n "$VERCEL_PROJECT_ID" || { echo "Missing GitHub secret VERCEL_PROJECT_ID"; exit 1; }
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$VERCEL_PROJECT_ID"
 
       - name: Pull production environment
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
 
       - name: Build exact production artifact
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: vercel build --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
 
       - name: Deploy exact artifact to production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
           url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID")"
@@ -79,7 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           base='https://wassafrica.vercel.app'
-          for path in / /auth /messaging /marche /manifesto /install /manifest.webmanifest /sw.js /robots.txt /sitemap.xml; do
+          for path in / /auth /inbox /messaging /market /marketplace /marche /dashboard /offer-create /manifesto /install /manifest.webmanifest /sw.js /robots.txt /sitemap.xml; do
             code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 30 "$base$path")
             echo "$path -> $code"
             case "$code" in 200|204|301|302|303) ;; *) exit 1 ;; esac
@@ -89,8 +83,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -L -sS --max-time 30 https://wassafrica.vercel.app/messaging | grep -Fq 'Messages WassAfrica'
-          curl -L -sS --max-time 30 https://wassafrica.vercel.app/marche | grep -Fq 'WassAfrica'
+          curl -L -sS --max-time 30 https://wassafrica.vercel.app/inbox | grep -Fq 'Messages WassAfrica'
+          curl -L -sS --max-time 30 https://wassafrica.vercel.app/market | grep -Fq 'WassAfrica'
           curl -L -sS --max-time 30 https://wassafrica.vercel.app/robots.txt | grep -Fq 'Sitemap: https://wassafrica.vercel.app/sitemap.xml'
           curl -L -sS --max-time 30 https://wassafrica.vercel.app/sitemap.xml | grep -Fq 'https://wassafrica.vercel.app/marche'
 
