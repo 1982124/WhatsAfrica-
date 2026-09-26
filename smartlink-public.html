@@ -47,13 +47,13 @@ async function load(){
   const accent=/^#[0-9a-f]{6}$/i.test(b.accent_color||'')?b.accent_color:'#173d2d';
   document.documentElement.style.setProperty('--accent',accent);
   const [media,products,services]=await Promise.all([
-    query('smart_link_media',{select:'kind,public_url,sort_order',smart_link_id:'eq.'+link.id,order:'sort_order.asc'}),
-    query('products',{select:'id,title,description,price,currency,image_url,product_type',business_id:'eq.'+b.id,is_published:'eq.true',order:'created_at.desc',limit:'60'}),
-    query('marketplace_services',{select:'id,title,description,price,currency,status,metadata',seller_id:'eq.'+b.owner_id,status:'eq.published',order:'created_at.desc',limit:'60'})
+    query('smart_link_media',{select:'kind,public_url,sort_order',smart_link_id:'eq.'+link.id,order:'sort_order.asc'}).catch(e=>{console.warn('[WassAfrica] media unavailable',e);return []}),
+    query('products',{select:'id,title,description,price,currency,image_url,product_type',business_id:'eq.'+b.id,is_published:'eq.true',order:'created_at.desc',limit:'60'}).catch(e=>{console.warn('[WassAfrica] products unavailable',e);return []}),
+    query('marketplace_services',{select:'id,title,description,price,currency,status,metadata',seller_id:'eq.'+b.owner_id,status:'eq.published',order:'created_at.desc',limit:'60'}).catch(e=>{console.warn('[WassAfrica] services unavailable',e);return []})
   ]);
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   if(productIds.length){
-    const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'});
+    const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'}).catch(e=>{console.warn('[WassAfrica] product media unavailable',e);return []});
     const byProduct=new Map();
     for(const m of (pm||[])){
       if(m.media_type!=='cover') continue;
