@@ -27,3 +27,23 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   const serviceImage=(metadata,title)=>{const m=metadata&&typeof metadata==='object'?metadata:{},url=m.cover_url||m.coverUrl||m.image_url||m.imageUrl||'',t=String(title||'').toLowerCase(),kind=t.includes('smart link')?'smartlink':(t.includes('profil')||t.includes('présence')?'profile':'vitrine');return{url:safe(url),kind}};
   window.WAMedia={safe,fallback,resolve,image,serviceImage};
 })();
+// Public vitrine network guard: do not let the caller's short AbortController
+// kill the critical business lookup. The vitrine page already has a user-facing
+// timeout, so this only isolates Supabase REST business reads from that signal.
+(function(){
+  const nativeFetch=window.fetch.bind(window);
+  window.fetch=async function(input,init){
+    try{
+      const url=typeof input==='string'?input:(input&&input.url)||'';
+      if(/supabase\\.co\\/rest\\/v1\\/businesses(?:[?]|$)/i.test(url)){
+        const next={...(init||{})};
+        delete next.signal;
+        const r=await nativeFetch(input,next);
+        return r;
+      }
+    }catch(e){
+      // Fall through to the original request so existing error handling remains intact.
+    }
+    return nativeFetch(input,init);
+  };
+})();
