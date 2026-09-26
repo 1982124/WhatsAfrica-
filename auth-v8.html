@@ -85,7 +85,7 @@ label{display:block;font-size:12px;font-weight:850;margin:14px 0 6px}.field{widt
   const SUPABASE_KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
   const AUTH_NEXT_KEY='wa-auth-next-v3';
   const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
-    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
   });
   const $=id=>document.getElementById(id);
   const q=new URLSearchParams(location.search);
