@@ -211,6 +211,40 @@ Retourne UNIQUEMENT ce JSON:
   return {ok:true,mode:'radar',target:safeTarget,discovered_count:products.length,signal_count:products.reduce((n,p)=>n+p.demand_signal_count,0),community_count:products.reduce((n,p)=>n+p.communities.length,0),contact_count:products.reduce((n,p)=>n+p.professional_contacts.length,0),products,offers,uncertain,sources:[...sourceSet.values()].slice(0,120),summary:cleanWeb(parsed.summary,1600),generated_at:new Date().toISOString(),note:'Radar fondé uniquement sur des signaux publics sourcés. Les offres ne sont jamais comptées comme demandes. Les contacts sont limités aux informations professionnelles publiquement affichées.',search_method:'OpenAI Responses API + web search'};
 }
 
+
+async function generateBookDemandRadar({hours,title,description,countries,zones,languages}) {
+  const OPENAI_KEY=process.env.OPENAI_API_KEY||process.env.wassAfrica;
+  if(!OPENAI_KEY)return {ok:false,status:503,reason:'OPENAI_API_KEY_missing'};
+  const safeTitle=cleanWeb(title,500), safeDescription=cleanWeb(description,1800);
+  if(!safeTitle)return {ok:false,status:400,reason:'book_title_required'};
+  const scope=[...countries,...zones].join(' | ')||'monde entier';
+  const langLabel=languages.length?languages.join(', '):'déterminer les langues pertinentes selon les signaux';
+  const prompt=`Tu es WASSAFRICA DIGITAL BOOK DEMAND INTELLIGENCE. Analyse ce livre et recherche sur le web public où ses thèmes correspondent à des signaux d'intérêt ou de demande éditoriale.
+TITRE: ${safeTitle}
+DESCRIPTION/AUTEUR: ${safeDescription||'non fournie'}
+ZONES CIBLÉES: ${scope}
+LANGUES: ${langLabel}
+FENÊTRE CIBLE: ${hours} heures; utilise les sources publiques récentes disponibles et conserve leurs dates.
+
+RÈGLES: décompose le livre en thèmes, sous-thèmes, entités, mots-clés et publics; recherche par pays/zone les discussions, questions, recherches de ressources et intentions de lecture; distingue DEMANDE/INTÉRÊT LECTEUR, OFFRE/CONCURRENCE et INCERTAIN; une offre ne compte jamais comme demande; ne transforme jamais un intérêt thématique en vente; ne fabrique aucun chiffre, contact, pays, date ou URL; chaque résultat doit avoir une source publique réellement consultée; les adaptations (langue, sous-titre, angle, format) ne sont proposées que lorsqu'elles sont appuyées par les signaux.
+
+Retourne UNIQUEMENT ce JSON:
+{"book":{"title":"","themes":[],"keywords":[],"audiences":[]},"markets":[{"country":"","location":"","languages":[],"theme":"","demand_signals":0,"interest_type":"","evidence":[{"text":"","source_title":"","source_url":"","date":""}],"communities":[{"name":"","url":"","type":""}],"competition":[{"title":"","source_url":"","date":""}],"coverage_gap":"","adaptation":"","confidence":"high|medium|low","last_seen":""}],"offers":[{"title":"","country":"","source_url":"","date":"","relevance":""}],"uncertain":[{"country":"","theme":"","reason":"","source_url":""}],"summary":"","search_method":"OpenAI Responses API + web search"}`;
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){const msg=String(data?.error?.message||'').toLowerCase();const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(msg);return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};}
+  const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\n'))||'');
+  const parsed=parseWebJson(outputText)||{book:{title:safeTitle,themes:[],keywords:[],audiences:[]},markets:[],offers:[],uncertain:[],summary:outputText.slice(0,1600),search_method:'web_search'};
+  const cleanUrl=(v)=>{try{const u=new URL(String(v||''));return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}};
+  const arr=(v,n=20)=>Array.isArray(v)?v.map(x=>cleanWeb(x,n)).filter(Boolean).slice(0,n):[];
+  const markets=Array.isArray(parsed.markets)?parsed.markets.map(m=>({country:cleanWeb(m.country,100),location:cleanWeb(m.location,140),languages:arr(m.languages,8),theme:cleanWeb(m.theme,180),demand_signals:Math.max(0,Number(m.demand_signals)||0),interest_type:cleanWeb(m.interest_type,240),evidence:(Array.isArray(m.evidence)?m.evidence:[]).map(e=>({text:cleanWeb(e.text,500),source_title:cleanWeb(e.source_title,220),source_url:cleanUrl(e.source_url),date:cleanWeb(e.date,80)})).filter(e=>e.source_url).slice(0,8),communities:(Array.isArray(m.communities)?m.communities:[]).map(c=>({name:cleanWeb(c.name,160),url:cleanUrl(c.url),type:cleanWeb(c.type,80)})).filter(c=>c.name&&c.url).slice(0,8),competition:(Array.isArray(m.competition)?m.competition:[]).map(c=>({title:cleanWeb(c.title,200),source_url:cleanUrl(c.source_url),date:cleanWeb(c.date,80)})).filter(c=>c.title&&c.source_url).slice(0,8),coverage_gap:cleanWeb(m.coverage_gap,500),adaptation:cleanWeb(m.adaptation,500),confidence:/^(high|medium|low)$/i.test(String(m.confidence))?String(m.confidence).toLowerCase():'low',last_seen:cleanWeb(m.last_seen,80)})).filter(m=>m.country&&m.evidence.length).slice(0,60):[];
+  const book={title:safeTitle,themes:arr(parsed.book?.themes,30),keywords:arr(parsed.book?.keywords,40),audiences:arr(parsed.book?.audiences,20)};
+  const offers=Array.isArray(parsed.offers)?parsed.offers.map(o=>({title:cleanWeb(o.title,200),country:cleanWeb(o.country,100),source_url:cleanUrl(o.source_url),date:cleanWeb(o.date,80),relevance:cleanWeb(o.relevance,300)})).filter(o=>o.title&&o.source_url).slice(0,50):[];
+  const uncertain=Array.isArray(parsed.uncertain)?parsed.uncertain.map(x=>({country:cleanWeb(x.country,100),theme:cleanWeb(x.theme,180),reason:cleanWeb(x.reason,400),source_url:cleanUrl(x.source_url)})).filter(x=>x.source_url).slice(0,40):[];
+  const sourceSet=new Map();for(const m of markets){for(const e of m.evidence)sourceSet.set(e.source_url,{url:e.source_url,title:e.source_title||e.source_url});for(const c of m.communities)sourceSet.set(c.url,{url:c.url,title:c.name});for(const c of m.competition)sourceSet.set(c.source_url,{url:c.source_url,title:c.title});}for(const o of offers)sourceSet.set(o.source_url,{url:o.source_url,title:o.title});for(const u of uncertain)sourceSet.set(u.source_url,{url:u.source_url,title:u.theme||u.source_url});for(const s of webAnnotations(data))sourceSet.set(s.url,s);
+  return {ok:true,mode:'book-radar',book,scope:{countries,zones,languages,hours},market_count:markets.length,signal_count:markets.reduce((n,m)=>n+m.demand_signals,0),markets,offers,uncertain,sources:[...sourceSet.values()].slice(0,160),summary:cleanWeb(parsed.summary,1800),generated_at:new Date().toISOString(),note:'Le radar mesure des signaux publics thématiques et éditoriaux; un intérêt pour un sujet ne constitue pas une vente ni une intention d’achat certaine. Les offres concurrentes sont séparées.',search_method:'OpenAI Responses API + web search'};
+}
+
 // Shared web intelligence keeps the Hobby deployment within the serverless function budget.
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
