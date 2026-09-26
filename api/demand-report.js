@@ -106,7 +106,11 @@ Retourne UNIQUEMENT ce JSON:
 {"demands":[{"product":"","location":"","intent":"","evidence":"","source_title":"","source_url":"","date":""}],"offers":[{"product":"","location":"","evidence":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","location":"","reason":"","source_title":"","source_url":""}],"summary":"","search_method":""}`;
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'low'}],input:prompt,max_output_tokens:2500})});
   const data=await r.json().catch(()=>({}));
-  if(!r.ok)return {ok:false,status:r.status===429?429:502,reason:cleanWeb(data?.error?.message||'web_search_failed',500)};
+  if(!r.ok){
+    const providerMessage=String(data?.error?.message||'').toLowerCase();
+    const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(providerMessage);
+    return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};
+  }
   const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\n'))||'');
   const parsed=parseWebJson(outputText)||{demands:[],offers:[],uncertain:[],summary:outputText.slice(0,1200),search_method:'web_search'};
   const sources=webAnnotations(data);
@@ -133,7 +137,28 @@ module.exports = async function handler(req, res) {
     if (!admin.ok) return res.status(admin.status).json({ ok: false, error: admin.reason });
     result = await generateForAdmin({ token: admin.token, hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'admin_generation_failed' }));
   }
-  if (!result?.ok) return res.status(result?.status || 500).json({ ok: false, error: result?.reason || 'demand_generation_failed' });
+  if (!result?.ok) {
+    if (String(req.query?.web || '') === '1') {
+      const quota = result.reason === 'web_quota_exhausted';
+      return res.status(result.status || 503).json({
+        ok: false,
+        available: false,
+        web_available: false,
+        web_error_code: quota ? 'quota_exhausted' : 'provider_unavailable',
+        web_error_message: quota ? 'Analyse web externe temporairement indisponible.' : 'Recherche web externe temporairement indisponible.',
+        demand_count: 0,
+        signal_count: 0,
+        offer_count: 0,
+        uncertain_count: 0,
+        demands: [],
+        offers: [],
+        uncertain: [],
+        sources: [],
+        generated_at: new Date().toISOString()
+      });
+    }
+    return res.status(result?.status || 500).json({ ok: false, error: result?.reason || 'demand_generation_failed' });
+  }
   const scopeLabel = [...(countries || []), ...(zones || [])].join(', ') || 'Monde entier'; const productLabel = products.length ? products.join(', ') : 'Tous produits / besoins'; const clusters = Array.isArray(result.clusters) ? result.clusters : [];
   const lines = clusters.map((x) => `- ${x.product}: ${x.quantity || 0} ${x.unit || ''} — ${x.count} demande(s) — ${x.contacts || 0} contact(s) public(s)`);
   const text = ['WASSAFRICA — RAPPORT DES BESOINS', `Période: ${result.window_start} → ${result.window_end}`, `Durée: ${result.hours} h`, `Zone(s): ${scopeLabel}`, `Produit(s): ${productLabel}`, `Demandes: ${result.demand_count}`, `Produits regroupés: ${result.cluster_count}`, '', ...(lines.length ? lines : ['Aucune demande détectée sur ce périmètre.']), '', `Rapport ID: ${result.report_id || 'n/a'}`].join('\n');
