@@ -38,8 +38,9 @@ function serviceCard(s){
   const sm=WAMedia.serviceImage(s.metadata,s.title);const image=sm.url||WAMedia.fallback(sm.kind);
   return '<article class="card">'+(image?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(s.title)+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback(sm.kind)+'\';"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">🧰</div>')+'<div class="body"><span class="tag">SERVICE</span><h3>'+esc(s.title)+'</h3><p class="muted">'+esc(s.description||'')+'</p>'+(s.price!=null?'<div class="price">'+money(s.price,s.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" href="/service/'+encodeURIComponent(s.id)+'">Voir le service</a></div></div></article>';
 }
+let stage='bootstrap';
 async function load(){
-  let stage='smart_link';
+  stage='smart_link';
   const links=await query('smart_links',{select:'id,business_id,title,description',slug:'eq.'+encodeURIComponent(slug),is_public:'eq.true',limit:'1'});
   const link=Array.isArray(links)?links[0]:null;
   if(!link)throw Error('NOT_FOUND');
@@ -89,6 +90,6 @@ async function load(){
   $('wa-share')?.addEventListener('click',()=>{track('smart_link_share_clicked');if(navigator.share)navigator.share({title:document.title,url:location.href}).catch(()=>{});else navigator.clipboard?.writeText(location.href)});
   track('smart_link_viewed');
 }
-load().catch(e=>{$('app').innerHTML='<div class="empty"><b>Cette vitrine n’est pas disponible pour le moment.</b><div style="margin-top:8px">Le contenu public n’a pas pu être chargé.</div><div style="margin-top:8px;font-size:12px">Étape: '+esc(typeof stage==='string'?stage:'unknown')+' · '+esc(e?.message||'erreur inconnue')+'</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] public Smart Link',stage,e)});
+load().catch(e=>{$('app').innerHTML='<div class="empty"><b>Cette vitrine n’est pas disponible pour le moment.</b><div style="margin-top:8px">Le contenu public n’a pas pu être chargé.</div><div style="margin-top:8px;font-size:12px">Étape: '+esc(stage)+' · '+esc(e?.message||'erreur inconnue')+'</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] public Smart Link',stage,e)});
 })();
 </script></body></html>
