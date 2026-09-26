@@ -6,7 +6,18 @@
       "schedule": "0 10 * * *"
     }
   ],
-  "redirects": [],
+  "redirects": [
+    {
+      "source": "/smartlink/:slug",
+      "destination": "/:slug",
+      "permanent": false
+    },
+    {
+      "source": "/marche/boutique/:slug",
+      "destination": "/:slug",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/payment-moneyfusion",
@@ -103,10 +114,6 @@
     {
       "source": "/smartlink",
       "destination": "/smartlink-free-v3.html"
-    },
-    {
-      "source": "/smartlink/:slug",
-      "destination": "/smartlink-public.html"
     },
     {
       "source": "/smartlink-ai",
@@ -243,10 +250,6 @@
     {
       "source": "/marche/service/:id",
       "destination": "/service-detail-v1.html?id=:id"
-    },
-    {
-      "source": "/marche/boutique/:slug",
-      "destination": "/smartlink-public.html"
     },
     {
       "source": "/commerce",
