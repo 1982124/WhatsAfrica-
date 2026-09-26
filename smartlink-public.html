@@ -10,6 +10,8 @@ const safe=v=>WAMedia.safe(v);
 const money=(v,c)=>v==null?'Prix sur demande':new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v||0))+' '+(c||'XOF');
 const _parts=location.pathname.split('/').filter(Boolean).map(decodeURIComponent);
 const slug=(_parts[0]==='marche'&&_parts[1]==='boutique')?_parts[2]:(_parts[0]==='smartlink'?_parts[1]:_parts[0]);
+const waMedia=window.WAMedia||{safe:v=>String(v||''),fallback:()=>'',resolve:v=>String(v||''),serviceImage:()=>({url:'',kind:'service'})};
+const WAMedia=waMedia;
 let smartLinkId=null;
 async function query(table,params){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
@@ -37,20 +39,24 @@ function serviceCard(s){
   return '<article class="card">'+(image?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(s.title)+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback(sm.kind)+'\';"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">🧰</div>')+'<div class="body"><span class="tag">SERVICE</span><h3>'+esc(s.title)+'</h3><p class="muted">'+esc(s.description||'')+'</p>'+(s.price!=null?'<div class="price">'+money(s.price,s.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" href="/service/'+encodeURIComponent(s.id)+'">Voir le service</a></div></div></article>';
 }
 async function load(){
+  let stage='smart_link';
   const links=await query('smart_links',{select:'id,business_id,title,description',slug:'eq.'+encodeURIComponent(slug),is_public:'eq.true',limit:'1'});
   const link=Array.isArray(links)?links[0]:null;
   if(!link)throw Error('NOT_FOUND');
   smartLinkId=link.id;
+  stage='business';
   const businesses=await query('businesses',{select:'id,owner_id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,phone,accent_color',id:'eq.'+link.business_id,limit:'1'});
   const b=Array.isArray(businesses)?businesses[0]:null;
   if(!b)throw Error('BUSINESS_NOT_FOUND');
   const accent=/^#[0-9a-f]{6}$/i.test(b.accent_color||'')?b.accent_color:'#173d2d';
   document.documentElement.style.setProperty('--accent',accent);
+  stage='optional_data';
   const [media,products,services]=await Promise.all([
     query('smart_link_media',{select:'kind,public_url,sort_order',smart_link_id:'eq.'+link.id,order:'sort_order.asc'}).catch(e=>{console.warn('[WassAfrica] media unavailable',e);return []}),
     query('products',{select:'id,title,description,price,currency,image_url,product_type',business_id:'eq.'+b.id,is_published:'eq.true',order:'created_at.desc',limit:'60'}).catch(e=>{console.warn('[WassAfrica] products unavailable',e);return []}),
     query('marketplace_services',{select:'id,title,description,price,currency,status,metadata',seller_id:'eq.'+b.owner_id,status:'eq.published',order:'created_at.desc',limit:'60'}).catch(e=>{console.warn('[WassAfrica] services unavailable',e);return []})
   ]);
+  stage='product_media';
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   if(productIds.length){
     const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'}).catch(e=>{console.warn('[WassAfrica] product media unavailable',e);return []});
@@ -65,6 +71,7 @@ async function load(){
     }
     for(const p of (products||[])) p._cover_url=byProduct.get(p.id)||null;
   }
+  stage='render';
   const cover=safe(b.cover_image_url)||WAMedia.fallback('vitrine');
   const gallery=(media||[]).filter(x=>x.kind==='gallery'||x.kind==='image').map(x=>safe(x.public_url)).filter(Boolean).slice(0,6);
   const videos=(media||[]).filter(x=>x.kind==='video').map(x=>safe(x.public_url)).filter(Boolean).slice(0,3);
@@ -82,6 +89,6 @@ async function load(){
   $('wa-share')?.addEventListener('click',()=>{track('smart_link_share_clicked');if(navigator.share)navigator.share({title:document.title,url:location.href}).catch(()=>{});else navigator.clipboard?.writeText(location.href)});
   track('smart_link_viewed');
 }
-load().catch(e=>{$('app').innerHTML='<div class="empty"><b>Cette vitrine n’est pas disponible pour le moment.</b><div style="margin-top:8px">Le contenu public n’a pas pu être chargé. Réessayez dans un instant.</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] public Smart Link',e)});
+load().catch(e=>{$('app').innerHTML='<div class="empty"><b>Cette vitrine n’est pas disponible pour le moment.</b><div style="margin-top:8px">Le contenu public n’a pas pu être chargé.</div><div style="margin-top:8px;font-size:12px">Étape: '+esc(typeof stage==='string'?stage:'unknown')+' · '+esc(e?.message||'erreur inconnue')+'</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] public Smart Link',stage,e)});
 })();
 </script></body></html>
