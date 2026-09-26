@@ -9,6 +9,14 @@
   "redirects": [],
   "rewrites": [
     {
+      "source": "/api/payment-moneyfusion",
+      "destination": "/api/smartlink-import?__route=payment"
+    },
+    {
+      "source": "/api/payment-moneyfusion-webhook",
+      "destination": "/api/smartlink-import?__route=payment-webhook"
+    },
+    {
       "source": "/api/turn",
       "destination": "/api/smartlink-import?__route=turn"
     },
