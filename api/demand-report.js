@@ -190,7 +190,7 @@ module.exports = async function handler(req, res) {
     if (String(req.query?.mode || '') === 'radar') {
       const target = Number(req.query?.target || 100);
       result = await generateGlobalDemandRadar({ hours, target }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'radar_search_failed' }));
-    } else if (String(req.query?.web || '') === '1' || String(req.query?.mode || '') === 'radar') {
+    } else if (String(req.query?.web || '') === '1') {
       result = await generateExternalWebDemand({ hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'web_search_failed' }));
     } else {
       result = await generateForAdmin({ token: admin.token, hours, countries, zones, products }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'admin_generation_failed' }));
@@ -198,7 +198,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (!result?.ok) {
-    if (String(req.query?.web || '') === '1') {
+    if (String(req.query?.web || '') === '1' || String(req.query?.mode || '') === 'radar') {
       const quota = result.reason === 'web_quota_exhausted';
       return res.status(result.status || 503).json({
         ok: false,
@@ -220,6 +220,7 @@ module.exports = async function handler(req, res) {
     }
     return res.status(result?.status || 500).json({ ok: false, error: result?.reason || 'demand_generation_failed' });
   }
+  if (String(req.query?.mode || '') === 'radar') return res.status(200).json(result);
   const scopeLabel = [...(countries || []), ...(zones || [])].join(', ') || 'Monde entier'; const productLabel = products.length ? products.join(', ') : 'Tous produits / besoins'; const clusters = Array.isArray(result.clusters) ? result.clusters : [];
   const lines = clusters.map((x) => `- ${x.product}: ${x.quantity || 0} ${x.unit || ''} — ${x.count} demande(s) — ${x.contacts || 0} contact(s) public(s)`);
   const text = ['WASSAFRICA — RAPPORT DES BESOINS', `Période: ${result.window_start} → ${result.window_end}`, `Durée: ${result.hours} h`, `Zone(s): ${scopeLabel}`, `Produit(s): ${productLabel}`, `Demandes: ${result.demand_count}`, `Produits regroupés: ${result.cluster_count}`, '', ...(lines.length ? lines : ['Aucune demande détectée sur ce périmètre.']), '', `Rapport ID: ${result.report_id || 'n/a'}`].join('\n');
