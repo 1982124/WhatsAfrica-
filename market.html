@@ -20,7 +20,7 @@ function render(){  const term=q();
   const out=rows.filter(x=>(filter==='all'||x.type===filter)&&(!term||[x.title,x.description,x.business,x.city,x.country,x.category].join(' ').toLowerCase().includes(term)));
   if(!out.length){$('grid').innerHTML=emptyState();return}
   $('grid').innerHTML=out.map(x=>{
-    const image=x.image?'<img loading="lazy" decoding="async" src="'+esc(x.image)+'" alt="'+esc(x.title||'Visuel WASSAFRICA')+'" onerror="this.onerror=null;this.src=\'/assets/wassafrica-product-fallback.svg\';">':(x.type==='service'?'🧰':x.type==='digital'?'📚':'🛍️');
+    const image=x.image?'<img loading="lazy" decoding="async" src="'+esc(x.image)+'" alt="'+esc(x.title||'Visuel WASSAFRICA')+'" onerror="this.onerror=null;this.src=\'/icon-512.svg\';">':(x.type==='service'?'🧰':x.type==='digital'?'📚':'🛍️');
     const pill=x.type==='book'?'📖 Livre':x.type==='digital'?'📚 Produit digital':x.type==='service'?'🧰 Service':'🛍️ Produit physique';
     const cls=x.type==='digital'||x.type==='book'?'digital':x.type==='service'?'service':'';
     const place=esc(x.business||'Vendeur WASSAFRICA')+(x.city?' · '+esc(x.city):'')+(x.country?' · '+esc(x.country):'');
@@ -38,7 +38,7 @@ async function loadShops(){
   shops=(links||[]).map(l=>{const b=byId.get(l.business_id)||{};return{...l,...b,slug:l.slug||b.slug}}).filter(x=>x.slug&&x.is_public);
   $('shopsGrid').innerHTML=shops.length?shops.map(x=>{
     const logo=x.logo_url||x.cover_image_url;
-    const media=logo?'<img class="shopLogo" src="'+esc(logo)+'" alt="'+esc(x.title||x.name||'Vitrine WASSAFRICA')+'" onerror="this.onerror=null;this.src=\'/assets/wassafrica-vitrine-fallback.svg\';">':'🏪';
+    const media=logo?'<img class="shopLogo" src="'+esc(logo)+'" alt="'+esc(x.title||x.name||'Vitrine WASSAFRICA')+'" onerror="this.onerror=null;this.src=\'/icon-512.svg\';">':'🏪';
     const place=[x.city,x.country].filter(Boolean).map(esc).join(' · ');
     const desc=esc(x.tagline||x.description||x.presentation||x.activity||'Découvrez cette activité sur WASSAFRICA.');
     return '<article class="shopCard"><div class="shopLogo">'+media+'</div><h3>'+esc(x.title||x.name||'Vitrine WASSAFRICA')+'</h3><p>'+desc+'</p>'+(place?'<p style="margin-top:5px">📍 '+place+'</p>':'')+'<div class="shopActions"><a class="btn primary" href="/'+encodeURIComponent(x.slug)+'">Voir la vitrine</a><a class="btn" href="/'+encodeURIComponent(x.slug)+'">Smart Link</a></div></article>';
