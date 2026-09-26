@@ -16,6 +16,31 @@
       "source": "/marche/boutique/:slug",
       "destination": "/:slug",
       "permanent": false
+    },
+    {
+      "source": "/market",
+      "destination": "/marche",
+      "permanent": false
+    },
+    {
+      "source": "/marketplace",
+      "destination": "/marche",
+      "permanent": false
+    },
+    {
+      "source": "/digital-market",
+      "destination": "/marche",
+      "permanent": false
+    },
+    {
+      "source": "/commerce",
+      "destination": "/marche",
+      "permanent": false
+    },
+    {
+      "source": "/product",
+      "destination": "/marche",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -168,10 +193,6 @@
       "destination": "/offer-create.html?type=service"
     },
     {
-      "source": "/digital-market",
-      "destination": "/market.html"
-    },
-    {
       "source": "/library",
       "destination": "/library.html"
     },
@@ -208,14 +229,6 @@
       "destination": "/universe-fast-v4.html"
     },
     {
-      "source": "/marketplace",
-      "destination": "/market.html"
-    },
-    {
-      "source": "/market",
-      "destination": "/market.html"
-    },
-    {
       "source": "/cart",
       "destination": "/cart.html"
     },
@@ -250,14 +263,6 @@
     {
       "source": "/marche/service/:id",
       "destination": "/service-detail-v1.html?id=:id"
-    },
-    {
-      "source": "/commerce",
-      "destination": "/commerce.html"
-    },
-    {
-      "source": "/product",
-      "destination": "/market.html"
     },
     {
       "source": "/product/:id",
