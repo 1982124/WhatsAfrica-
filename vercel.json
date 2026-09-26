@@ -201,6 +201,10 @@
       "destination": "/cart.html"
     },
     {
+      "source": "/checkout-group/:id",
+      "destination": "/checkout-group.html?id=:id"
+    },
+    {
       "source": "/orders",
       "destination": "/orders.html"
     },
