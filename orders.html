@@ -67,7 +67,7 @@ async function action(e){
    document.querySelectorAll('[data-stars="'+id+'"] button').forEach((x,i)=>x.textContent=i<selectedRating?'★':'☆');return;
   } else if(a==='submit-review'){
    const o=orders.find(x=>x.id===id);const body=$('body-'+id)?.value?.trim()||null;
-   const {error}=await db.from('commerce_reviews').insert({order_id:id,order_item_id:o?.order_items?.[0]?.id||null,product_id:o?.order_items?.[0]?.product_id||null,business_id:o.business_id,reviewer_user_id:uid,review_type:'transaction',rating:selectedRating,body,is_published:true});
+   const {error}=await db.from('commerce_reviews').insert({order_id:id,order_item_id:null,product_id:null,business_id:o.business_id,reviewer_user_id:uid,review_type:'transaction',rating:selectedRating,body,is_published:true});
    if(error)throw error;
   }
   await load();
