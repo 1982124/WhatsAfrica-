@@ -45,6 +45,7 @@ async function loadShops(){
   }).join(''):'<div class="empty">Aucune vitrine publique pour le moment.</div>';
 }
 async function load(){
+  await loadShops();
   const products=await query('products',{select:'id,title,description,price,currency,image_url,category,business_id,product_type,content_kind,is_published,stock,created_at,author_name,language,page_count',is_published:'eq.true',order:'created_at.desc',limit:'100'});
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   let media=[];try{
