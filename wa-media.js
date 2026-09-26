@@ -37,8 +37,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       const url=typeof input==='string'?input:(input&&input.url)||'';
       if(/supabase\\.co\\/rest\\/v1\\/businesses(?:[?]|$)/i.test(url)){
         const next={...(init||{})};
+        const controller=new AbortController();
+        const timer=setTimeout(()=>controller.abort(),20000);
         delete next.signal;
+        next.signal=controller.signal;
         const r=await nativeFetch(input,next);
+        clearTimeout(timer);
         return r;
       }
     }catch(e){
