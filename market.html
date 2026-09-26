@@ -20,7 +20,7 @@ function render(){  const term=q();
   const out=rows.filter(x=>(filter==='all'||x.type===filter)&&(!term||[x.title,x.description,x.business,x.city,x.country,x.category].join(' ').toLowerCase().includes(term)));
   if(!out.length){$('grid').innerHTML=emptyState();return}
   $('grid').innerHTML=out.map(x=>{
-    const image=x.image?'<img src="'+esc(x.image)+'" alt="'+esc(x.title)+'" onerror="this.style.display=\'none\'">':(x.type==='service'?'🧰':x.type==='digital'?'📚':'🛍️');
+    const image=x.image?'<img src="'+esc(x.image)+'" alt="Visuel WASSAFRICA"+esc(x.title)+'" onerror="this.style.display=\'none\'">':(x.type==='service'?'🧰':x.type==='digital'?'📚':'🛍️');
     const pill=x.type==='book'?'📖 Livre':x.type==='digital'?'📚 Produit digital':x.type==='service'?'🧰 Service':'🛍️ Produit physique';
     const cls=x.type==='digital'||x.type==='book'?'digital':x.type==='service'?'service':'';
     const place=esc(x.business||'Vendeur WASSAFRICA')+(x.city?' · '+esc(x.city):'')+(x.country?' · '+esc(x.country):'');
@@ -38,25 +38,25 @@ async function loadShops(){
   shops=(links||[]).map(l=>{const b=byId.get(l.business_id)||{};return{...l,...b,slug:l.slug||b.slug}}).filter(x=>x.slug&&x.is_public);
   $('shopsGrid').innerHTML=shops.length?shops.map(x=>{
     const logo=x.logo_url||x.cover_image_url;
-    const media=logo?'<img class="shopLogo" src="'+esc(logo)+'" alt="" onerror="this.style.display=\'none\'">':'🏪';
+    const media=logo?'<img class="shopLogo" src="'+esc(logo)+'" alt="Visuel WASSAFRICA" onerror="this.style.display=\'none\'">':'🏪';
     const place=[x.city,x.country].filter(Boolean).map(esc).join(' · ');
     const desc=esc(x.tagline||x.description||x.presentation||x.activity||'Découvrez cette activité sur WASSAFRICA.');
     return '<article class="shopCard"><div class="shopLogo">'+media+'</div><h3>'+esc(x.title||x.name||'Vitrine WASSAFRICA')+'</h3><p>'+desc+'</p>'+(place?'<p style="margin-top:5px">📍 '+place+'</p>':'')+'<div class="shopActions"><a class="btn primary" href="/marche/boutique/'+encodeURIComponent(x.slug)+'">Voir la vitrine</a><a class="btn" href="/'+encodeURIComponent(x.slug)+'">Smart Link</a></div></article>';
   }).join(''):'<div class="empty">Aucune vitrine publique pour le moment.</div>';
 }
 async function load(){
-  try{await loadShops()}catch(e){console.warn('[WassAfrica] public boutiques unavailable',e);$('shopsGrid').innerHTML='<div class="empty">Les vitrines publiques sont momentanément indisponibles.</div>'}
+  try{await loadShops()}catch(e){console.warn('[WASSAFRICA] public boutiques unavailable',e);$('shopsGrid').innerHTML='<div class="empty">Les vitrines publiques sont momentanément indisponibles.</div>'}
   const products=await query('products',{select:'id,title,description,price,currency,image_url,category,business_id,product_type,content_kind,is_published,stock,created_at,author_name,language,page_count',is_published:'eq.true',order:'created_at.desc',limit:'100'});
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   let media=[];try{
     media=productIds.length?await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'}):[];
-  }catch(e){console.warn('[WassAfrica] product media unavailable; rendering products without media',e)}
+  }catch(e){console.warn('[WASSAFRICA] product media unavailable; rendering products without media',e)}
   const businessIds=[...new Set((products||[]).map(x=>x.business_id).filter(Boolean))];
   const businesses=[];
-  if(businessIds.length)try{businesses.push(...await query('businesses',{select:'id,owner_id,name,city,country',id:'in.('+businessIds.join(',')+')'}));}catch(e){console.warn('[WassAfrica] product businesses unavailable; continuing',e)}
+  if(businessIds.length)try{businesses.push(...await query('businesses',{select:'id,owner_id,name,city,country',id:'in.('+businessIds.join(',')+')'}));}catch(e){console.warn('[WASSAFRICA] product businesses unavailable; continuing',e)}
   const byId=new Map(businesses.map(b=>[b.id,b]));
   let smartLinks=[];
-  if(businessIds.length)try{smartLinks=await query('smart_links',{select:'business_id,slug,is_public',business_id:'in.('+businessIds.join(',')+')',is_public:'eq.true'});}catch(e){console.warn('[WassAfrica] smart links unavailable',e)}
+  if(businessIds.length)try{smartLinks=await query('smart_links',{select:'business_id,slug,is_public',business_id:'in.('+businessIds.join(',')+')',is_public:'eq.true'});}catch(e){console.warn('[WASSAFRICA] smart links unavailable',e)}
   const slugByBiz=new Map((smartLinks||[]).map(x=>[x.business_id,x.slug]));
   const mediaByProduct=new Map();
   (media||[]).forEach(m=>{if(!mediaByProduct.has(m.product_id))mediaByProduct.set(m.product_id,[]);mediaByProduct.get(m.product_id).push(m)});
@@ -67,5 +67,5 @@ async function load(){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-share]');if(b)share(b.dataset.share,b.dataset.url,b.dataset.title||'WASSAFRICA')});document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.filter;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('active',x===b));render()}));
 $('search').addEventListener('input',render);
 $('goSearch').addEventListener('click',render);
-load().catch(e=>{$('grid').innerHTML='<div class="empty"><b>Le marché est momentanément indisponible.</b><div style="margin-top:6px">Réessayez dans un instant.</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] Market',e)});
+load().catch(e=>{$('grid').innerHTML='<div class="empty"><b>Le marché est momentanément indisponible.</b><div style="margin-top:6px">Réessayez dans un instant.</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WASSAFRICA] Market',e)});
 </script></body></html>
