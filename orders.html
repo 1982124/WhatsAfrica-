@@ -23,7 +23,7 @@ function status(s){return '<span class="status">'+esc(labels[s]||s)+'</span>'}
 function itemLines(items){return (items||[]).map(i=>'<div class="line"><span>'+esc(i.title_snapshot)+' × '+i.quantity+'</span><b>'+fmt(i.line_total,i.currency)+'</b></div>').join('')}
 function sellerActions(o){
  const next={pending:[['confirmed','Confirmer'],['cancelled','Annuler']],confirmed:[['processing','Prendre en charge'],['cancelled','Annuler']],processing:[['ready','Marquer prête'],['shipped','Expédier'],['cancelled','Annuler']],ready:[['shipped','Expédier'],['cancelled','Annuler']],shipped:[['delivered','Marquer livrée']],delivered:[]}[o.status]||[];
- return next.map(x=>'<button class="btn '+(x[0]==='cancelled'?'danger':'primary')+'" data-action="status" data-id="'+o.id+'" data-status="'+x[0]+'">'+x[1]+'</button>').join('');
+ let html=next.map(x=>'<button class="btn '+(x[0]==='cancelled'?'danger':'primary')+'" data-action="status" data-id="'+o.id+'" data-status="'+x[0]+'">'+x[1]+'</button>').join(''); html+='<button class="btn" data-action="delivery" data-id="'+o.id+'">🚚 Suivi livraison</button>'; return html;
 }
 function buyerActions(o){
  let html='<a class="btn" href="/commande/'+encodeURIComponent(o.tracking_token)+'?order_id='+encodeURIComponent(o.id)+'">Suivre</a>';
@@ -53,7 +53,7 @@ async function action(e){
  const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action,id=b.dataset.id;
  try{
   b.disabled=true;
-  if(a==='status'){
+  if(a==='delivery'){ const carrier=prompt('Transporteur / mode de livraison :')||null; const tracking=prompt('Numéro de suivi (facultatif) :')||null; const eta=prompt('Date estimée ISO, ex. 2026-10-01T18:00:00+00:00 (facultatif) :')||null; const fee=prompt('Frais de livraison (facultatif) :'); const {error}=await db.rpc('seller_update_delivery',{p_order_id:id,p_carrier:carrier,p_tracking_number:tracking,p_estimated_at:eta||null,p_fee:fee===''?null:Number(fee)});if(error)throw error; await load(); return; } else if(a==='status'){
    const note=prompt('Note vendeur (facultatif) :')||null;
    const {error}=await db.rpc('seller_update_order_status',{p_order_id:id,p_status:b.dataset.status,p_note:note});if(error)throw error;
   } else if(a==='received'){
