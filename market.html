@@ -38,7 +38,10 @@ async function load(){
   const businessIds=[...new Set((products||[]).map(x=>x.business_id).filter(Boolean))];
   const businesses=[];
   if(businessIds.length)try{businesses.push(...await query('businesses',{select:'id,owner_id,name,city,country',id:'in.('+businessIds.join(',')+')'}));}catch(e){console.warn('[WassAfrica] product businesses unavailable; continuing',e)}
-  const byId=new Map(businesses.map(b=>[b.id,b]));\n  let smartLinks=[];\n  if(businessIds.length)try{smartLinks=await query('smart_links',{select:'business_id,slug,is_public',business_id:'in.('+businessIds.join(',')+')',is_public:'eq.true'});}catch(e){console.warn('[WassAfrica] smart links unavailable',e)}\n  const slugByBiz=new Map((smartLinks||[]).map(x=>[x.business_id,x.slug]));
+  const byId=new Map(businesses.map(b=>[b.id,b]));
+  let smartLinks=[];
+  if(businessIds.length)try{smartLinks=await query('smart_links',{select:'business_id,slug,is_public',business_id:'in.('+businessIds.join(',')+')',is_public:'eq.true'});}catch(e){console.warn('[WassAfrica] smart links unavailable',e)}
+  const slugByBiz=new Map((smartLinks||[]).map(x=>[x.business_id,x.slug]));
   const mediaByProduct=new Map();
   (media||[]).forEach(m=>{if(!mediaByProduct.has(m.product_id))mediaByProduct.set(m.product_id,[]);mediaByProduct.get(m.product_id).push(m)});
   const mediaUrl=m=>{if(!m?.storage_bucket||!m?.storage_path)return null;return SB+'/storage/v1/object/public/'+encodeURIComponent(m.storage_bucket)+'/'+m.storage_path.split('/').map(encodeURIComponent).join('/')};
