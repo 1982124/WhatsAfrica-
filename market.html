@@ -24,7 +24,7 @@ function render(){  const term=q();
     const pill=x.type==='book'?'📖 Livre':x.type==='digital'?'📚 Produit digital':x.type==='service'?'🧰 Service':'🛍️ Produit physique';
     const cls=x.type==='digital'||x.type==='book'?'digital':x.type==='service'?'service':'';
     const place=esc(x.business||'Vendeur WASSAFRICA')+(x.city?' · '+esc(x.city):'')+(x.country?' · '+esc(x.country):'');
-    const href=x.type==='service'?'/service/'+encodeURIComponent(x.id):'/product/'+encodeURIComponent(x.id);
+    const href='/product/'+encodeURIComponent(x.id);
     const price='<div class="price">'+money(x.price,x.currency)+'</div>'; const shareUrl=location.origin+href; const vitrine=x.slug?'<a class="btn" href="/marche/boutique/'+encodeURIComponent(x.slug)+'">Vitrine</a>':'';
     return '<article class="card"><div class="media">'+image+'</div><div class="body"><span class="pill '+cls+'">'+pill+'</span><h3>'+esc(x.title)+'</h3><div class="muted">'+place+'</div><div class="muted">'+esc(x.description||'Découvrez cette offre sur WASSAFRICA.')+'</div>'+price+'<div class="actions"><a class="btn primary" href="'+href+'">Voir</a>'+vitrine+'</div><div class="shareRow"><button class="shareBtn" type="button" data-share="whatsapp" data-url="'+esc(shareUrl)+'" data-title="'+esc(x.title)+'">💬 WhatsApp</button><button class="shareBtn" type="button" data-share="facebook" data-url="'+esc(shareUrl)+'">📘 Facebook</button><button class="shareBtn" type="button" data-share="telegram" data-url="'+esc(shareUrl)+'">✈️ Telegram</button><button class="shareBtn" type="button" data-share="linkedin" data-url="'+esc(shareUrl)+'">💼 LinkedIn</button><button class="shareBtn" type="button" data-share="copy" data-url="'+esc(shareUrl)+'">🔗 Copier</button></div></div></article>';
   }).join('');
