@@ -185,6 +185,10 @@
       "destination": "/groups.html"
     },
     {
+      "source": "/community",
+      "destination": "/community-v7.html"
+    },
+    {
       "source": "/groups/:id",
       "destination": "/community-v7.html"
     },
