@@ -201,6 +201,10 @@
       "destination": "/cart.html"
     },
     {
+      "source": "/orders",
+      "destination": "/orders.html"
+    },
+    {
       "source": "/marche",
       "destination": "/marche.html"
     },
