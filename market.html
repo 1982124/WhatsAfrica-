@@ -45,7 +45,6 @@ async function loadShops(){
   }).join(''):'<div class="empty">Aucune vitrine publique pour le moment.</div>';
 }
 async function load(){
-  await loadShops();
   const products=await query('products',{select:'id,title,description,price,currency,image_url,category,business_id,product_type,content_kind,is_published,stock,created_at,author_name,language,page_count',is_published:'eq.true',order:'created_at.desc',limit:'100'});
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   let media=[];try{
@@ -67,5 +66,5 @@ async function load(){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-share]');if(b)share(b.dataset.share,b.dataset.url,b.dataset.title||'WASSAFRICA')});document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.filter;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('active',x===b));render()}));
 $('search').addEventListener('input',render);
 $('goSearch').addEventListener('click',render);
-Promise.allSettled([loadShops(),load()]).catch(e=>{$('grid').innerHTML='<div class="empty"><b>Le marché est momentanément indisponible.</b><div style="margin-top:6px">Réessayez dans un instant.</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] Market',e)});
+load().catch(e=>{$('grid').innerHTML='<div class="empty"><b>Le marché est momentanément indisponible.</b><div style="margin-top:6px">Réessayez dans un instant.</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] Market',e)});
 </script></body></html>
