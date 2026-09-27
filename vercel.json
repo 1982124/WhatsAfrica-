@@ -398,10 +398,6 @@
       "destination": "/seller-rules.html"
     },
     {
-      "source": "/llm.txt",
-      "destination": "/llm.txt"
-    },
-    {
       "source": "/:slug",
       "destination": "/smartlink-public.html"
     }
