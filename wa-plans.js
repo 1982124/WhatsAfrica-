@@ -2,9 +2,7 @@
 (function (global) {
   'use strict';
   const DEFAULTS = {
-    free: { name: 'Free', monthly_price_xof: 0, ads_enabled: true },
-    starter: { name: 'Starter', monthly_price_xof: 2500, ads_enabled: true },
-    business: { name: 'Pro', monthly_price_xof: 7500, ads_enabled: false }
+    free: { name: 'Free', monthly_price_xof: 0, ads_enabled: false }
   };
   async function getPlans(db) {
     if (!db) throw new Error('Client Supabase requis');
@@ -29,6 +27,6 @@
     if (r.error) throw r.error;
     return r.data;
   }
-  function formatXof(value) { return new Intl.NumberFormat('fr-FR').format(Number(value || 0)) + ' FCFA/mois'; }
+  function formatXof(value) { return 'Gratuit — 0 FCFA'; }
   global.WA_PLANS = { DEFAULTS, getPlans, getCurrentPlan, canUseFeature, getSmartLinkTariff, formatXof };
 })(window);
