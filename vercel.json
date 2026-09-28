@@ -8,6 +8,11 @@
   ],
   "redirects": [
     {
+      "source": "/wassafrica",
+      "destination": "/",
+      "permanent": false
+    },
+    {
       "source": "/smartlink/:slug",
       "destination": "/:slug",
       "permanent": false
@@ -160,10 +165,6 @@
     {
       "source": "/smartlink-theme",
       "destination": "/smartlink-theme-v2.html"
-    },
-    {
-      "source": "/wassafrica",
-      "destination": "/wassafrica-official.html"
     },
     {
       "source": "/demo",
