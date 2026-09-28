@@ -76,7 +76,7 @@ async function load(){
   const sr=await db.from('marketplace_services').select('id,title,description,category,price,currency,seller_id,status,metadata,created_at').eq('status','published').order('created_at',{ascending:false}).limit(100);
   const servicesRaw=sr.error?[]:(sr.data||[]),serviceOwnerIds=[...new Set(servicesRaw.map(x=>x.seller_id).filter(Boolean))];
   let businesses=[];
-  if(sellerIds.length){const br=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url').in('id',sellerIds);if(br.error)throw br.error;businesses.push(...(br.data||[]))}
+  if(sellerIds.length){const br=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url').in('id',sellerIds);if(br.error)throw br.error;businesses.push(...(br.data||[]))}
   if(serviceOwnerIds.length){const bor=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url').in('owner_id',serviceOwnerIds);if(bor.error)throw bor.error;businesses.push(...(bor.data||[]))}
   const byId=new Map(businesses.map(x=>[x.id,x])),byOwner=new Map(businesses.map(x=>[x.owner_id,x])),smartIds=[...new Set(businesses.map(x=>x.id).filter(Boolean))];
   const smart=smartIds.length?await db.from('smart_links').select('business_id,slug,title').eq('is_public',true).in('business_id',smartIds):{data:[],error:null};if(smart.error)throw smart.error;
