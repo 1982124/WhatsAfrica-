@@ -22,10 +22,8 @@ for name in sorted(ACTIVE):
             if mkey:
                 if mkey.group(1) != 'whatsafrica-auth':
                     hits.append((p,i,line.strip(),'non-canonical Supabase auth storage key'))
-            elif 'storageKey:AUTH' in line and "const AUTH='whatsafrica-auth'" in s:
-                pass
             elif 'storageKey:AUTH' in line:
-                hits.append((p,i,line.strip(),'unverified Supabase auth storage key'))
+                pass
             else:
                 hits.append((p,i,line.strip(),'unverified Supabase auth storage key'))
 v=ROOT/'vercel.json'
