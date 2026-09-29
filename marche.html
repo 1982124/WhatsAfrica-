@@ -100,9 +100,7 @@ function canonicalServiceImage(title){
 function renderImage(url,alt,fallback='',real=false){
  const original=imageUrl(url); const u=original||fallback;
  if(!u)return '<div class="empty" style="margin:10px">Visuel indisponible</div>';
- const fb=fallback&&fallback!==u?imageUrl(fallback):'';
- const recovery=fb?'this.onerror=null;this.src=\''+esc(fb)+'\';':'this.onerror=null;this.closest(\'.media\').innerHTML=\'<div class="empty">Visuel indisponible</div>\';';
- return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(u)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'" onerror="'+recovery+'">';
+ return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(u)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'">';
 }
 function money(v,c){if(v===null||v===undefined||v==='')return 'Prix sur demande';const n=Number(v);if(!Number.isFinite(n))return 'Prix sur demande';if(n===0)return 'Gratuit';return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(n)+' '+(c||'XOF')}
 function productCard(p){
