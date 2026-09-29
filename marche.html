@@ -172,10 +172,22 @@ async function load(){
    }
   });
   // Build vitrines only after offersByBiz exists: previous ordering could throw before anything rendered.
-  DATA.vitrines=uniqueByKey(publicSmart.map(x=>{
-   const b=byId.get(x.business_id)||{};
-   return {id:b.id,slug:x.slug,name:b.name||x.title,city:b.city,country:b.country,description:b.description||x.description,coverImage:b.cover_image_url||null,logoImage:b.logo_url||null,offers:offersByBiz.get(b.id)||[]};
-  }).filter(x=>x.slug));
+  // A public Smart Link is itself a discoverable storefront. Business enrichment is optional.
+  // This guarantees URLs such as /wassa-8bbaa0f3a738 appear even when profile metadata is sparse.
+  DATA.vitrines=uniqueByKey(allSmart.map(x=>{
+   const biz=byId.get(x.business_id)||{};
+   return {
+    id:biz.id||x.business_id,
+    slug:x.slug,
+    name:biz.name||x.title||'Vitrine WASSAFRICA',
+    city:biz.city,
+    country:biz.country,
+    description:biz.description||x.description||'Découvrez cette vitrine et son activité sur WASSAFRICA.',
+    coverImage:biz.cover_image_url||null,
+    logoImage:biz.logo_url||null,
+    offers:offersByBiz.get(biz.id)||[]
+   };
+  }).filter(x=>x.slug && !['platform','system'].includes(norm(byId.get(x.id)?.business_type))));
   const productRows=products.filter(x=>byId.has(x.business_id)).map(x=>{
    const b=byId.get(x.business_id)||{},type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
