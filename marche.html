@@ -175,7 +175,7 @@ async function load(){
   DATA.vitrines=uniqueByKey(publicSmart.map(x=>{
    const b=byId.get(x.business_id)||{};
    return {id:b.id,slug:x.slug,name:b.name||x.title,city:b.city,country:b.country,description:b.description||x.description,coverImage:b.cover_image_url||null,logoImage:b.logo_url||null,offers:offersByBiz.get(b.id)||[]};
-  }).filter(x=>x.slug&&(x.coverImage||x.logoImage||x.offers.length)));
+  }).filter(x=>x.slug));
   const productRows=products.filter(x=>byId.has(x.business_id)).map(x=>{
    const b=byId.get(x.business_id)||{},type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
