@@ -173,10 +173,10 @@ function render(){
  const ph=safeCards(shownProducts,productCard);
  const lh=safeCards(shownLibrary,libraryCard);
  const sh=safeCards(services,serviceCard);
- $('vitrines').innerHTML=showVitrines?(vh||'<div class="empty">Aucune vitrine publique à afficher.</div>'):'';
- $('products').innerHTML=ph||'<div class="empty">Aucun produit correspondant.</div>';
- $('library').innerHTML=lh||'<div class="empty">Aucune publication de bibliothèque.</div>';
- $('services').innerHTML=sh||'<div class="empty">Aucun service correspondant.</div>';
+ $('vitrines').innerHTML=showVitrines?(vh||'<div class="empty">Aucun contenu disponible actuellement.</div>'):'';
+ $('products').innerHTML=ph||'<div class="empty">Aucun contenu disponible actuellement.</div>';
+ $('library').innerHTML=lh||'<div class="empty">Aucun contenu disponible actuellement.</div>';
+ $('services').innerHTML=sh||'<div class="empty">Aucun contenu disponible actuellement.</div>';
 }
 function setView(next){view=next;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));render()}
 async function load(){
