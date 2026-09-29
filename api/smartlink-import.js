@@ -93,7 +93,7 @@ async function paymentStart(req,res){
   const intent=await paymentRpc('create_order_payment_intent',{p_order_id:orderId,p_provider:'moneyfusion',p_method:method,p_idempotency_key:idem},pk,bearer);
   const creds=await paymentRpc('get_payment_connection_secret_for_service',{p_user_id:user.id},sk,sk);const connection=Array.isArray(creds)?creds[0]:creds;
   const apiUrl=String(connection?.secret||process.env.MONEYFUSION_API_URL||'').trim(),apiKey=String(process.env.MONEYFUSION_API_KEY||'').trim();
-  if(!apiUrl||!/^https?:\\/\\//i.test(apiUrl))return res.status(503).json({ok:false,error:'moneyfusion_not_configured',message:'Connectez Money Fusion ou configurez MONEYFUSION_API_URL.'});
+  if(!apiUrl||!/^https?:\/\//i.test(apiUrl))return res.status(503).json({ok:false,error:'moneyfusion_not_configured',message:'Connectez Money Fusion ou configurez MONEYFUSION_API_URL.'});
   if(!paymentUrlSafe(apiUrl))return res.status(400).json({ok:false,error:'moneyfusion_api_url_invalid'});
   const orders=await paymentServiceGet('orders',{id:'eq.'+orderId,select:'id,buyer_name,buyer_phone,total,currency,tracking_token'});if(!orders[0])return res.status(404).json({ok:false,error:'order_not_found'});const order=orders[0];
   const items=await paymentServiceGet('order_items',{order_id:'eq.'+orderId,select:'title_snapshot,unit_price,quantity'});
