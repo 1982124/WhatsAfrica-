@@ -20,7 +20,7 @@ async function resolveSmartLinkId(){
  const u=new URL(location.href);
  const explicit=u.searchParams.get('smart_link_id')||u.searchParams.get('sl');
  if(explicit){smartLinkId=explicit;return smartLinkId;}
- const slug=decodeURIComponent(u.pathname.replace(/^\\/+/, '').split('/')[0]||'').trim();
+ const slug=decodeURIComponent(u.pathname.replace(/^\/+/, '').split('/')[0]||'').trim();
  if(!slug||slug.startsWith('api'))return null;
  try{
   const r=await fetch(SB+'/rest/v1/smart_links?select=id&slug=eq.'+encodeURIComponent(slug)+'&is_public=eq.true&limit=1',{headers:{apikey:KEY,Accept:'application/json'}});
