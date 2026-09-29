@@ -10,7 +10,7 @@ async function select(table, params) {
   return JSON.parse(body);
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   try {
@@ -29,3 +29,5 @@ export default async function handler(req, res) {
     res.status(502).json({ ok: false, error: String(e && e.message || e) });
   }
 }
+
+module.exports = handler;
