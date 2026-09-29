@@ -51,12 +51,20 @@ function renderImage(url,alt,fallback='',real=false){
 }
 function money(v,c){if(v===null||v===undefined||v==='')return 'Prix sur demande';const n=Number(v);if(!Number.isFinite(n))return 'Prix sur demande';if(n===0)return 'Gratuit';return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(n)+' '+(c||'XOF')}
 function productCard(p){const smart=norm(p.title).includes('smart link');const vitrine=norm(p.title).includes('vitrine');const target=smart&&p.smartLinkUrl?p.smartLinkUrl:'/product/'+encodeURIComponent(p.id);const real=true;const illustration=vitrine?'/assets/wassafrica-vitrine-realistic.svg':p.image;const mediaClass=vitrine?'real service-illustration':'real product-photo';return '<article class="card '+(smart?'smart-card':'')+'"><div class="media '+(real?mediaClass:'fallback')+'">'+renderImage(illustration,p.title,canonicalServiceImage(p.title),real)+'</div><div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(vitrine?'VITRINE D’ACTIVITÉ':(p.type==='digital'?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE')))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="/'+encodeURIComponent(p.slug)+'">Vitrine</a>':'')+'</div></div></article>'}
-function serviceCard(s){return '<article class="card"><div class="media '+(s.isRealImage?'real':'fallback')+'">'+renderImage(s.image,s.title,canonicalServiceImage(s.title),Boolean(s.isRealImage))+'</div><div class="body"><span class="pill">SERVICE</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="/'+(s.source==='product'?'product':'service')+'/'+encodeURIComponent(s.id)+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>'}
+function serviceCard(s){return '<article class="card"><div class="media '+(s.isRealImage?'real':'fallback')+'">'+renderImage(s.image,s.title,canonicalServiceImage(s.title),Boolean(s.isRealImage))+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="/'+(s.source==='product'?'product':'service')+'/'+encodeURIComponent(s.id)+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>'}
 function libraryCard(c){return '<article class="card"><div class="media fallback">'+renderImage(c.image,c.name)+'</div><div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'BIBLIOTHÈQUE')+'</span><h3>'+esc(c.name)+'</h3><p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
 let DATA={products:[],services:[],library:[]},view='all';
 function norm(v){return String(v??'').trim().toLowerCase()}
 function matches(x){const q=norm($('q').value);return !q||[x.title,x.name,x.city,x.country,x.description,x.category].filter(Boolean).join(' ').toLowerCase().includes(q)}
 function uniqueByKey(rows){const seen=new Set();return rows.filter(x=>{const key=[norm(x.title),norm(x.name),norm(x.city),norm(x.slug)].join('|');if(seen.has(key))return false;seen.add(key);return true})}
+function isLegacyNativeMirror(s){
+ const t=norm(s.title);
+ if(!t)return false;
+ return t.includes('créer sa présence sur wassafrica')||t.includes('mettre son activité en relation')||t.includes('partager son activité');
+}
+function serviceSourceLabel(s){
+ return s.source==='product'?'WASSAFRICA':'SERVICE';
+}
 function render(){
  const products=DATA.products.filter(matches), physical=products.filter(x=>x.type==='physical'), digital=products.filter(x=>x.type==='digital'), books=DATA.library.filter(matches), services=uniqueByKey(DATA.services.filter(matches));
  const showProducts=view==='all'||view==='physical'||view==='digital',showLibrary=view==='all'||view==='library'||view==='books',showServices=view==='all'||view==='services';
@@ -69,6 +77,8 @@ function render(){
 function setView(next){view=next;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));render()}
 async function load(){
  $('status').style.display='none';
+ $('products').innerHTML='<div class="empty">Chargement des offres…</div>';
+ $('services').innerHTML='<div class="empty">Chargement des services…</div>';
  try{
   const pr=await db.from('products').select('id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100);
   if(pr.error)throw pr.error;
@@ -85,7 +95,7 @@ async function load(){
   const productRows=products.map(x=>{const b=byId.get(x.business_id)||{};const type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';const isSmartLink=norm(x.title).includes('smart link');const sl=isSmartLink?smartByBiz.get(b.id):null;return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:isSmartLink?(b.cover_image_url||x.image_url):x.image_url,isRealImage:isSmartLink&&Boolean(b.cover_image_url),smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null}});
   const serviceRows=servicesRaw.map(x=>{const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg';return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||fallback,isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl)}});
   DATA.products=productRows.filter(x=>x.type!=='service');
-  DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product'})).concat(serviceRows));
+  DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x))));
   try{
     const cr=await db.from('product_collections').select('id,name,description,cover_url,is_published,price,currency,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100);
     DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
