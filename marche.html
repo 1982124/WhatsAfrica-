@@ -127,44 +127,77 @@ async function load(){
  $('products').innerHTML='<div class="empty">Chargement des offres…</div>';
  $('services').innerHTML='<div class="empty">Chargement des services…</div>';
  try{
-  const pr=await db.from('products').select('id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100);
+  // Load independent public sources in parallel: the Marketplace must not wait on a chain of unrelated requests.
+  const [smartRes,pr,sr,cr]=await Promise.all([
+   db.from('smart_links').select('business_id,slug,title,description').eq('is_public',true).limit(200),
+   db.from('products').select('id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100),
+   db.from('marketplace_services').select('id,title,description,category,price,currency,seller_id,status,metadata,created_at').eq('status','published').order('created_at',{ascending:false}).limit(100),
+   db.from('product_collections').select('id,name,description,cover_url,is_published,price,currency,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100)
+  ]);
+  if(smartRes.error)throw smartRes.error;
   if(pr.error)throw pr.error;
-  const products=pr.data||[],sellerIds=[...new Set(products.map(x=>x.business_id).filter(Boolean))];
-  const sr=await db.from('marketplace_services').select('id,title,description,category,price,currency,seller_id,status,metadata,created_at').eq('status','published').order('created_at',{ascending:false}).limit(100);
-  const servicesRaw=sr.error?[]:(sr.data||[]),serviceOwnerIds=[...new Set(servicesRaw.map(x=>x.seller_id).filter(Boolean))];
+  if(sr.error)throw sr.error;
+  const allSmart=smartRes.data||[],products=pr.data||[],servicesRaw=sr.data||[];
+  const sellerIds=[...new Set(products.map(x=>x.business_id).filter(Boolean))];
+  const serviceOwnerIds=[...new Set(servicesRaw.map(x=>x.seller_id).filter(Boolean))];
+  const smartBusinessIds=[...new Set(allSmart.map(x=>x.business_id).filter(Boolean))];
+  const businessIds=[...new Set([...sellerIds,...smartBusinessIds])];
   let businesses=[];
-  if(sellerIds.length){const br=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url').in('id',sellerIds);if(br.error)throw br.error;businesses.push(...(br.data||[]).filter(isMarketplaceBusiness))}
-  if(serviceOwnerIds.length){const bor=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url').in('owner_id',serviceOwnerIds);if(bor.error)throw bor.error;businesses.push(...(bor.data||[]).filter(isMarketplaceBusiness))}
-  const byId=new Map(businesses.map(x=>[x.id,x])),byOwner=new Map();businesses.forEach(x=>{if(x.owner_id&&!byOwner.has(x.owner_id))byOwner.set(x.owner_id,x)}),smartIds=[...new Set(businesses.map(x=>x.id).filter(Boolean))];
-  const smart=smartIds.length?await db.from('smart_links').select('business_id,slug,title').eq('is_public',true).in('business_id',smartIds):{data:[],error:null};if(smart.error)throw smart.error;
-  const publicBusinessIds=new Set(businesses.map(x=>x.id));
-  const publicSmart=(smart.data||[]).filter(x=>publicBusinessIds.has(x.business_id));
-  const allSmartRes=await db.from('smart_links').select('business_id,slug,title,description').eq('is_public',true).limit(200);
-  if(allSmartRes.error)throw allSmartRes.error;
-  const allSmart=allSmartRes.data||[];
-  const missingBizIds=[...new Set(allSmart.map(x=>x.business_id).filter(id=>id&&!publicBusinessIds.has(id)))];
-  if(missingBizIds.length){
-    const extra=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug').in('id',missingBizIds);
-    if(extra.error)throw extra.error;
-    for(const b of (extra.data||[]).filter(isMarketplaceBusiness)){businesses.push(b);byId.set(b.id,b);publicBusinessIds.add(b.id);}
+  if(businessIds.length){
+   const br=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug').in('id',businessIds);
+   if(br.error)throw br.error;
+   businesses.push(...(br.data||[]).filter(isMarketplaceBusiness));
   }
-  const eligibleSmart=allSmart.filter(x=>publicBusinessIds.has(x.business_id));
-  DATA.vitrines=uniqueByKey(eligibleSmart.map(x=>{const b=byId.get(x.business_id)||{};return {id:b.id,slug:x.slug,name:b.name||x.title,city:b.city,country:b.country,description:b.description||x.description,coverImage:b.cover_image_url||null,logoImage:b.logo_url||null,offers:offersByBiz.get(b.id)||[]};}).filter(x=>x.slug&&(x.coverImage||x.logoImage||x.offers.length)));
+  let ownerBusinesses=[];
+  if(serviceOwnerIds.length){
+   const bor=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug').in('owner_id',serviceOwnerIds);
+   if(bor.error)throw bor.error;
+   ownerBusinesses=(bor.data||[]).filter(isMarketplaceBusiness);
+   businesses.push(...ownerBusinesses);
+  }
+  const byId=new Map(businesses.map(x=>[x.id,x]));
+  const byOwner=new Map();
+  businesses.forEach(x=>{if(x.owner_id&&!byOwner.has(x.owner_id))byOwner.set(x.owner_id,x)});
+  const publicBusinessIds=new Set(businesses.map(x=>x.id));
+  const publicSmart=allSmart.filter(x=>publicBusinessIds.has(x.business_id));
   const slugByBiz=new Map(publicSmart.map(x=>[x.business_id,x.slug]));
-  const smartByBiz=new Map();publicSmart.forEach(x=>{if(x.business_id&&!smartByBiz.has(x.business_id))smartByBiz.set(x.business_id,x)});
+  const smartByBiz=new Map();
+  publicSmart.forEach(x=>{if(x.business_id&&!smartByBiz.has(x.business_id))smartByBiz.set(x.business_id,x)});
   const offersByBiz=new Map();
-products.forEach(x=>{if(x.business_id){const arr=offersByBiz.get(x.business_id)||[];if(!norm(x.title).includes('vitrine')&&!norm(x.title).includes('smart link')&&!norm(x.title).includes('profil professionnel'))arr.push(x.title);offersByBiz.set(x.business_id,arr)}});
-const productRows=products.filter(x=>byId.has(x.business_id)).map(x=>{const b=byId.get(x.business_id)||{};const type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';const isSmartLink=norm(x.title).includes('smart link');const isVitrine=norm(x.title).includes('vitrine');const sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:isSmartLink?(b.cover_image_url||x.image_url):x.image_url,isRealImage:isSmartLink&&Boolean(b.cover_image_url),coverImage:isVitrine?b.cover_image_url:null,logoImage:isVitrine?b.logo_url:null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null}});
-  const serviceRows=servicesRaw.filter(x=>byOwner.has(x.seller_id)).map(x=>{const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg',isVitrine=norm(x.title).includes('vitrine');return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||fallback,isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]}});
+  products.forEach(x=>{
+   if(x.business_id){
+    const arr=offersByBiz.get(x.business_id)||[];
+    if(!norm(x.title).includes('vitrine')&&!norm(x.title).includes('smart link')&&!norm(x.title).includes('profil professionnel'))arr.push(x.title);
+    offersByBiz.set(x.business_id,arr);
+   }
+  });
+  // Build vitrines only after offersByBiz exists: previous ordering could throw before anything rendered.
+  DATA.vitrines=uniqueByKey(publicSmart.map(x=>{
+   const b=byId.get(x.business_id)||{};
+   return {id:b.id,slug:x.slug,name:b.name||x.title,city:b.city,country:b.country,description:b.description||x.description,coverImage:b.cover_image_url||null,logoImage:b.logo_url||null,offers:offersByBiz.get(b.id)||[]};
+  }).filter(x=>x.slug&&(x.coverImage||x.logoImage||x.offers.length)));
+  const productRows=products.filter(x=>byId.has(x.business_id)).map(x=>{
+   const b=byId.get(x.business_id)||{},type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';
+   const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
+   return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:isSmartLink?(b.cover_image_url||x.image_url):x.image_url,isRealImage:isSmartLink&&Boolean(b.cover_image_url),coverImage:isVitrine?b.cover_image_url:null,logoImage:isVitrine?b.logo_url:null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
+  });
+  const serviceRows=servicesRaw.filter(x=>byOwner.has(x.seller_id)).map(x=>{
+   const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg',isVitrine=norm(x.title).includes('vitrine');
+   return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||fallback,isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
+  });
   DATA.products=productRows.filter(x=>x.type!=='service');
-  DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product',coverImage:norm(x.title).includes('vitrine')?(byId.get(x.business_id)?.cover_image_url||null):null,logoImage:norm(x.title).includes('vitrine')?(byId.get(x.business_id)?.logo_url||null):null,businessDescription:norm(x.title).includes('vitrine')?(byId.get(x.business_id)?.description||''):null,vitrineOffers:norm(x.title).includes('vitrine')?(offersByBiz.get(x.business_id)||[]):[]})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x))));
-  try{
-    const cr=await db.from('product_collections').select('id,name,description,cover_url,is_published,price,currency,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100);
-    DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
-  }catch(e){console.warn('library-load',e);DATA.library=[]}
+  DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x))));
+  DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
   render();
- }catch(e){console.error('market-load',e);DATA={products:[],services:[],library:[]};render();$('status').textContent='Le marché rencontre un problème de chargement. Réessayez dans quelques instants.';$('status').style.display='block'}
+ }catch(e){
+  console.error('market-load',e);
+  DATA={vitrines:[],products:[],services:[],library:[]};
+  render();
+  $('status').textContent='Le marché rencontre un problème de chargement. Réessayez dans quelques instants.';
+  $('status').style.display='block';
+ }
 }
+
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
 $('q').addEventListener('input',render);$('searchBtn').addEventListener('click',render);$('q').addEventListener('keydown',e=>{if(e.key==='Enter')render()});load();
 </script>
