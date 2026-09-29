@@ -57,6 +57,12 @@ let DATA={products:[],services:[],library:[]},view='all';
 function norm(v){return String(v??'').trim().toLowerCase()}
 function matches(x){const q=norm($('q').value);return !q||[x.title,x.name,x.city,x.country,x.description,x.category].filter(Boolean).join(' ').toLowerCase().includes(q)}
 function uniqueByKey(rows){const seen=new Set();return rows.filter(x=>{const key=[norm(x.title),norm(x.name),norm(x.city),norm(x.slug)].join('|');if(seen.has(key))return false;seen.add(key);return true})}
+function isMarketplaceBusiness(b){
+ const n=norm(b?.name),slug=norm(b?.slug),type=norm(b?.business_type);
+ if(type==='platform'||type==='system')return false;
+ if(['whatsafrica','wassafrica'].includes(n)||['whatsafrica','wassafrica'].includes(slug))return false;
+ return true;
+}
 function isLegacyNativeMirror(s){
  const t=norm(s.title);
  if(!t)return false;
@@ -86,12 +92,14 @@ async function load(){
   const sr=await db.from('marketplace_services').select('id,title,description,category,price,currency,seller_id,status,metadata,created_at').eq('status','published').order('created_at',{ascending:false}).limit(100);
   const servicesRaw=sr.error?[]:(sr.data||[]),serviceOwnerIds=[...new Set(servicesRaw.map(x=>x.seller_id).filter(Boolean))];
   let businesses=[];
-  if(sellerIds.length){const br=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url').in('id',sellerIds);if(br.error)throw br.error;businesses.push(...(br.data||[]))}
-  if(serviceOwnerIds.length){const bor=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url').in('owner_id',serviceOwnerIds);if(bor.error)throw bor.error;businesses.push(...(bor.data||[]))}
+  if(sellerIds.length){const br=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url').in('id',sellerIds);if(br.error)throw br.error;businesses.push(...(br.data||[]).filter(isMarketplaceBusiness))}
+  if(serviceOwnerIds.length){const bor=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url').in('owner_id',serviceOwnerIds);if(bor.error)throw bor.error;businesses.push(...(bor.data||[]).filter(isMarketplaceBusiness))}
   const byId=new Map(businesses.map(x=>[x.id,x])),byOwner=new Map();businesses.forEach(x=>{if(x.owner_id&&!byOwner.has(x.owner_id))byOwner.set(x.owner_id,x)}),smartIds=[...new Set(businesses.map(x=>x.id).filter(Boolean))];
   const smart=smartIds.length?await db.from('smart_links').select('business_id,slug,title').eq('is_public',true).in('business_id',smartIds):{data:[],error:null};if(smart.error)throw smart.error;
-  const slugByBiz=new Map((smart.data||[]).map(x=>[x.business_id,x.slug]));
-  const smartByBiz=new Map();(smart.data||[]).forEach(x=>{if(x.business_id&&!smartByBiz.has(x.business_id))smartByBiz.set(x.business_id,x)});
+  const publicBusinessIds=new Set(businesses.map(x=>x.id));
+  const publicSmart=(smart.data||[]).filter(x=>publicBusinessIds.has(x.business_id));
+  const slugByBiz=new Map(publicSmart.map(x=>[x.business_id,x.slug]));
+  const smartByBiz=new Map();publicSmart.forEach(x=>{if(x.business_id&&!smartByBiz.has(x.business_id))smartByBiz.set(x.business_id,x)});
   const productRows=products.map(x=>{const b=byId.get(x.business_id)||{};const type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';const isSmartLink=norm(x.title).includes('smart link');const sl=isSmartLink?smartByBiz.get(b.id):null;return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:isSmartLink?(b.cover_image_url||x.image_url):x.image_url,isRealImage:isSmartLink&&Boolean(b.cover_image_url),smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null}});
   const serviceRows=servicesRaw.map(x=>{const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg';return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||fallback,isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl)}});
   DATA.products=productRows.filter(x=>x.type!=='service');
