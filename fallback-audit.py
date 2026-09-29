@@ -19,8 +19,15 @@ for name in sorted(ACTIVE):
                 hits.append((p,i,line.strip(),'direct Inbox fallback'))
         if re.search(r'\bstorageKey\s*:',line,re.I):
             mkey=re.search(r"""storageKey\s*:\s*['"]([^'"]+)['"]""",line,re.I)
-            if not mkey or mkey.group(1) != 'whatsafrica-auth':
-                hits.append((p,i,line.strip(),'non-canonical Supabase auth storage key'))
+            if mkey:
+                if mkey.group(1) != 'whatsafrica-auth':
+                    hits.append((p,i,line.strip(),'non-canonical Supabase auth storage key'))
+            elif 'storageKey:AUTH' in line and "const AUTH='whatsafrica-auth'" in s:
+                pass
+            elif 'storageKey:AUTH' in line:
+                hits.append((p,i,line.strip(),'unverified Supabase auth storage key'))
+            else:
+                hits.append((p,i,line.strip(),'unverified Supabase auth storage key'))
 v=ROOT/'vercel.json'
 if v.exists():
     data=json.loads(v.read_text(encoding='utf-8'))
