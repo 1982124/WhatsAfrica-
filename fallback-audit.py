@@ -18,7 +18,7 @@ for name in sorted(ACTIVE):
             if not ('auth?next=' in line or 'conversation' in target or 'business=' in target or 'recipient=' in target):
                 hits.append((p,i,line.strip(),'direct Inbox fallback'))
         if re.search(r'\bstorageKey\s*:',line,re.I):
-            mkey=re.search(r"storageKey\s*:\s*['"]([^'"]+)['"]",line,re.I)
+            mkey=re.search(r"""storageKey\s*:\s*['"]([^'"]+)['"]""",line,re.I)
             if not mkey or mkey.group(1) != 'whatsafrica-auth':
                 hits.append((p,i,line.strip(),'non-canonical Supabase auth storage key'))
 v=ROOT/'vercel.json'
