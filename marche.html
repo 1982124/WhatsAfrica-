@@ -129,10 +129,10 @@ async function load(){
  try{
   // Load independent public sources in parallel: the Marketplace must not wait on a chain of unrelated requests.
   const [smartRes,pr,sr,cr]=await Promise.all([
-   db.from('smart_links').select('business_id,slug,title,description').eq('is_public',true).limit(200),
-   db.from('products').select('id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100),
-   db.from('marketplace_services').select('id,title,description,category,price,currency,seller_id,status,metadata,created_at').eq('status','published').order('created_at',{ascending:false}).limit(100),
-   db.from('product_collections').select('id,name,description,cover_url,is_published,price,currency,created_at').eq('is_published',true).order('created_at',{ascending:false}).limit(100)
+   db.from('smart_links').select('business_id,slug,title,description').eq('is_public',true).range(0,999),
+   db.from('products').select('id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at').eq('is_published',true).order('created_at',{ascending:false}).range(0,999),
+   db.from('marketplace_services').select('id,title,description,category,price,currency,seller_id,status,metadata,created_at').eq('status','published').order('created_at',{ascending:false}).range(0,999),
+   db.from('product_collections').select('id,name,description,cover_url,is_published,price,currency,created_at').eq('is_published',true).order('created_at',{ascending:false}).range(0,999)
   ]);
   if(smartRes.error)throw smartRes.error;
   if(pr.error)throw pr.error;
