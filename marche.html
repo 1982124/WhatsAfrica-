@@ -139,8 +139,9 @@ async function load(){
   const pr=prSettled.status==='fulfilled'?prSettled.value:{data:[],error:prSettled.reason};
   const sr=srSettled.status==='fulfilled'?srSettled.value:{data:[],error:srSettled.reason};
   const cr=crSettled.status==='fulfilled'?crSettled.value:{data:[],error:crSettled.reason};
-  if(smartRes.error)throw smartRes.error;
-  const allSmart=smartRes.data||[],products=pr.error?[]:(pr.data||[]),servicesRaw=sr.error?[]:(sr.data||[]);
+  // smart_links enriches vitrines but must never be a hard dependency for products/services.
+  // A failure here is partial, not fatal to the Marketplace.
+  const allSmart=smartRes.error?[]:(smartRes.data||[]),products=pr.error?[]:(pr.data||[]),servicesRaw=sr.error?[]:(sr.data||[]);
   const sellerIds=[...new Set(products.map(x=>x.business_id).filter(Boolean))];
   const serviceOwnerIds=[...new Set(servicesRaw.map(x=>x.seller_id).filter(Boolean))];
   const smartBusinessIds=[...new Set(allSmart.map(x=>x.business_id).filter(Boolean))];
@@ -203,7 +204,7 @@ async function load(){
   DATA.products=productRows.filter(x=>x.type!=='service'&&!norm(x.title).includes('vitrine'));
   DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service'&&!norm(x.title).includes('vitrine')).map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x)&&!norm(x.title).includes('vitrine')));
   DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
-  const partialErrors=[pr.error,sr.error,cr.error].filter(Boolean); if(partialErrors.length){$('status').textContent='Certaines catégories du marché sont temporairement indisponibles ; les vitrines publiques restent affichées.';$('status').style.display='block'}
+  const partialErrors=[smartRes.error,pr.error,sr.error,cr.error].filter(Boolean); if(partialErrors.length){$('status').textContent='Certaines catégories du marché sont temporairement indisponibles ; les autres offres publiques restent affichées.';$('status').style.display='block'}
   render();
  }catch(e){
   console.error('market-load',e);
