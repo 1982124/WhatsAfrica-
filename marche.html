@@ -129,16 +129,18 @@ async function load(){
  $('services').innerHTML='<div class="empty">Chargement des services…</div>';
  try{
   // Load independent public sources in parallel: the Marketplace must not wait on a chain of unrelated requests.
-  const [smartRes,pr,sr,cr]=await Promise.all([
+  const [smartSettled,prSettled,srSettled,crSettled]=await Promise.allSettled([
    db.from('smart_links').select('business_id,slug,title,description').eq('is_public',true).range(0,999),
    db.from('products').select('id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at').eq('is_published',true).order('created_at',{ascending:false}).range(0,999),
    db.from('marketplace_services').select('id,title,description,category,price,currency,seller_id,status,metadata,created_at').eq('status','published').order('created_at',{ascending:false}).range(0,999),
    db.from('product_collections').select('id,name,description,cover_url,is_published,price,currency,created_at').eq('is_published',true).order('created_at',{ascending:false}).range(0,999)
   ]);
+  const smartRes=smartSettled.status==='fulfilled'?smartSettled.value:{data:[],error:smartSettled.reason};
+  const pr=prSettled.status==='fulfilled'?prSettled.value:{data:[],error:prSettled.reason};
+  const sr=srSettled.status==='fulfilled'?srSettled.value:{data:[],error:srSettled.reason};
+  const cr=crSettled.status==='fulfilled'?crSettled.value:{data:[],error:crSettled.reason};
   if(smartRes.error)throw smartRes.error;
-  if(pr.error)throw pr.error;
-  if(sr.error)throw sr.error;
-  const allSmart=smartRes.data||[],products=pr.data||[],servicesRaw=sr.data||[];
+  const allSmart=smartRes.data||[],products=pr.error?[]:(pr.data||[]),servicesRaw=sr.error?[]:(sr.data||[]);
   const sellerIds=[...new Set(products.map(x=>x.business_id).filter(Boolean))];
   const serviceOwnerIds=[...new Set(servicesRaw.map(x=>x.seller_id).filter(Boolean))];
   const smartBusinessIds=[...new Set(allSmart.map(x=>x.business_id).filter(Boolean))];
@@ -146,14 +148,12 @@ async function load(){
   let businesses=[];
   if(businessIds.length){
    const br=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug').in('id',businessIds);
-   if(br.error)throw br.error;
-   businesses.push(...(br.data||[]).filter(isMarketplaceBusiness));
+   if(br.error){console.warn('market-businesses',br.error)} else businesses.push(...(br.data||[]).filter(isMarketplaceBusiness));
   }
   let ownerBusinesses=[];
   if(serviceOwnerIds.length){
    const bor=await db.from('businesses').select('id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug').in('owner_id',serviceOwnerIds);
-   if(bor.error)throw bor.error;
-   ownerBusinesses=(bor.data||[]).filter(isMarketplaceBusiness);
+   if(bor.error){console.warn('market-owner-businesses',bor.error)} else ownerBusinesses=(bor.data||[]).filter(isMarketplaceBusiness);
    businesses.push(...ownerBusinesses);
   }
   const byId=new Map(businesses.map(x=>[x.id,x]));
@@ -201,6 +201,7 @@ async function load(){
   DATA.products=productRows.filter(x=>x.type!=='service'&&!norm(x.title).includes('vitrine'));
   DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service'&&!norm(x.title).includes('vitrine')).map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x)&&!norm(x.title).includes('vitrine')));
   DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
+  const partialErrors=[pr.error,sr.error,cr.error].filter(Boolean); if(partialErrors.length){$('status').textContent='Certaines catégories du marché sont temporairement indisponibles ; les vitrines publiques restent affichées.';$('status').style.display='block'}
   render();
  }catch(e){
   console.error('market-load',e);
