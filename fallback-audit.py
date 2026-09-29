@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import pathlib,re,sys,json
 ROOT=pathlib.Path('.')
-ACTIVE={'vercel.json','auth.html','inbox.html','smartlink-public.html','smartlink-free-v3.html','presentation.html','brand-normalizer.js','brand-observer.js','share.html','share-center.html','groups.html','community-v7.html','group-admin-v1.html','cockpit.html','offer-create.html','market.html','product.html','library.html','library-manage.html','dashboard.html'}
+ACTIVE={'vercel.json','auth.html','inbox.html','smartlink-public.html','smartlink-free-v3.html','presentation.html','brand-normalizer.js','brand-observer.js','share.html','share-center.html','groups.html','community-v7.html','group-admin-v1.html','cockpit.html','offer-create.html','marche.html','product.html','library.html','library-manage.html','dashboard.html'}
 VOLUNTARY={'launch-shell.html','brand-normalizer.js','brand-observer.js','message-invite.html'}
 hits=[];scanned=0;redirects=0
 for name in sorted(ACTIVE):
@@ -18,15 +18,35 @@ for name in sorted(ACTIVE):
             if not ('auth?next=' in line or 'conversation' in target or 'business=' in target or 'recipient=' in target):
                 hits.append((p,i,line.strip(),'direct Inbox fallback'))
         if re.search(r'\bstorageKey\s*:',line,re.I):
-            hits.append((p,i,line.strip(),'custom Supabase auth storage key breaks shared session'))
+            mkey=re.search(r"storageKey\s*:\s*['"]([^'"]+)['"]",line,re.I)
+            if not mkey or mkey.group(1) != 'whatsafrica-auth':
+                hits.append((p,i,line.strip(),'non-canonical Supabase auth storage key'))
 v=ROOT/'vercel.json'
 if v.exists():
     data=json.loads(v.read_text(encoding='utf-8'))
-    for r in data.get('redirects',[]): hits.append((v,1,str(r),'Vercel redirects are forbidden'))
+    allowed_redirects={
+        '/wassafrica':'/',
+        '/smartlink/:slug':'/:slug',
+        '/marche/boutique/:slug':'/:slug',
+        '/market':'/marche',
+        '/marketplace':'/marche',
+        '/digital-market':'/marche',
+        '/commerce':'/marche',
+        '/product':'/marche',
+        '/vitrine':'/smartlink',
+    }
+    for r in data.get('redirects',[]):
+        src,dst=r.get('source'),r.get('destination')
+        if allowed_redirects.get(src) != dst:
+            hits.append((v,1,str(r),'unexpected Vercel redirect'))
+    for src,dst in allowed_redirects.items():
+        actual=next((x.get('destination') for x in data.get('redirects',[]) if x.get('source')==src),None)
+        if actual != dst:
+            hits.append((v,1,f'{src} -> {actual}','missing canonical redirect'))
 print('=== WASSAFRICA GLOBAL AUTH / FALLBACK AUDIT ===')
 print(f'Active files scanned: {scanned}')
 print(f'Redirect operations analyzed: {redirects}')
 print(f'Dangerous findings: {len(hits)}')
 for p,i,line,kind in hits: print(f'{p}:{i}: [{kind}] {line}')
 if hits: sys.exit(1)
-print('PASS: canonical surface has no forbidden automatic Vercel redirects or custom Supabase auth storage keys.')
+print('PASS: canonical surface has no unexpected redirects or non-canonical Supabase auth storage keys.')
