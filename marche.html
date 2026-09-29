@@ -261,7 +261,7 @@ async function load(){
     logoImage:imageUrl(biz.logo_url||''),
     offers:offersByBiz.get(biz.id)||[]
    };
-  }).filter(x=>x.slug && !['platform','system'].includes(norm(byId.get(x.id)?.business_type))));
+  }).filter(x=>x.slug));
   // Products are public offers in their own right: business enrichment is optional.
   // Never hide a published product merely because the seller metadata request failed.
   const productRows=products.map(x=>{
