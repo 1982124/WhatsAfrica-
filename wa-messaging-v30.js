@@ -29,7 +29,42 @@ async function flush(){if(navigator.onLine===false)return;for(const item of read
 function hookSend(){const f=$('composer');if(!f||f.dataset.waV30)return;f.dataset.waV30='1';f.addEventListener('submit',e=>{e.preventDefault();e.stopImmediatePropagation();send().catch(()=>{})},{capture:true})}
 async function startRealtime(){if(!user||!window.supabase)return;try{client=window.supabase.createClient(SB,getKey(),{auth:{persistSession:false,autoRefreshToken:false}});await client.realtime.setAuth(session.access_token);channel=client.channel('wassafrica-live-'+user.id);channel.on('postgres_changes',{event:'INSERT',schema:'public',table:'messages_v2'},p=>{if(p.new?.conversation_id===currentId)$('chatSearch')?.dispatchEvent(new Event('input',{bubbles:true}));refreshList().catch(()=>{})});channel.on('postgres_changes',{event:'*',schema:'public',table:'message_receipts'},()=>document.dispatchEvent(new Event('wa:v30-receipts')));channel.subscribe()}catch{}}
 async function loadSupabase(){if(window.supabase)return startRealtime();await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});return startRealtime()}
-async function refreshList(){if(!user)return;const m=await rest('conversation_members','select=conversation_id&user_id=eq.'+encodeURIComponent(user.id));const ids=[...new Set((m||[]).map(x=>x.conversation_id))];if(!ids.length)return;const cs=await rest('conversations','select=id,title,created_at&id=in.('+ids.map(encodeURIComponent).join(',')+')&order=created_at.desc&limit=100');const rows=await rest('messages_v2','select=id,conversation_id,sender_id,created_at,message_type&conversation_id=in.('+ids.map(encodeURIComponent).join(',')+')&order=created_at.desc&limit=2000');const latest=new Map();for(const r of rows||[])if(!latest.has(r.conversation_id))latest.set(r.conversation_id,r);const box=$('list');if(!box)return;box.innerHTML='';for(const c of (cs||[]).sort((a,b)=>new Date(latest.get(b.id)?.created_at||b.created_at)-new Date(latest.get(a.id)?.created_at||a.created_at))){const d=document.createElement('div');d.className='conv';d.dataset.conversationId=c.id;const a=document.createElement('div');a.className='avatar';a.textContent=(c.title||'W').trim().charAt(0).toUpperCase();const main=document.createElement('div');main.className='conv-main';const n=document.createElement('div');n.className='conv-name';n.textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');const p=document.createElement('div');p.className='conv-sub';p.textContent=latest.has(c.id)?(latest.get(c.id).message_type==='text'?'Message':'Fichier partagé'):'Aucune conversation';main.append(n,p);d.append(a,main);d.onclick=()=>{currentId=c.id;$('chatSearch')?.dispatchEvent(new Event('input',{bubbles:true}))};box.appendChild(d)}}}
+async function refreshList(){
+  if(!user)return;
+  const m=await rest('conversation_members','select=conversation_id&user_id=eq.'+encodeURIComponent(user.id));
+  const ids=[...new Set((m||[]).map(x=>x.conversation_id))];
+  if(!ids.length)return;
+  const cs=await rest('conversations','select=id,title,created_at&id=in.('+ids.map(encodeURIComponent).join(',')+')&order=created_at.desc&limit=100');
+  const rows=await rest('messages_v2','select=id,conversation_id,sender_id,created_at,message_type&conversation_id=in.('+ids.map(encodeURIComponent).join(',')+')&order=created_at.desc&limit=2000');
+  const latest=new Map();
+  for(const r of rows||[])if(!latest.has(r.conversation_id))latest.set(r.conversation_id,r);
+  const box=$('list');
+  if(!box)return;
+  box.innerHTML='';
+  for(const c of (cs||[]).sort((a,b)=>new Date(latest.get(b.id)?.created_at||b.created_at)-new Date(latest.get(a.id)?.created_at||a.created_at))){
+    const d=document.createElement('div');
+    d.className='conv';
+    d.dataset.conversationId=c.id;
+    const a=document.createElement('div');
+    a.className='avatar';
+    a.textContent=(c.title||'W').trim().charAt(0).toUpperCase();
+    const main=document.createElement('div');
+    main.className='conv-main';
+    const n=document.createElement('div');
+    n.className='conv-name';
+    n.textContent=(c.title||'Conversation').replace(/^Conversation directe$/,'Discussion');
+    const p=document.createElement('div');
+    p.className='conv-sub';
+    p.textContent=latest.has(c.id)?(latest.get(c.id).message_type==='text'?'Message':'Fichier partagé'):'Aucune conversation';
+    main.append(n,p);
+    d.append(a,main);
+    d.onclick=()=>{
+      currentId=c.id;
+      $('chatSearch')?.dispatchEvent(new Event('input',{bubbles:true}));
+    };
+    box.appendChild(d);
+  }
+}
 function styles(){const s=document.createElement('style');s.textContent='@media(max-width:820px){.shell.wa-v30-open .sidebar{display:none}.wa-v30-back{display:inline-flex!important}} .wa-v30-back{display:none;border:0;background:transparent;font:800 22px system-ui;padding:4px 8px}';document.head.appendChild(s);const shell=document.querySelector('.shell'),top=document.querySelector('.chat-top');if(shell&&top&&!document.getElementById('wa-v30-back')){const b=document.createElement('button');b.id='wa-v30-back';b.className='wa-v30-back';b.textContent='‹';b.onclick=()=>shell.classList.remove('wa-v30-open');top.insertBefore(b,top.firstChild)}$('list')?.addEventListener('click',()=>shell?.classList.add('wa-v30-open'),true)}
 async function boot(){session=getSession();user=session?.user||null;if(!user)return;styles();hookSend();refreshList().catch(()=>{});flush().catch(()=>{});loadSupabase().catch(()=>{})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
