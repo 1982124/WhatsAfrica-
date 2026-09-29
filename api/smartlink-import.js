@@ -117,16 +117,21 @@ async function paymentWebhook(req,res){
   return res.status(200).json({ok:true,event,status,result});
 }
 async function marketGet(path,params){
-  // Server-side Marketplace reads prefer the private service key when available.
-  // The key is never sent to the browser; only explicitly public rows are selected below.
-  // This avoids Data API 401s on optional/public tables while keeping the client on a single API.
-  const key=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'';
+  // Marketplace reads are public. Try the configured server key first, but never let
+  // an invalid/expired service key blank the public market when the publishable key works.
   const base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co';
-  const u=new URL(base+'/rest/v1/'+path);
-  Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r=await fetch(u,{headers:{apikey:key,Authorization:'Bearer '+key},cache:'no-store'});
-  if(!r.ok)throw new Error('market_get_'+r.status);
-  return r.json();
+  const candidates=[process.env.SUPABASE_SERVICE_ROLE_KEY,process.env.SUPABASE_PUBLISHABLE_KEY,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV'].map(x=>String(x||'').trim()).filter(Boolean);
+  const keys=[...new Set(candidates)];
+  let lastStatus=0;
+  for(const key of keys){
+    const u=new URL(base+'/rest/v1/'+path);
+    Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
+    const r=await fetch(u,{headers:{apikey:key,Authorization:'Bearer '+key},cache:'no-store'});
+    if(r.ok)return r.json();
+    lastStatus=r.status;
+    if(r.status!==401&&r.status!==403)throw new Error('market_get_'+r.status);
+  }
+  throw new Error('market_get_'+(lastStatus||401));
 }
 async function marketData(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'METHOD_NOT_ALLOWED'});
