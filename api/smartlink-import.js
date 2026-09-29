@@ -128,21 +128,28 @@ async function marketGet(path,params){
 async function marketData(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'METHOD_NOT_ALLOWED'});
   res.setHeader('Cache-Control','private, no-store, max-age=0, must-revalidate');
+  // Marketplace delivery must be fail-soft: one optional category or enrichment query
+  // must never blank the entire public market.
+  const read=async(path,params)=>{try{return {data:await marketGet(path,params),error:null}}catch(e){console.warn('[MARKET_SOURCE]',path,e?.message||e);return {data:[],error:e}}};
   try{
-    const [smart_links,products,marketplace_services,product_collections]=await Promise.all([
-      marketGet('smart_links',{select:'business_id,slug,title,description',is_public:'eq.true',order:'created_at.desc',limit:'1000'}),
-      marketGet('products',{select:'id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'}),
-      marketGet('marketplace_services',{select:'id,title,description,category,price,currency,seller_id,status,metadata,created_at',status:'eq.published',order:'created_at.desc',limit:'1000'}),
-      marketGet('product_collections',{select:'id,name,description,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
+    const [sl,pr,ms,pc]=await Promise.all([
+      read('smart_links',{select:'business_id,slug,title,description',is_public:'eq.true',order:'created_at.desc',limit:'1000'}),
+      read('products',{select:'id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'}),
+      read('marketplace_services',{select:'id,title,description,category,price,currency,seller_id,status,metadata,created_at',status:'eq.published',order:'created_at.desc',limit:'1000'}),
+      read('product_collections',{select:'id,name,description,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
     ]);
+    const smart_links=sl.data,products=pr.data,marketplace_services=ms.data,product_collections=pc.data;
     const businessIds=[...new Set([...products.map(x=>x.business_id),...smart_links.map(x=>x.business_id)].filter(Boolean))];
     const ownerIds=[...new Set(marketplace_services.map(x=>x.seller_id).filter(Boolean))];
-    const businesses=businessIds.length?await marketGet('businesses',{select:'id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug',id:'in.('+businessIds.join(',')+')'}):[];
-    const ownerBusinesses=ownerIds.length?await marketGet('businesses',{select:'id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug',owner_id:'in.('+ownerIds.join(',')+')'}):[];
-    return res.status(200).json({ok:true,smart_links,products,marketplace_services,product_collections,businesses,ownerBusinesses});
+    const b1=businessIds.length?await read('businesses',{select:'id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug',id:'in.('+businessIds.join(',')+')'}):{data:[]};
+    const b2=ownerIds.length?await read('businesses',{select:'id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug',owner_id:'in.('+ownerIds.join(',')+')'}):{data:[]};
+    const businesses=b1.data,ownerBusinesses=b2.data;
+    const sourceErrors=[sl,pr,ms,pc,b1,b2].filter(x=>x.error).map(x=>x.error?.message||'source_error');
+    return res.status(200).json({ok:true,partial:sourceErrors.length>0,sourceErrors,smart_links,products,marketplace_services,product_collections,businesses,ownerBusinesses});
   }catch(e){
     console.error('[MARKET]',e?.message||e);
-    return res.status(502).json({ok:false,error:'MARKET_DATA_FAILED',detail:e?.message||'Marketplace data unavailable'});
+    // Even an unexpected enrichment failure should not turn the market into a blank page.
+    return res.status(200).json({ok:true,partial:true,sourceErrors:[e?.message||'MARKET_PARTIAL_FAILURE'],smart_links:[],products:[],marketplace_services:[],product_collections:[],businesses:[],ownerBusinesses:[]});
   }
 }
 
