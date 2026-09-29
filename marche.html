@@ -41,14 +41,25 @@
 <footer class="foot">WASSAFRICA — Connecter. Découvrir. Vendre. Grandir.</footer>
 </main>
 <script>
-const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
-const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+let marketPayloadPromise=null;
+async function getMarketPayload(){
+ if(!marketPayloadPromise){
+  marketPayloadPromise=fetch('/api/market?_='+Date.now(),{cache:'no-store',headers:{Accept:'application/json'}}).then(async r=>{
+   const data=await r.json();
+   if(!r.ok||!data.ok)throw new Error(data.error||('MARKET_API_'+r.status));
+   return data;
+  });
+ }
+ return marketPayloadPromise;
+}
 async function restSelect(table,params={}){
- const u=new URL(SB+'/rest/v1/'+table);
- for(const [k,v] of Object.entries(params))u.searchParams.set(k,v);
- const r=await fetch(u.toString(),{headers:{apikey:KEY,Authorization:'Bearer '+KEY},cache:'no-store'});
- if(!r.ok)throw new Error('MARKET_'+table+'_'+r.status);
- return r.json();
+ const data=await getMarketPayload();
+ if(table!=='businesses')return data[table]||[];
+ const raw=params.id||params.owner_id||'';
+ const ids=String(raw).replace(/^in\.\(|\)$/g,'').split(',').filter(Boolean);
+ const source=data.businesses||[];
+ if(params.owner_id)return source.filter(x=>ids.includes(x.owner_id));
+ return source.filter(x=>ids.includes(x.id));
 }
 const $=id=>document.getElementById(id);
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
