@@ -87,8 +87,8 @@ function libraryCard(c){return '<article class="card"><div class="media fallback
 let DATA={vitrines:[],products:[],services:[],library:[]},view='all';
 function vitrineCard(v){
  const cover=v.coverImage||'',logo=v.logoImage||'';
- if(!cover)return '';
- const media='<div class="vitrine-preview">'+renderImage(cover,v.name,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,v.name+' — logo','',true).replace('<img ','<img class="logo" '):'')+'<div class="shade"></div></div>';
+ const initial=esc((v.name||'W').trim().charAt(0).toUpperCase());
+ const media='<div class="vitrine-preview">'+(cover?renderImage(cover,v.name,'',true).replace('class="real-img"','class="cover"'): '<div class="initial">'+initial+'</div>')+(logo?renderImage(logo,v.name+' — logo','',true).replace('class="real-img"','class="logo"'):'')+'<div class="shade"></div></div>';
  const offers=(v.offers||[]).slice(0,3).map(x=>'<span>'+esc(x)+'</span>').join('');
  return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(v.name||'Activité WASSAFRICA')+'</h3><div class="muted">'+(v.city?esc(v.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(v.description||'Découvrez directement cette activité et ses offres.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="/'+encodeURIComponent(v.slug)+'">Ouvrir la vitrine</a></div></div></article>';
 }
@@ -160,8 +160,8 @@ async function load(){
   const byId=new Map(businesses.map(x=>[x.id,x]));
   const byOwner=new Map();
   businesses.forEach(x=>{if(x.owner_id&&!byOwner.has(x.owner_id))byOwner.set(x.owner_id,x)});
-  const publicBusinessIds=new Set(businesses.map(x=>x.id));
-  const publicSmart=allSmart.filter(x=>publicBusinessIds.has(x.business_id));
+  // Smart Links remain discoverable even if optional business enrichment fails.
+  const publicSmart=allSmart;
   const slugByBiz=new Map(publicSmart.map(x=>[x.business_id,x.slug]));
   const smartByBiz=new Map();
   publicSmart.forEach(x=>{if(x.business_id&&!smartByBiz.has(x.business_id))smartByBiz.set(x.business_id,x)});
@@ -189,7 +189,7 @@ async function load(){
     logoImage:biz.logo_url||null,
     offers:offersByBiz.get(biz.id)||[]
    };
-  }).filter(x=>x.slug && x.coverImage && !['platform','system'].includes(norm(byId.get(x.id)?.business_type))));
+  }).filter(x=>x.slug && !['platform','system'].includes(norm(byId.get(x.id)?.business_type))));
   // Products are public offers in their own right: business enrichment is optional.
   // Never hide a published product merely because the seller metadata request failed.
   const productRows=products.map(x=>{
