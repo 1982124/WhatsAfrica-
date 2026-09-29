@@ -109,6 +109,14 @@ function isLegacyNativeMirror(s){
 function serviceSourceLabel(s){
  return s.source==='product'?'WASSAFRICA':'SERVICE';
 }
+function safeCards(rows,renderer){
+ const out=[];
+ for(const row of rows){
+  try{const html=renderer(row);if(html)out.push(html)}
+  catch(e){console.warn('market-card-render',e,row)}
+ }
+ return out.join('');
+}
 function render(){
  const vitrines=DATA.vitrines.filter(matches),products=DATA.products.filter(matches), physical=products.filter(x=>x.type==='physical'), digital=products.filter(x=>x.type==='digital'), books=DATA.library.filter(matches), services=uniqueByKey(DATA.services.filter(matches));
  const showVitrines=view==='all';
@@ -116,10 +124,14 @@ function render(){
  $('vitrinesSection').hidden=!showVitrines;
  $('productsSection').hidden=!showProducts;$('librarySection').hidden=!showLibrary;$('servicesSection').hidden=!showServices;
  const shownProducts=view==='physical'?physical:view==='digital'?digital:products,shownLibrary=view==='books'?books.filter(x=>x.kind==='book'):books;
- $('vitrines').innerHTML=showVitrines?(vitrines.length?vitrines.map(vitrineCard).join(''):'<div class="empty">Aucune vitrine publique à afficher.</div>'):'';
- $('products').innerHTML=shownProducts.length?shownProducts.map(productCard).join(''):'<div class="empty">Aucun produit correspondant.</div>';
- $('library').innerHTML=shownLibrary.length?shownLibrary.map(libraryCard).join(''):'<div class="empty">Aucune publication de bibliothèque.</div>';
- $('services').innerHTML=services.length?services.map(serviceCard).join(''):'<div class="empty">Aucun service correspondant.</div>';
+ const vh=showVitrines?safeCards(vitrines,vitrineCard):'';
+ const ph=safeCards(shownProducts,productCard);
+ const lh=safeCards(shownLibrary,libraryCard);
+ const sh=safeCards(services,serviceCard);
+ $('vitrines').innerHTML=showVitrines?(vh||'<div class="empty">Aucune vitrine publique à afficher.</div>'):'';
+ $('products').innerHTML=ph||'<div class="empty">Aucun produit correspondant.</div>';
+ $('library').innerHTML=lh||'<div class="empty">Aucune publication de bibliothèque.</div>';
+ $('services').innerHTML=sh||'<div class="empty">Aucun service correspondant.</div>';
 }
 function setView(next){view=next;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));render()}
 async function load(){
@@ -185,11 +197,11 @@ async function load(){
     city:biz.city,
     country:biz.country,
     description:biz.description||x.description||'Découvrez cette vitrine et son activité sur WASSAFRICA.',
-    coverImage:biz.cover_image_url||null,
-    logoImage:biz.logo_url||null,
+    coverImage:imageUrl(biz.cover_image_url||''),
+    logoImage:imageUrl(biz.logo_url||''),
     offers:offersByBiz.get(biz.id)||[]
    };
-  }).filter(x=>x.slug && !['platform','system'].includes(norm(byId.get(x.id)?.business_type))));
+  }).filter(x=>x.slug && x.coverImage && !['platform','system'].includes(norm(byId.get(x.id)?.business_type))));
   // Products are public offers in their own right: business enrichment is optional.
   // Never hide a published product merely because the seller metadata request failed.
   const productRows=products.map(x=>{
@@ -209,7 +221,11 @@ async function load(){
  }catch(e){
   console.error('market-load',e);
   DATA={vitrines:[],products:[],services:[],library:[]};
-  render();
+  try{render()}catch(renderError){console.error('market-render-fatal',renderError)}
+  $('vitrines').innerHTML='<div class="empty">Aucune vitrine publique à afficher.</div>';
+  $('products').innerHTML='<div class="empty">Aucun produit correspondant.</div>';
+  $('library').innerHTML='<div class="empty">Aucune publication de bibliothèque.</div>';
+  $('services').innerHTML='<div class="empty">Aucun service correspondant.</div>';
   $('status').textContent='Le marché rencontre un problème de chargement. Réessayez dans quelques instants.';
   $('status').style.display='block';
  }
