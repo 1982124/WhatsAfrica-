@@ -189,12 +189,14 @@ async function load(){
     offers:offersByBiz.get(biz.id)||[]
    };
   }).filter(x=>x.slug && x.coverImage && !['platform','system'].includes(norm(byId.get(x.id)?.business_type))));
-  const productRows=products.filter(x=>byId.has(x.business_id)).map(x=>{
+  // Products are public offers in their own right: business enrichment is optional.
+  // Never hide a published product merely because the seller metadata request failed.
+  const productRows=products.map(x=>{
    const b=byId.get(x.business_id)||{},type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
    return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:isSmartLink?(b.cover_image_url||x.image_url):x.image_url,isRealImage:isSmartLink&&Boolean(b.cover_image_url),coverImage:isVitrine?b.cover_image_url:null,logoImage:isVitrine?b.logo_url:null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
   });
-  const serviceRows=servicesRaw.filter(x=>byOwner.has(x.seller_id)).map(x=>{
+  const serviceRows=servicesRaw.map(x=>{
    const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg',isVitrine=norm(x.title).includes('vitrine');
    return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||fallback,isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
   });
