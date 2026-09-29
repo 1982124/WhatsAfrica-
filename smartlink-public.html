@@ -40,23 +40,27 @@ function serviceCard(s){
 }
 let stage='bootstrap';
 async function load(){
-  stage='smart_link';
-  const links=await query('smart_links',{select:'id,business_id,title,description',slug:'eq.'+encodeURIComponent(slug),is_public:'eq.true',limit:'1'});
-  const link=Array.isArray(links)?links[0]:null;
+  stage='public_market_proxy';
+  const proxy=await fetch('/api/smartlink-import?__route=market',{cache:'no-store',headers:{Accept:'application/json'}});
+  if(!proxy.ok)throw Error('PUBLIC_MARKET_PROXY_'+proxy.status);
+  const payload=await proxy.json();
+  const links=Array.isArray(payload?.smart_links)?payload.smart_links:[];
+  const link=links.find(x=>String(x.slug||'')===String(slug||''));
   if(!link)throw Error('NOT_FOUND');
   smartLinkId=link.id;
   stage='business';
-  const businesses=await query('businesses',{select:'id,owner_id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,phone,accent_color',id:'eq.'+link.business_id,limit:'1'});
-  const b=Array.isArray(businesses)?businesses[0]:null;
+  const businesses=Array.isArray(payload?.businesses)?payload.businesses:[];
+  const b=businesses.find(x=>String(x.id||'')===String(link.business_id||''));
   if(!b)throw Error('BUSINESS_NOT_FOUND');
   const accent=/^#[0-9a-f]{6}$/i.test(b.accent_color||'')?b.accent_color:'#173d2d';
   document.documentElement.style.setProperty('--accent',accent);
   stage='optional_data';
-  const [media,products,services]=await Promise.all([
-    query('smart_link_media',{select:'kind,public_url,sort_order',smart_link_id:'eq.'+link.id,order:'sort_order.asc'}).catch(e=>{console.warn('[WASSAFRICA] media unavailable',e);return []}),
-    query('products',{select:'id,title,description,price,currency,image_url,product_type',business_id:'eq.'+b.id,is_published:'eq.true',order:'created_at.desc',limit:'60'}).catch(e=>{console.warn('[WASSAFRICA] products unavailable',e);return []}),
-    query('marketplace_services',{select:'id,title,description,price,currency,status,metadata',seller_id:'eq.'+b.owner_id,status:'eq.published',order:'created_at.desc',limit:'60'}).catch(e=>{console.warn('[WASSAFRICA] services unavailable',e);return []})
-  ]);
+  const media=[];
+  const products=(Array.isArray(payload?.products)?payload.products:[]).filter(x=>String(x.business_id||'')===String(b.id||''));
+  const ownerBusinesses=Array.isArray(payload?.ownerBusinesses)?payload.ownerBusinesses:[];
+  const ownerIds=new Set(ownerBusinesses.filter(x=>String(x.owner_id||'')===String(b.owner_id||'')).map(x=>x.owner_id));
+  const services=(Array.isArray(payload?.marketplace_services)?payload.marketplace_services:[]).filter(x=>String(x.seller_id||'')===String(b.owner_id||''));
+  
   stage='product_media';
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   if(productIds.length){
