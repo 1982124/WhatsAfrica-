@@ -117,7 +117,10 @@ async function paymentWebhook(req,res){
   return res.status(200).json({ok:true,event,status,result});
 }
 async function marketGet(path,params){
-  const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+  // Server-side Marketplace reads prefer the private service key when available.
+  // The key is never sent to the browser; only explicitly public rows are selected below.
+  // This avoids Data API 401s on optional/public tables while keeping the client on a single API.
+  const key=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'';
   const base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co';
   const u=new URL(base+'/rest/v1/'+path);
   Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
@@ -128,6 +131,7 @@ async function marketGet(path,params){
 async function marketData(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'METHOD_NOT_ALLOWED'});
   res.setHeader('Cache-Control','private, no-store, max-age=0, must-revalidate');
+  res.setHeader('X-WASSAFRICA-Market-Version','market-v4-server-key-failsoft');
   // Marketplace delivery must be fail-soft: one optional category or enrichment query
   // must never blank the entire public market.
   const read=async(path,params)=>{try{return {data:await marketGet(path,params),error:null}}catch(e){console.warn('[MARKET_SOURCE]',path,e?.message||e);return {data:[],error:e}}};
