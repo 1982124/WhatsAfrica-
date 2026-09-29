@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in vercel.json auth.html inbox.html smartlink-public.html market.html dashboard.html offer-create.html presentation.html studio-visuel-ia.html fallback-audit.py; do
+          for file in vercel.json auth.html inbox.html smartlink-public.html marche.html dashboard.html offer-create.html presentation.html studio-visuel-ia.html fallback-audit.py; do
             test -f "$file"
           done
           python3 - <<'PY'
@@ -30,16 +30,26 @@ jobs:
           required={
             '/auth':'/auth.html',
             '/inbox':'/inbox.html',
-            '/market':'/market.html',
-            '/marketplace':'/market.html',
+            '/marche':'/marche.html',
+            '/marche/produit/:id':'/product.html?id=:id',
             '/dashboard':'/dashboard.html',
             '/offer-create':'/offer-create.html',
-            '/marche/produit/:id':'/product.html?id=:id',
-            '/marche/boutique/:slug':'/smartlink-public.html',
+            '/marche/services':'/marche.html',
+            '/marche/boutiques':'/marche.html',
           }
+          redirects={x['source']:x['destination'] for x in data.get('redirects',[])}
           for src,dst in required.items():
-            assert rewrites.get(src)==dst, f'{src}: expected {dst}, got {rewrites.get(src)}'
-          assert not data.get('redirects'), 'Automatic Vercel redirects are forbidden.'
+            assert rewrites.get(src)==dst, f'{src}: expected rewrite {dst}, got {rewrites.get(src)}'
+          aliases={
+            '/market':'/marche',
+            '/marketplace':'/marche',
+            '/digital-market':'/marche',
+            '/commerce':'/marche',
+            '/product':'/marche',
+          }
+          for src,dst in aliases.items():
+            assert redirects.get(src)==dst, f'{src}: expected redirect {dst}, got {redirects.get(src)}'
+          assert redirects.get('/vitrine')=='/smartlink', 'Legacy vitrine alias must resolve to Smart Link.'
           print('Canonical route certification passed.')
           PY
 
@@ -101,7 +111,7 @@ jobs:
                       self.scripts.append(''.join(self.buf)); self.in_script=False
               def handle_data(self,data):
                   if self.in_script: self.buf.append(data)
-          for name in ['auth.html','inbox.html','smartlink-public.html','market.html','dashboard.html','offer-create.html','presentation.html','studio-visuel-ia.html']:
+          for name in ['auth.html','inbox.html','smartlink-public.html','marche.html','dashboard.html','offer-create.html','presentation.html','studio-visuel-ia.html']:
               p=Scripts(); p.feed(Path(name).read_text(encoding='utf-8'))
               for i,code in enumerate(p.scripts):
                   if not code.strip(): continue
