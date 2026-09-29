@@ -44,7 +44,7 @@
 let marketPayloadPromise=null;
 async function getMarketPayload(){
  if(!marketPayloadPromise){
-  marketPayloadPromise=fetch('/api/market?_='+Date.now(),{cache:'no-store',headers:{Accept:'application/json'}}).then(async r=>{
+  marketPayloadPromise=fetch('/api/smartlink-import?__route=market&_='+Date.now(),{cache:'no-store',headers:{Accept:'application/json'}}).then(async r=>{
    const data=await r.json();
    if(!r.ok||!data.ok)throw new Error(data.error||('MARKET_API_'+r.status));
    return data;
