@@ -42,7 +42,7 @@
 </main>
 <script>
 let marketPayloadPromise=null;
-const MARKET_TIMEOUT_MS=2800;
+const MARKET_TIMEOUT_MS=10000;
 const marketDiagnostics={startedAt:0,finishedAt:0,url:'/api/smartlink-import?__route=market',status:null,durationMs:null,responseBytes:null,counts:{},error:null};
 async function getMarketPayload(){
  if(!marketPayloadPromise){
@@ -66,7 +66,7 @@ async function getMarketPayload(){
     return data;
    })
    .catch(e=>{
-    marketDiagnostics.error=e?.name==='AbortError'?'TIMEOUT_2800MS':(e?.message||'MARKET_LOAD_FAILED');
+    marketDiagnostics.error=e?.name==='AbortError'?'TIMEOUT_10000MS':(e?.message||'MARKET_LOAD_FAILED');
     throw e;
    })
    .finally(()=>{
@@ -152,11 +152,18 @@ function isLegacyNativeMirror(s){
 function serviceSourceLabel(s){
  return s.source==='product'?'WASSAFRICA':'SERVICE';
 }
-function safeCards(rows,renderer){
+function fallbackMarketCard(row,label='CONTENU WASSAFRICA'){
+ const title=esc(row?.title||row?.name||'Offre WASSAFRICA');
+ const desc=esc(row?.description||'Contenu public disponible sur WASSAFRICA.');
+ const id=row?.id?String(row.id):'';
+ const href=id?(row?.source==='service'?'/service/'+encodeURIComponent(id):'/product/'+encodeURIComponent(id)):'#';
+ return '<article class="card"><div class="body"><span class="pill">'+esc(label)+'</span><h3>'+title+'</h3><p class="muted">'+desc+'</p><div class="actions"><a class="btn primary" href="'+href+'">Voir</a></div></div></article>';
+}
+function safeCards(rows,renderer,label='CONTENU WASSAFRICA'){
  const out=[];
  for(const row of rows){
-  try{const html=renderer(row);if(html)out.push(html)}
-  catch(e){console.warn('market-card-render',e,row)}
+  try{const html=renderer(row);if(html)out.push(html);else out.push(fallbackMarketCard(row,label))}
+  catch(e){console.warn('market-card-render',e,row);out.push(fallbackMarketCard(row,label))}
  }
  return out.join('');
 }
@@ -257,8 +264,9 @@ async function load(){
    const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg',isVitrine=norm(x.title).includes('vitrine');
    return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||fallback,isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
   });
-  DATA.products=productRows.filter(x=>x.type!=='service'&&!norm(x.title).includes('vitrine'));
-  DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service'&&!norm(x.title).includes('vitrine')).map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x)&&!norm(x.title).includes('vitrine')));
+  // INVARIANT MARKETPLACE: every published row received from the API is displayable.
+  DATA.products=productRows.map(x=>({...x,source:'product'}));
+  DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x)));
   DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
   const partialErrors=[smartRes.error,pr.error,sr.error,cr.error].filter(Boolean);
   if(partialErrors.length){
@@ -266,6 +274,8 @@ async function load(){
    $('status').style.display='block';
   }
   render();
+  marketDiagnostics.renderedCounts={vitrines:DATA.vitrines.filter(matches).length,products:DATA.products.filter(matches).length,services:DATA.services.filter(matches).length,library:DATA.library.filter(matches).length};
+  window.__WASSAFRICA_MARKET_DIAGNOSTICS__=marketDiagnostics;
   if(!DATA.vitrines.length&&!DATA.products.length&&!DATA.services.length&&!DATA.library.length){
    $('status').textContent='Aucun contenu disponible actuellement.';
    $('status').style.display='block';
