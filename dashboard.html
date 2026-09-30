@@ -3,7 +3,11 @@ const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_pu
 const $=id=>document.getElementById(id);
 async function init(){
  try{
-  const {data,error}=await db.auth.getSession();
+  const result=await Promise.race([
+   db.auth.getSession(),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error('SESSION_TIMEOUT')),5000))
+  ]);
+  const {data,error}=result;
   if(error) throw error;
   const s=data?.session;
   if(!s){$('user').textContent='Votre session n’est plus active.';$('loginState').hidden=false;return;}
