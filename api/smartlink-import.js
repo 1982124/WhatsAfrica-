@@ -126,7 +126,11 @@ async function marketGet(path,params){
   for(const key of keys){
     const u=new URL(base+'/rest/v1/'+path);
     Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-    const r=await fetch(u,{headers:{apikey:key,Authorization:'Bearer '+key},cache:'no-store'});
+    const headers={apikey:key};
+    // Supabase publishable/secret keys are opaque API keys, not JWTs.
+    // Do not send sb_* keys as Authorization Bearer; Data API authentication uses apikey.
+    if(!key.startsWith('sb_'))headers.Authorization='Bearer '+key;
+    const r=await fetch(u,{headers,cache:'no-store'});
     if(r.ok)return r.json();
     lastStatus=r.status;
     if(r.status!==401&&r.status!==403)throw new Error('market_get_'+r.status);
