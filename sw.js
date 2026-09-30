@@ -1,4 +1,4 @@
-const CACHE='wassafrica-shell-v20';
+const CACHE='wassafrica-shell-v21';
 const CORE=['/','/launch-shell.html','/launch-v1.html','/install','/install.html','/manifest.webmanifest','/manifesto','/manifesto.html','/icon-192.png','/icon-512.png','/icon-192.svg','/icon-512.svg','/profile.html','/auth.html','/inbox.html','/groups.html','/community-v7.html','/group-admin-v1.html','/live.html','/calls-v1.html','/universe-fast-v4.html','/marche.html','/dashboard.html','/analytics-shell.html','/smartlink-free-v3.html','/smartlink-business.html','/smartlink-public.html','/share-center.html','/share.html','/financial-services-v2.html','/offer-create-v4.html','/crm.html','/brand-normalizer.js','/brand-observer.js','/wa-theme.js','/wa-i18n.js','/wa-accessibility.js','/wa-performance.js','/wa-network.js','/wa-message-outbox.js','/wa-message-cache.js','/e2ee.js','/wa-media.js','/wa-calls.js'];
 const STATIC_EXT=/\.(?:html|js|css|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$/i;
 const HTML_EXT=/\.html$/i;
