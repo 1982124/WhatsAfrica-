@@ -50,11 +50,16 @@ async function load(){
   const accent=/^#[0-9a-f]{6}$/i.test(b.accent_color||'')?b.accent_color:'#173d2d';
   document.documentElement.style.setProperty('--accent',accent);
   stage='optional_data';
-  const media=[];
+  // Public SmartLink media must be loaded from smart_link_media.
+  // The previous direct-Supabase fix resolved the SmartLink itself but accidentally
+  // left the media collection empty, which hid the videos and gallery.
+  const media=await query('smart_link_media',{
+    smart_link_id:'eq.'+link.id,
+    select:'id,kind,public_url,alt_text,sort_order',
+    order:'sort_order.asc',
+  });
   const products=await query('products',{business_id:'eq.'+b.id,is_published:'eq.true'});
   const services=await query('marketplace_services',{seller_id:'eq.'+b.owner_id,status:'eq.published'});
-  
-  // Product cover images come directly from products.image_url. No secondary media API is required.
 
   stage='render';
   const cover=safe(b.cover_image_url)||WAMedia.fallback('vitrine');
