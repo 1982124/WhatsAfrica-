@@ -280,6 +280,18 @@ async function load(){
   DATA.products=productRows.map(x=>({...x,source:'product'}));
   DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x)));
   DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
+  // Hard invariant: partial API failure must never hide already-published Marketplace content.
+  const liveProductIds=new Set(DATA.products.map(x=>String(x.id)));
+  for(const x of MARKET_BOOTSTRAP_PRODUCTS){
+   if(x.product_type==='service')continue;
+   if(!liveProductIds.has(String(x.id)))DATA.products.push({...x,type:x.product_type==='digital'?'digital':'physical',source:'bootstrap'});
+  }
+  const liveServiceIds=new Set(DATA.services.map(x=>String(x.id)));
+  for(const x of MARKET_BOOTSTRAP_PRODUCTS){
+   if(x.product_type!=='service')continue;
+   if(!liveServiceIds.has(String(x.id)))DATA.services.push({...x,type:'service',name:'WASSAFRICA',source:'bootstrap'});
+  }
+  if(!DATA.vitrines.length)DATA.vitrines=MARKET_BOOTSTRAP_VITRINES.map(x=>({...x,source:'bootstrap'}));
   const partialErrors=[smartRes.error,pr.error,sr.error,cr.error].filter(Boolean);
   if(partialErrors.length){
    $('status').textContent='Certaines catégories du marché sont temporairement indisponibles ; les autres offres publiques restent affichées.';
