@@ -10,23 +10,16 @@ const money=(v,c)=>v==null?'Prix sur demande':new Intl.NumberFormat('fr-FR',{max
 const _parts=location.pathname.split('/').filter(Boolean).map(decodeURIComponent);
 const slug=(_parts[0]==='marche'&&_parts[1]==='boutique')?_parts[2]:(_parts[0]==='smartlink'?_parts[1]:_parts[0]);
 let smartLinkId=null;
+const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
+const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 async function query(table,params){
-  const r=await fetch('/api/smartlink-import?__route=market',{cache:'no-store',headers:{Accept:'application/json'}});
-  if(!r.ok)throw Error('PUBLIC_MARKET_'+r.status);
-  const payload=await r.json();
-  if(!payload?.ok)throw Error(payload?.error||'PUBLIC_MARKET_FAILED');
-  const source=table==='smart_links'?payload.smart_links:
-    table==='products'?payload.products:
-    table==='marketplace_services'?payload.marketplace_services:
-    table==='businesses'?[...(payload.businesses||[]),...(payload.ownerBusinesses||[])] : [];
-  const rows=Array.isArray(source)?source:[];
-  return rows.filter(row=>Object.entries(params||{}).every(([k,v])=>{
-    if(k==='select'||k==='order'||k==='limit')return true;
-    const s=String(v||'');
-    if(s.startsWith('eq.'))return String(row[k]??'')===s.slice(3);
-    if(s.startsWith('in.(')&&s.endsWith(')'))return s.slice(4,-1).split(',').map(x=>x.trim()).includes(String(row[k]??''));
-    return true;
-  }));
+  const u=new URL(SB+'/rest/v1/'+table);
+  Object.entries(params||{}).forEach(([k,v])=>{if(k==='select'||k==='order'||k==='limit'||k.startsWith('eq.')||k.startsWith('in.')||k.includes('=')||k.startsWith('is_')||k.startsWith('status'))u.searchParams.set(k,v)});
+  const r=await fetch(u.toString(),{cache:'no-store',headers:{apikey:KEY,Accept:'application/json'}});
+  if(!r.ok)throw Error('PUBLIC_SUPABASE_'+r.status);
+  const rows=await r.json();
+  if(!Array.isArray(rows))throw Error('PUBLIC_SUPABASE_INVALID');
+  return rows;
 }
 function track(event,extra={}){
   try{window.WA_SMART_LINK?.track(event,{smart_link_id:smartLinkId,...extra})}catch{}
