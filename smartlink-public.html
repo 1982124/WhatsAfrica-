@@ -18,7 +18,9 @@ async function query(table,params){
   try{
     const u=new URL(SB+'/rest/v1/'+table);
     Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-    const r=await fetch(u,{headers:{apikey:KEY,Authorization:'Bearer '+KEY},cache:'no-store',signal:controller.signal});
+    const headers={apikey:KEY};
+    if(!KEY.startsWith('sb_'))headers.Authorization='Bearer '+KEY;
+    const r=await fetch(u,{headers,cache:'no-store',signal:controller.signal});
     if(!r.ok)throw Error('PUBLIC_DATA_'+r.status);
     return await r.json();
   }finally{clearTimeout(timer)}
@@ -40,17 +42,16 @@ function serviceCard(s){
 }
 let stage='bootstrap';
 async function load(){
-  stage='public_market_proxy';
-  const proxy=await fetch('/api/smartlink-import?__route=market',{cache:'no-store',headers:{Accept:'application/json'}});
-  if(!proxy.ok)throw Error('PUBLIC_MARKET_PROXY_'+proxy.status);
-  const payload=await proxy.json();
-  const links=Array.isArray(payload?.smart_links)?payload.smart_links:[];
-  const link=links.find(x=>String(x.slug||'')===String(slug||''));
+  // Public Smart Links must not depend on the bulk Marketplace proxy.
+  // Resolve the exact slug directly from the public Supabase API, then load optional content independently.
+  stage='public_smartlink';
+  const links=await query('smart_links',{select:'id,business_id,title,description,slug,is_public',slug:'eq.'+encodeURIComponent(slug),is_public:'eq.true',limit:'1'});
+  const link=Array.isArray(links)?links[0]:null;
   if(!link)throw Error('NOT_FOUND');
   smartLinkId=link.id;
   stage='business';
-  const businesses=Array.isArray(payload?.businesses)?payload.businesses:[];
-  const b=businesses.find(x=>String(x.id||'')===String(link.business_id||''));
+  const businesses=await query('businesses',{select:'id,owner_id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,business_type,slug,phone,accent_color',id:'eq.'+encodeURIComponent(link.business_id),limit:'1'});
+  const b=Array.isArray(businesses)?businesses[0]:null;
   if(!b)throw Error('BUSINESS_NOT_FOUND');
   const accent=/^#[0-9a-f]{6}$/i.test(b.accent_color||'')?b.accent_color:'#173d2d';
   document.documentElement.style.setProperty('--accent',accent);
