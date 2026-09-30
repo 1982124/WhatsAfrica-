@@ -45,12 +45,12 @@ async function load(){
   // Public Smart Links must not depend on the bulk Marketplace proxy.
   // Resolve the exact slug directly from the public Supabase API, then load optional content independently.
   stage='public_smartlink';
-  const links=await query('smart_links',{select:'id,business_id,title,description,slug,is_public',slug:'eq.'+encodeURIComponent(slug),is_public:'eq.true',limit:'1'});
+  const links=await query('smart_links',{select:'id,business_id,title,description,slug,is_public',slug:'eq.'+slug,is_public:'eq.true',limit:'1'});
   const link=Array.isArray(links)?links[0]:null;
   if(!link)throw Error('NOT_FOUND');
   smartLinkId=link.id;
   stage='business';
-  const businesses=await query('businesses',{select:'id,owner_id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,business_type,slug,phone,accent_color',id:'eq.'+encodeURIComponent(link.business_id),limit:'1'});
+  const businesses=await query('businesses',{select:'id,owner_id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,business_type,slug,phone,accent_color',id:'eq.'+link.business_id,limit:'1'});
   const b=Array.isArray(businesses)?businesses[0]:null;
   if(!b)throw Error('BUSINESS_NOT_FOUND');
   const accent=/^#[0-9a-f]{6}$/i.test(b.accent_color||'')?b.accent_color:'#173d2d';
