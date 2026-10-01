@@ -14,7 +14,7 @@ const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
 const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 async function query(table,params){
   const u=new URL(SB+'/rest/v1/'+table);
-  Object.entries(params||{}).forEach(([k,v])=>{if(k==='select'||k==='order'||k==='limit'||k.startsWith('eq.')||k.startsWith('in.')||k.includes('=')||k.startsWith('is_')||k.startsWith('status'))u.searchParams.set(k,v)});
+  Object.entries(params||{}).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,String(v))});
   const r=await fetch(u.toString(),{cache:'no-store',headers:{apikey:KEY,Accept:'application/json'}});
   if(!r.ok)throw Error('PUBLIC_SUPABASE_'+r.status);
   const rows=await r.json();
