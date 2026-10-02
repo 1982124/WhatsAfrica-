@@ -279,7 +279,7 @@ async function persistRadarReport(result) {
     const cc = Number(item.count || 0);
     const delta = cc - pc;
     const deltaPercent = pc ? Math.round((delta / pc) * 100) : null;
-    let state = prev ? (delta > 0 ? 'progressing' : delta < 0 ? 'declining' : 'stable') : 'new';
+    let state = prev ? (delta > 0 ? 'progressing' : delta < 0 ? 'declining' : (prev.first_seen && prev.previous_report_id ? 'recurring' : 'stable')) : 'new';
     return {
       ...item,
       signal_state: state,
