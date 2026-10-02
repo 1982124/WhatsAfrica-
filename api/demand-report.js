@@ -181,6 +181,55 @@ async function persistRadarReport(result) {
   return { persisted: Boolean(saved?.id), report_id: saved?.id || null };
 }
 
+async function generateInternalGeoDemandRadar({hours,locations,products}) {
+  if (!SUPABASE_SERVICE_ROLE_KEY) return { ok:false, status:503, reason:'internal_memory_unavailable' };
+  const safeLocations=Array.isArray(locations)?locations.filter(x=>x&&x.country&&x.location).slice(0,30):[];
+  if(!safeLocations.length)return {ok:false,status:400,reason:'locations_required'};
+  const start=new Date(Date.now()-Number(hours||6)*60*60*1000), end=new Date();
+  const url=new URL(SUPABASE_URL+'/rest/v1/demand_observations');
+  url.searchParams.set('select','id,normalized_product,quantity,unit,public_contact,source_platform,location_text,country_code,status,observed_at');
+  url.searchParams.set('observed_at','gte.'+start.toISOString());
+  url.searchParams.append('observed_at','lte.'+end.toISOString());
+  url.searchParams.set('status','neq.rejected');
+  url.searchParams.set('order','observed_at.desc');
+  url.searchParams.set('limit','1000');
+  const r=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_ROLE_KEY},cache:'no-store'});
+  if(!r.ok)return {ok:false,status:502,reason:'internal_observation_query_failed_'+r.status};
+  const observations=await r.json().catch(()=>[]);
+  const norm=v=>String(v||'').trim().toLowerCase();
+  const match=(value,filter)=>{
+    const a=norm(value), b=norm(filter);
+    return !!a && (!!b && (a===b || a.includes(b) || b.includes(a)));
+  };
+  const zones=safeLocations.map(loc=>{
+    const rows=observations.filter(o=>match(o.country_code,loc.country)||match(o.location_text,loc.location));
+    const filtered=products.length?rows.filter(o=>products.some(p=>match(o.normalized_product,p))):rows;
+    const groups=new Map();
+    for(const o of filtered){
+      const product=String(o.normalized_product||'').trim();
+      if(!product)continue;
+      const key=norm(product);
+      if(!groups.has(key))groups.set(key,{product,category:'signal interne',signal_count:0,intents:new Set(),evidence:[],communities:[],professional_contacts:[],confidence:'low',last_seen:null});
+      const g=groups.get(key);
+      g.signal_count++;
+      if(o.observed_at&&(!g.last_seen||new Date(o.observed_at)>new Date(g.last_seen)))g.last_seen=o.observed_at;
+      if(o.source_platform)g.intents.add('Signal enregistré via '+o.source_platform);
+      if(o.public_contact)g.professional_contacts.push({organization:'',name:'',role:'',email:'',phone:String(o.public_contact),website:'',source_url:''});
+    }
+    const productsOut=[...groups.values()].map(g=>{
+      g.intent=[...g.intents].join(' · ')||'Besoin enregistré dans la mémoire WASSAFRICA';
+      g.confidence=g.signal_count>=5?'high':g.signal_count>=2?'medium':'low';
+      g.evidence=[{text:g.signal_count+' signal(s) interne(s) enregistré(s) dans WASSAFRICA sur la fenêtre demandée.',source_title:'Mémoire interne WASSAFRICA',source_url:'',date:g.last_seen||end.toISOString()}];
+      g.professional_contacts=g.professional_contacts.slice(0,10);
+      delete g.intents;
+      return g;
+    }).sort((a,b)=>b.signal_count-a.signal_count).slice(0,30);
+    return {country:loc.country,location:loc.location,demand_count:productsOut.reduce((n,p)=>n+p.signal_count,0),products:productsOut,offers:[],uncertain:[]};
+  });
+  const signal_count=zones.reduce((n,z)=>n+z.demand_count,0);
+  return {ok:true,available:true,web_available:false,fallback:'internal_memory',hours:Number(hours||6),locations:safeLocations,products, zones,discovered_count:zones.reduce((n,z)=>n+z.products.length,0),signal_count,contact_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.professional_contacts.length,0),0),sources:[{title:'Mémoire interne WASSAFRICA',url:''}],summary:signal_count?'Recherche web externe indisponible : résultats issus de la mémoire interne WASSAFRICA.':'Recherche web externe indisponible et aucun signal interne correspondant trouvé.',generated_at:new Date().toISOString(),search_method:'WASSAFRICA internal demand memory fallback'};
+}
+
 async function generateGeoDemandRadar({hours,locations,products}) {
   const OPENAI_KEY=process.env.OPENAI_API_KEY||process.env.wassAfrica;
   if(!OPENAI_KEY)return {ok:false,status:503,reason:'OPENAI_API_KEY_missing'};
@@ -206,7 +255,7 @@ Retourne UNIQUEMENT ce JSON:
 {"zones":[{"country":"","location":"","demand_count":0,"products":[{"product":"","category":"","signal_count":0,"intent":"","evidence":[{"text":"","source_title":"","source_url":"","date":""}],"communities":[{"name":"","type":"","url":""}],"professional_contacts":[{"organization":"","name":"","role":"","email":"","phone":"","website":"","source_url":""}],"confidence":"high|medium|low","last_seen":""}],"offers":[{"product":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","reason":"","source_title":"","source_url":""}]}],"summary":"","search_method":"OpenAI Responses API + web search"}`;
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
   const data=await r.json().catch(()=>({}));
-  if(!r.ok){const msg=String(data?.error?.message||'').toLowerCase();const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(msg);return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};}
+  if(!r.ok){const msg=String(data?.error?.message||'').toLowerCase();const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(msg);if(quota){const fallback=await generateInternalGeoDemandRadar({hours,locations: safeLocations,products}).catch(()=>null);if(fallback?.ok)return fallback;}return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};}
   const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\\n'))||'');
   const parsed=parseWebJson(outputText)||{zones:[],summary:outputText.slice(0,1600),search_method:'web_search'};
   const cleanUrl=(v)=>{try{const u=new URL(String(v||''));return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}};
