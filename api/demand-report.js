@@ -188,10 +188,17 @@ function matchMarketplaceOffer(signal,offer){
   // Exact phrase/category matches remain valid; otherwise require stronger lexical overlap.
   const strongLexical=dTokens.length>=3?overlap.length>=2&&lexical>=0.5:dTokens.length===2?overlap.length>=2:dTokens.length===1?overlap.length===1&&tTokens.includes(dTokens[0])&&dTokens[0].length>=5:false;
   if(!phrase && !categoryExact && !strongLexical)return null;
+  const geoEqual=(a,b)=>{
+    const aa=marketNorm(a),bb=marketNorm(b);
+    if(!aa||!bb)return false;
+    if(aa===bb)return true;
+    const parts=v=>v.split(/[,|/;]+/).map(x=>marketNorm(x)).filter(Boolean);
+    return parts(aa).includes(bb)||parts(bb).includes(aa);
+  };
   const demandCountry=marketNorm(signal.country), demandZone=marketNorm(signal.zone);
   const offerCountry=marketNorm(offer.business?.country), offerCity=marketNorm(offer.business?.city);
-  const geoCountry=!!(demandCountry&&offerCountry&&(offerCountry.includes(demandCountry)||demandCountry.includes(offerCountry)));
-  const geoZone=!!(demandZone&&offerCity&&(offerCity.includes(demandZone)||demandZone.includes(offerCity)));
+  const geoCountry=geoEqual(demandCountry,offerCountry);
+  const geoZone=geoEqual(demandZone,offerCity);
   const type=phrase?'exact':categoryExact?'category':'keyword';
   const reason=phrase?'Le produit publié reprend directement le besoin détecté.':categoryExact?'La catégorie publiée correspond directement au besoin détecté.':'Les mots-clés du besoin recoupent suffisamment le titre ou la description publiée.';
   return {offer_id:offer.id,title:offer.title,product_type:offer.product_type||'physical',business_name:offer.business?.name||'Vendeur WASSAFRICA',city:offer.business?.city||'',country:offer.business?.country||'',price:offer.price,currency:offer.currency||'XOF',stock:offer.stock,match_type:type,match_reason:reason,geographic_country_match:geoCountry,geographic_zone_match:geoZone,url:'/product/'+encodeURIComponent(offer.id),relevance:Math.round((Math.min(1,lexical)+(phrase?0.5:0)+(geoCountry?0.1:0)+(geoZone?0.15:0))*100)/100};
