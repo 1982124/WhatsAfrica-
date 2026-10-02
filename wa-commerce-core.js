@@ -8,6 +8,7 @@ const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 const AUTH='whatsafrica-auth';
 const SESSION_KEY='wa-commerce-session-v1';
 const MAX_QUEUE=40;
+const ATTR_KEY='wa-commerce-attribution-v1';
 const ALLOWED=/^[a-z][a-z0-9_.:-]{1,79}$/;
 let queue=[],flushing=false;
 
@@ -25,8 +26,36 @@ function sid(){
   }catch{return null}
 }
 function clean(v,n=160){return typeof v==='string'?v.slice(0,n):null}
+function attribution(){
+  try{
+    const u=new URL(location.href),p=u.searchParams;
+    const touch={
+      source:clean(p.get('utm_source')||p.get('source'),80),
+      medium:clean(p.get('utm_medium')||p.get('medium'),80),
+      campaign:clean(p.get('utm_campaign')||p.get('campaign_id'),120),
+      content:clean(p.get('utm_content'),120),
+      term:clean(p.get('utm_term'),120),
+      referrer:clean(document.referrer,240),
+      referrer_host:clean(document.referrer?new URL(document.referrer).hostname:null,120),
+      landing_path:clean(location.pathname,240),
+      captured_at:new Date().toISOString()
+    };
+    const meaningful=Object.values(touch).some(v=>v);
+    let state=null;
+    try{state=JSON.parse(localStorage.getItem(ATTR_KEY)||'null')}catch{}
+    if(meaningful && !state?.first_touch){
+      state={first_touch:touch,last_touch:touch};
+      localStorage.setItem(ATTR_KEY,JSON.stringify(state));
+    }else if(meaningful){
+      state=state||{};
+      state.last_touch=touch;
+      localStorage.setItem(ATTR_KEY,JSON.stringify(state));
+    }
+    return state||{};
+  }catch{return{}}
+}
 function meta(extra){
-  const u=new URL(location.href);
+  const u=new URL(location.href),a=attribution();
   return {
     source:'wassafrica',
     session_id:sid(),
@@ -36,10 +65,12 @@ function meta(extra){
     product_id:clean(extra?.product_id||u.searchParams.get('product_id'),80),
     conversation_id:clean(extra?.conversation_id,80),
     campaign_id:clean(extra?.campaign_id||u.searchParams.get('campaign_id')||u.searchParams.get('utm_campaign'),120),
+    attribution:a,
     ...(extra||{})
   };
 }
-async function send(e){
+
+function send(e){
   const s=session();
   const headers={'apikey':KEY,'Content-Type':'application/json'};
   if(s?.access_token)headers.Authorization='Bearer '+s.access_token;
