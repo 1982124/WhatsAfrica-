@@ -269,7 +269,20 @@ async function persistRadarReport(result) {
   const previousByFingerprint = new Map(previousSignals.map(x => [x.fingerprint, x]));
   const currentFingerprints = new Set(topDemands.map(x => x.fingerprint));
   const historicalSignalCounts = new Map();
-  for (const report of history) for (const signal of extractPreviousSignals(report)) historicalSignalCounts.set(signal.fingerprint,(historicalSignalCounts.get(signal.fingerprint)||0)+1);
+  const historicalFirstSeen = new Map();
+  const historicalBeforePrevious = new Set();
+  for (let hi=0; hi<history.length; hi++) {
+    const report = history[hi];
+    for (const signal of extractPreviousSignals(report)) {
+      historicalSignalCounts.set(signal.fingerprint,(historicalSignalCounts.get(signal.fingerprint)||0)+1);
+      const seen = signal.first_seen || signal.last_seen || report.period_start || report.generated_at || null;
+      if (seen) {
+        const prior = historicalFirstSeen.get(signal.fingerprint);
+        if (!prior || new Date(seen) < new Date(prior)) historicalFirstSeen.set(signal.fingerprint,seen);
+      }
+      if (hi >= 1) historicalBeforePrevious.add(signal.fingerprint);
+    }
+  }
 
   topDemands = topDemands.map(item => {
     const prev = previousByFingerprint.get(item.fingerprint);
@@ -278,14 +291,20 @@ async function persistRadarReport(result) {
     const delta = cc - pc;
     const deltaPercent = pc ? Math.round((delta / pc) * 100) : null;
     const historicalOccurrences=Number(historicalSignalCounts.get(item.fingerprint)||0);
-    let state = prev ? (delta > 0 ? 'progressing' : delta < 0 ? 'declining' : historicalOccurrences>=2 ? 'recurring' : 'stable') : (historicalOccurrences>=2 ? 'recurring' : 'new');
+    const recurringAfterGap = historicalBeforePrevious.has(item.fingerprint) && !prev;
+    let state;
+    if (prev) {
+      state = delta > 0 ? 'progressing' : delta < 0 ? 'declining' : (historicalBeforePrevious.has(item.fingerprint) ? 'recurring' : 'stable');
+    } else {
+      state = historicalOccurrences >= 2 || recurringAfterGap ? 'recurring' : 'new';
+    }
     return {
       ...item,
       signal_state: state,
       previous_count: pc,
       delta,
       delta_percent: deltaPercent,
-      first_seen: prev?.first_seen || item.last_seen || null,
+      first_seen: historicalFirstSeen.get(item.fingerprint) || prev?.first_seen || item.last_seen || null,
       previous_report_id: previous?.id || null
     };
   });
