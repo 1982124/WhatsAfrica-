@@ -128,9 +128,6 @@ function radarFingerprint(item){
   const product=radarNorm(item.product), country=radarNorm(item.country), zone=radarNorm(item.zone);
   return [product,country,zone].join('|');
 }
-function radarEvidenceFingerprint(item, sourceUrl=''){
-  return [radarFingerprint(item),radarNorm(sourceUrl)].join('|');
-}
 function radarScopeComparable(a,b){
   const normScope=(s)=>({locations:(Array.isArray(s?.locations)?s.locations:[]).map(x=>radarNorm((x?.country||'')+'|'+(x?.location||''))).sort(),products:(Array.isArray(s?.products)?s.products:[]).map(radarNorm).sort()});
   const aa=normScope(a),bb=normScope(b);
@@ -185,13 +182,18 @@ function matchMarketplaceOffer(signal,offer){
   const overlap=dTokens.filter(t=>tTokens.includes(t));
   const phrase=title.includes(demand)||demand.includes(title);
   const lexical=dTokens.length?overlap.length/dTokens.length:0;
-  if(!phrase && (overlap.length<1 || lexical<0.5))return null;
+  const categoryNorm=marketNorm(offer.category);
+  const categoryExact=!!(demand&&categoryNorm&&(categoryNorm===demand||categoryNorm.includes(demand)||demand.includes(categoryNorm)));
+  // Prevent one generic token from creating a false marketplace match.
+  // Exact phrase/category matches remain valid; otherwise require stronger lexical overlap.
+  const strongLexical=dTokens.length>=3?overlap.length>=2&&lexical>=0.5:dTokens.length===2?overlap.length>=2:dTokens.length===1?overlap.length===1&&tTokens.includes(dTokens[0])&&dTokens[0].length>=5:false;
+  if(!phrase && !categoryExact && !strongLexical)return null;
   const demandCountry=marketNorm(signal.country), demandZone=marketNorm(signal.zone);
   const offerCountry=marketNorm(offer.business?.country), offerCity=marketNorm(offer.business?.city);
   const geoCountry=!!(demandCountry&&offerCountry&&(offerCountry.includes(demandCountry)||demandCountry.includes(offerCountry)));
   const geoZone=!!(demandZone&&offerCity&&(offerCity.includes(demandZone)||demandZone.includes(offerCity)));
-  const type=phrase?'exact':category&&dTokens.some(t=>marketNorm(category).includes(t))?'category':'keyword';
-  const reason=phrase?'Le produit publié reprend directement le besoin détecté.':type==='category'?'La catégorie publiée recoupe les termes du besoin détecté.':'Les mots-clés du besoin recoupent le titre ou la description publiée.';
+  const type=phrase?'exact':categoryExact?'category':'keyword';
+  const reason=phrase?'Le produit publié reprend directement le besoin détecté.':categoryExact?'La catégorie publiée correspond directement au besoin détecté.':'Les mots-clés du besoin recoupent suffisamment le titre ou la description publiée.';
   return {offer_id:offer.id,title:offer.title,product_type:offer.product_type||'physical',business_name:offer.business?.name||'Vendeur WASSAFRICA',city:offer.business?.city||'',country:offer.business?.country||'',price:offer.price,currency:offer.currency||'XOF',stock:offer.stock,match_type:type,match_reason:reason,geographic_country_match:geoCountry,geographic_zone_match:geoZone,url:'/product/'+encodeURIComponent(offer.id),relevance:Math.round((Math.min(1,lexical)+(phrase?0.5:0)+(geoCountry?0.1:0)+(geoZone?0.15:0))*100)/100};
 }
 async function enrichRadarWithMarketplaceMatching(signals,result,headers){
