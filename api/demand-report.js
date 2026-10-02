@@ -212,7 +212,8 @@ async function enrichRadarWithMarketplaceMatching(signals,result,headers){
     return {...signal,market_match_status:has?'matched':'unmatched',market_match_count:matches.length,market_matches:top};
   });
   const demandTotal=current.reduce((n,x)=>n+Number(x.count||0),0);
-  return {signals:enriched,marketplace_offer_count:offers.length,matched_signal_count:matchedSignals,unmatched_signal_count:unmatchedSignals,matched_demand_count:matchedDemand,unmatched_demand_count:unmatchedDemand,demand_signal_total:demandTotal,coverage_rate:demandTotal?Math.round(matchedDemand/demandTotal*10000)/100:0,matching_method:'published Marketplace offers only; title/category/description lexical matching with optional geographic corroboration'};
+  const gaps = enriched.filter(x=>x.market_match_status==='unmatched').map(x=>({product:x.product||null,country:x.country||null,zone:x.zone||null,count:Number(x.count||0),confidence:x.confidence||'low',signal_state:x.signal_state||'new',first_seen:x.first_seen||x.last_seen||null,last_seen:x.last_seen||null,fingerprint:x.fingerprint||null})).sort((a,b)=>b.count-a.count).slice(0,50);
+  return {signals:enriched,marketplace_offer_count:offers.length,matched_signal_count:matchedSignals,unmatched_signal_count:unmatchedSignals,matched_demand_count:matchedDemand,unmatched_demand_count:unmatchedDemand,demand_signal_total:demandTotal,coverage_rate:demandTotal?Math.round(matchedDemand/demandTotal*10000)/100:0,gaps,matching_method:'published Marketplace offers only; title/category/description lexical matching with optional geographic corroboration'};
 }
 
 async function persistRadarReport(result) {
@@ -341,7 +342,8 @@ async function persistRadarReport(result) {
         unmatched_demand_count: matching.unmatched_demand_count,
         demand_signal_total: matching.demand_signal_total,
         coverage_rate: matching.coverage_rate,
-        matching_method: matching.matching_method
+        matching_method: matching.matching_method,
+        gaps: Array.isArray(matching.gaps) ? matching.gaps : []
       },
       evolution: {
         previous_report_id: previous?.id || null,
