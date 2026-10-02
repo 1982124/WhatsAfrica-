@@ -13,7 +13,7 @@ async function query(table,params){
   const u=new URL(SB+'/rest/v1/'+table);
   Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
-  try{const r=await fetch(u,{headers:{apikey:KEY,Authorization:'Bearer '+KEY},cache:'no-store',signal:controller.signal});if(!r.ok)throw Error('PUBLIC_DATA_'+r.status);return await r.json()}finally{clearTimeout(timer)}
+  try{const r=await fetch(u,{headers:(()=>{const h={apikey:KEY};if(!KEY.startsWith('sb_'))h.Authorization='Bearer '+KEY;return h})(),cache:'no-store',signal:controller.signal});if(!r.ok)throw Error('PUBLIC_DATA_'+r.status);return await r.json()}finally{clearTimeout(timer)}
 }
 function share(kind,url,title){const text=title+' — sur WASSAFRICA';const links={whatsapp:'https://wa.me/?text='+encodeURIComponent(text+' '+url),facebook:'https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(url),telegram:'https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(text),linkedin:'https://www.linkedin.com/sharing/share-offsite/?url='+encodeURIComponent(url)};if(kind==='copy'){navigator.clipboard?.writeText(url).then(()=>alert('Lien copié.')).catch(()=>prompt('Copiez ce lien :',url));return}if(links[kind])window.open(links[kind],'_blank','noopener,noreferrer')}
 function render(){  const term=q();
