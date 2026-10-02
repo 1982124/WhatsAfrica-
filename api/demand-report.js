@@ -123,31 +123,148 @@ Retourne UNIQUEMENT ce JSON:
   return {ok:true,scope:{countries,zones,products,hours},demand_count:demands.length,signal_count:demands.length+offers.length+uncertain.length,offer_count:offers.length,uncertain_count:uncertain.length,demands:demands.slice(0,30),offers:offers.slice(0,30),uncertain,sources:sources.slice(0,30),summary:cleanWeb(parsed.summary,1200),generated_at:new Date().toISOString(),note:'Les résultats web sont des signaux publics sourcés. Les offres/vendeurs ne sont jamais comptés comme demandes. Une vente réelle doit être confirmée par une transaction ou un signal WassAfrica.',search_method:'OpenAI Responses API + web search'};
 }
 
+function radarNorm(v){return String(v||'').normalize('NFKC').toLowerCase().trim().replace(/\\s+/g,' ');}
+function radarFingerprint(item, sourceUrl=''){
+  const product=radarNorm(item.product), country=radarNorm(item.country), zone=radarNorm(item.zone);
+  const source=radarNorm(sourceUrl);
+  return [product,country,zone,source||'internal'].join('|');
+}
+function radarScopeComparable(a,b){
+  const normScope=(s)=>({locations:(Array.isArray(s?.locations)?s.locations:[]).map(x=>radarNorm((x?.country||'')+'|'+(x?.location||''))).sort(),products:(Array.isArray(s?.products)?s.products:[]).map(radarNorm).sort()});
+  const aa=normScope(a),bb=normScope(b);
+  return JSON.stringify(aa)===JSON.stringify(bb);
+}
+function radarComparableWindow(currentHours, previous){
+  const h=Number(currentHours||0), ph=Number(previous?.report?.hours||0);
+  return h>0 && ph>0 && Math.abs(h-ph)<=Math.max(1,h*0.1);
+}
+async function loadPreviousComparableRadar(result, headers){
+  try{
+    const url=new URL(SUPABASE_URL+'/rest/v1/demand_reports');
+    url.searchParams.set('select','id,period_start,period_end,demand_count,grouped_product_count,top_demands,report,generation_status');
+    url.searchParams.set('generation_status','eq.generated');
+    url.searchParams.set('order','period_end.desc');
+    url.searchParams.set('limit','25');
+    const r=await fetch(url,{headers,cache:'no-store'});
+    if(!r.ok)return null;
+    const rows=await r.json().catch(()=>[]);
+    const currentScope={locations:result.locations||[],products:result.products||[]};
+    const currentEnd=new Date(result.generated_at||Date.now()).getTime();
+    return rows.find(x=>{
+      if(!x?.period_end)return false;
+      const end=new Date(x.period_end).getTime();
+      if(!Number.isFinite(end)||end>=currentEnd)return false;
+      return radarScopeComparable(currentScope,x.report?.scope) && radarComparableWindow(result.hours,x);
+    })||null;
+  }catch{return null}
+}
+function extractPreviousSignals(previous){
+  const rows=Array.isArray(previous?.top_demands)?previous.top_demands:[];
+  return rows.map(x=>({...x,fingerprint:x.fingerprint||radarFingerprint(x,x.source_url||'')})).filter(x=>x.product&&x.country&&x.zone);
+}
 async function persistRadarReport(result) {
   if (!SUPABASE_SERVICE_ROLE_KEY || !result?.ok) return { persisted: false, reason: 'service_role_unavailable' };
   const now = new Date();
   const start = new Date(now.getTime() - Number(result.hours || 6) * 60 * 60 * 1000);
   const zones = Array.isArray(result.zones) ? result.zones : [];
-  const topDemands = zones.flatMap((z) => (Array.isArray(z.products) ? z.products : []).map((p) => ({
-    product: p.product,
-    unit: null,
-    quantity: 0,
-    count: Number(p.signal_count || 0),
-    contacts: Array.isArray(p.professional_contacts) ? p.professional_contacts.length : 0,
-    country: z.country,
-    zone: z.location,
-    confidence: p.confidence || 'low',
-    last_seen: p.last_seen || null
-  }))).sort((a,b) => b.count - a.count).slice(0, 100);
+  const fallback = result.fallback === 'internal_memory';
+  const sourceType = fallback ? 'internal_memory' : 'web';
   const headers = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
+
+  // Build one logical signal per product/zone. Evidence URLs are used only to enrich identity;
+  // multiple evidence lines from the same source never become multiple demand signals.
+  const candidates = [];
+  for (const z of zones) {
+    for (const p of (Array.isArray(z.products) ? z.products : [])) {
+      const evidence = Array.isArray(p.evidence) ? p.evidence : [];
+      const urls = [...new Set(evidence.map(e => String(e?.source_url || '').trim()).filter(Boolean))];
+      const sourceUrl = urls[0] || '';
+      const base = {
+        product: p.product,
+        unit: null,
+        quantity: 0,
+        count: Number(p.signal_count || 0),
+        contacts: Array.isArray(p.professional_contacts) ? p.professional_contacts.length : 0,
+        country: z.country,
+        zone: z.location,
+        confidence: p.confidence || 'low',
+        last_seen: p.last_seen || null,
+        source_url: sourceUrl,
+        source_type: sourceType,
+        evidence_count: evidence.length,
+        unique_source_count: urls.length
+      };
+      base.fingerprint = radarFingerprint(base, sourceUrl);
+      candidates.push(base);
+    }
+  }
+
+  // Exact logical duplicates in one run are merged without inflating their count.
+  const dedup = new Map();
+  for (const item of candidates) {
+    const key = radarFingerprint(item, item.source_url || '');
+    const existing = dedup.get(key);
+    if (!existing) dedup.set(key, item);
+    else {
+      existing.count = Math.max(existing.count, item.count);
+      existing.contacts = Math.max(existing.contacts, item.contacts);
+      existing.evidence_count += item.evidence_count;
+      existing.unique_source_count = Math.max(existing.unique_source_count, item.unique_source_count);
+      if (item.last_seen && (!existing.last_seen || new Date(item.last_seen) > new Date(existing.last_seen))) existing.last_seen = item.last_seen;
+    }
+  }
+  let topDemands = [...dedup.values()].sort((a,b) => b.count - a.count).slice(0, 100);
+
+  const previous = await loadPreviousComparableRadar(result, headers);
+  const previousSignals = extractPreviousSignals(previous);
+  const previousByFingerprint = new Map(previousSignals.map(x => [x.fingerprint, x]));
+  const currentFingerprints = new Set(topDemands.map(x => x.fingerprint));
+
+  topDemands = topDemands.map(item => {
+    const prev = previousByFingerprint.get(item.fingerprint);
+    const pc = Number(prev?.count || 0);
+    const cc = Number(item.count || 0);
+    const delta = cc - pc;
+    const deltaPercent = pc ? Math.round((delta / pc) * 100) : null;
+    let state = prev ? (delta > 0 ? 'progressing' : delta < 0 ? 'declining' : 'stable') : 'new';
+    return {
+      ...item,
+      signal_state: state,
+      previous_count: pc,
+      delta,
+      delta_percent: deltaPercent,
+      first_seen: prev?.first_seen || item.last_seen || null,
+      previous_report_id: previous?.id || null
+    };
+  });
+
+  // A comparable previous report lets us explicitly retain disappeared signals.
+  const disappeared = previousSignals
+    .filter(x => !currentFingerprints.has(x.fingerprint))
+    .slice(0, 50)
+    .map(x => ({
+      ...x,
+      count: Number(x.count || 0),
+      signal_state: 'disappeared',
+      previous_count: Number(x.count || 0),
+      delta: -Number(x.count || 0),
+      delta_percent: -100,
+      first_seen: x.first_seen || x.last_seen || null,
+      previous_report_id: previous?.id || null
+    }));
+
+  const allStates = [...topDemands, ...disappeared];
+  const stateCounts = allStates.reduce((acc,x)=>{acc[x.signal_state]=(acc[x.signal_state]||0)+1;return acc;},{});
+  const sourceBreakdown = {[sourceType]: Number(result.signal_count || 0)};
+
   const payload = {
     period_start: start.toISOString(),
     period_end: now.toISOString(),
     demand_count: zones.reduce((n, z) => n + Number(z.demand_count || 0), 0),
     grouped_product_count: Number(result.discovered_count || 0),
     total_quantity: { value: 0 },
-    top_demands: topDemands,
-    source_breakdown: { web: Number(result.signal_count || 0) },
+    top_demands: allStates.slice(0, 100),
+    source_breakdown: sourceBreakdown,
     contactable_count: Number(result.contact_count || 0),
     unresolved_count: Number(result.signal_count || 0),
     report: {
@@ -158,27 +275,49 @@ async function persistRadarReport(result) {
       zones,
       sources: Array.isArray(result.sources) ? result.sources.slice(0, 120) : [],
       summary: result.summary || '',
-      generated_at: result.generated_at || now.toISOString()
+      generated_at: result.generated_at || now.toISOString(),
+      source_type: sourceType,
+      evolution: {
+        previous_report_id: previous?.id || null,
+        comparable_previous_report: Boolean(previous),
+        current_signal_count: topDemands.length,
+        disappeared_count: disappeared.length,
+        state_counts: stateCounts
+      }
     },
     generation_status: 'generated'
   };
+
   const response = await fetch(`${SUPABASE_URL}/rest/v1/demand_reports`, {
     method: 'POST', headers: { ...headers, Prefer: 'return=representation' }, body: JSON.stringify(payload)
   });
   if (!response.ok) return { persisted: false, reason: `report_insert_failed_${response.status}` };
   const saved = (await response.json().catch(() => []))[0];
-  if (saved?.id && topDemands.length) {
-    const items = topDemands.slice(0, 50).map((x) => ({
+
+  if (saved?.id && allStates.length) {
+    const items = allStates.slice(0, 50).map((x) => ({
       report_id: saved.id,
-      priority: x.count >= 10 ? 'urgent' : x.count >= 5 ? 'high' : 'normal',
+      priority: x.signal_state === 'progressing' || x.count >= 10 ? 'urgent' : x.count >= 5 ? 'high' : 'normal',
       action_status: 'pending',
-      notes: `${x.country || ''} / ${x.zone || ''} — ${x.product || 'Besoin'} — ${x.count} signal(s), ${x.contacts} contact(s) public(s), confiance ${x.confidence}.`
+      notes: `${x.country || ''} / ${x.zone || ''} — ${x.product || 'Besoin'} — ${x.count} signal(s), état ${x.signal_state}, évolution ${x.delta >= 0 ? '+' : ''}${x.delta}, confiance ${x.confidence || 'low'}.`
     }));
     await fetch(`${SUPABASE_URL}/rest/v1/demand_report_items`, {
       method: 'POST', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(items)
     }).catch(() => {});
   }
-  return { persisted: Boolean(saved?.id), report_id: saved?.id || null };
+  return {
+    persisted: Boolean(saved?.id),
+    report_id: saved?.id || null,
+    evolution: {
+      previous_report_id: previous?.id || null,
+      comparable_previous_report: Boolean(previous),
+      new_count: stateCounts.new || 0,
+      progressing_count: stateCounts.progressing || 0,
+      stable_count: stateCounts.stable || 0,
+      declining_count: stateCounts.declining || 0,
+      disappeared_count: stateCounts.disappeared || 0
+    }
+  };
 }
 
 async function generateInternalGeoDemandRadar({hours,locations,products}) {
