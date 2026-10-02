@@ -211,8 +211,7 @@ const MARKET_SYNONYM_GROUPS=[
   ['telephone','phone','smartphone','mobile'],['ordinateur','computer','laptop'],
   ['voiture','car','automobile'],['moto','motorcycle'],['camion','truck'],
   ['maison','house','home'],['meuble','furniture'],['materiel','equipment'],
-  ['machine','machinery'],['solaire','solar'],['panneau','panel'],['batterie','battery'],
-  ['formation','training','course'],['transport','transportation','logistics']
+  ['solaire','solar'],['panneau','panel'],['batterie','battery']
 ];
 const MARKET_ALIAS=new Map();
 for(const group of MARKET_SYNONYM_GROUPS){
@@ -220,16 +219,30 @@ for(const group of MARKET_SYNONYM_GROUPS){
   for(const term of group)MARKET_ALIAS.set(term,canonical);
 }
 function marketCanonicalToken(token){return MARKET_ALIAS.get(token)||token}
-function marketTokens(v){
-  return marketNorm(v).split(' ').filter(x=>x.length>2&&!MARKET_STOP.has(x)).map(marketCanonicalToken);
-}
+function marketRawTokens(v){return marketNorm(v).split(' ').filter(x=>x.length>2&&!MARKET_STOP.has(x))}
+function marketTokens(v){return marketRawTokens(v).map(marketCanonicalToken)}
 function marketUniqueTokens(v){return [...new Set(marketTokens(v))]}
-function marketPhrase(v){
-  return marketNorm(v).split(' ').filter(Boolean).map(marketCanonicalToken).join(' ');
+function marketPhrase(v){return marketNorm(v).split(' ').filter(Boolean).map(marketCanonicalToken).join(' ')}
+function marketSynonymOverlap(demand,content){
+  const dRaw=marketRawTokens(demand), cRaw=marketRawTokens(content);
+  const dCanon=dRaw.map(marketCanonicalToken), cCanon=cRaw.map(marketCanonicalToken);
+  const out=[];
+  for(let i=0;i<dRaw.length;i++){
+    if(dRaw[i]===dCanon[i])continue;
+    if(cCanon.includes(dCanon[i]) && cRaw.some(x=>x!==dCanon[i]&&marketCanonicalToken(x)===dCanon[i])) out.push(dCanon[i]);
+  }
+  return [...new Set(out)];
 }
 function matchMarketplaceOffer(signal,offer){
   const demand=marketNorm(signal.product), title=marketNorm(offer.title), category=marketNorm(offer.category), desc=marketNorm(offer.description);
   if(!demand||!title)return null;
+
+  // Web demand is matchable only when freshness and evidence are actually proven.
+  // Internal memory remains matchable because its temporal scope is already enforced by the observation query.
+  const sourceType=String(signal.source_type||'');
+  const evidenceLevel=String(signal.evidence_level||'E0');
+  const freshness=String(signal.freshness_status||'unknown');
+  if(sourceType==='web' && !((evidenceLevel==='E2'||evidenceLevel==='E3') && freshness==='fresh')) return null;
 
   const dTokens=marketUniqueTokens(demand);
   const tTokens=[...new Set([...marketTokens(title),...marketTokens(category),...marketTokens(desc)])];
@@ -239,44 +252,39 @@ function matchMarketplaceOffer(signal,offer){
   const demandPhrase=marketPhrase(demand);
   const titlePhrase=marketPhrase(title);
   const categoryPhrase=marketPhrase(category);
-  const phrase=!!(demandPhrase&&titlePhrase&&(titlePhrase.includes(demandPhrase)||demandPhrase.includes(titlePhrase)));
+  const phrase=!!(demandPhrase&&titlePhrase&&(titlePhrase===demandPhrase||titlePhrase.includes(demandPhrase)||demandPhrase.includes(titlePhrase)));
   const categoryExact=!!(demandPhrase&&categoryPhrase&&(categoryPhrase===demandPhrase||categoryPhrase.includes(demandPhrase)||demandPhrase.includes(categoryPhrase)));
 
+  // One generic token is deliberately NOT enough for a semantic/category claim.
+  // It may still match when the published title/category contains the exact normalized phrase.
   const strongLexical=dTokens.length>=3
     ? overlap.length>=2&&lexical>=0.5
     : dTokens.length===2
-      ? overlap.length>=2
-      : dTokens.length===1
-        ? overlap.length===1&&dTokens[0].length>=5
-        : false;
+      ? overlap.length===2
+      : false;
   if(!phrase&&!categoryExact&&!strongLexical)return null;
 
-  const geoEqual=(x,y)=>{
-    const aa=marketNorm(x),bb=marketNorm(y);
-    if(!aa||!bb)return false;
-    if(aa===bb)return true;
-    const parts=v=>v.split(/[,|/;]+/).map(z=>marketNorm(z)).filter(Boolean);
-    return parts(aa).includes(bb)||parts(bb).includes(aa);
-  };
-  const demandCountry=marketNorm(signal.country), demandZone=marketNorm(signal.zone);
-  const offerCountry=marketNorm(offer.business?.country), offerCity=marketNorm(offer.business?.city);
-  const geoCountry=geoEqual(demandCountry,offerCountry);
-  const geoZone=geoEqual(demandZone,offerCity);
+  const geoCountry=radarGeoEqual(signal.country,offer.business?.country);
+  const geoZone=radarGeoEqual(signal.zone,offer.business?.city);
+  const synonymOverlap=marketSynonymOverlap(demand,[title,category,desc].join(' '));
 
-  const type=phrase?'exact':categoryExact?'category':(overlap.some(t=>MARKET_ALIAS.has(t))?'synonym':'keyword');
+  // A synonym match must actually cross languages/variants; canonical overlap alone is lexical.
+  const type=phrase?'exact':categoryExact?'category':synonymOverlap.length?'synonym':'keyword';
   const scope=geoZone?'local_zone':geoCountry?'local_country':'cross_region';
-  const confidence=phrase||categoryExact
-    ? (geoZone||geoCountry?'high':'medium')
-    : lexical>=0.75
-      ? (geoZone||geoCountry?'high':'medium')
-      : 'medium';
+  const baseConfidence=phrase||categoryExact?'high':lexical>=0.75?'high':'medium';
+  const confidence=(geoZone||geoCountry)?baseConfidence:(baseConfidence==='high'?'medium':'low');
   const reason=phrase
-    ? 'Correspondance exacte après normalisation multilingue du besoin et du titre publié.'
+    ? 'Correspondance exacte après normalisation du besoin et du contenu publié.'
     : categoryExact
       ? 'Correspondance directe entre le besoin normalisé et la catégorie publiée.'
       : type==='synonym'
-        ? 'Correspondance déterministe via un alias multilingue explicite, sans inférence générative.'
+        ? 'Correspondance déterministe via un alias multilingue explicite réellement présent dans le besoin et l’offre.'
         : 'Recoupement lexical suffisamment fort entre le besoin et le contenu publié.';
+
+  const relevance=Math.min(1,Math.max(0,
+    Math.min(1,lexical)+(phrase?0.35:0)+(categoryExact?0.25:0)+
+    (geoCountry?0.10:0)+(geoZone?0.15:0)+(synonymOverlap.length?0.10:0)
+  ));
 
   return {
     offer_id:offer.id,title:offer.title,product_type:offer.product_type||'physical',
@@ -284,9 +292,9 @@ function matchMarketplaceOffer(signal,offer){
     city:offer.business?.city||'',country:offer.business?.country||'',
     price:offer.price,currency:offer.currency||'XOF',stock:offer.stock,
     match_type:type,match_reason:reason,match_scope:scope,match_confidence:confidence,
-    matched_terms:overlap.slice(0,12),geographic_country_match:geoCountry,
-    geographic_zone_match:geoZone,url:'/product/'+encodeURIComponent(offer.id),
-    relevance:Math.round((Math.min(1,lexical)+(phrase?0.5:0)+(categoryExact?0.35:0)+(geoCountry?0.1:0)+(geoZone?0.15:0))*100)/100
+    matched_terms:overlap.slice(0,12),synonym_terms:synonymOverlap.slice(0,12),
+    geographic_country_match:geoCountry,geographic_zone_match:geoZone,
+    url:'/product/'+encodeURIComponent(offer.id),relevance:Math.round(relevance*100)/100
   };
 }
 async function enrichRadarWithMarketplaceMatching(signals,result,headers){
@@ -301,8 +309,8 @@ async function enrichRadarWithMarketplaceMatching(signals,result,headers){
     return {...signal,market_match_status:has?'matched':'unmatched',market_match_count:matches.length,market_matches:top};
   });
   const demandTotal=current.reduce((n,x)=>n+Number(x.count||0),0);
-  const gaps = enriched.filter(x=>x.market_match_status==='unmatched').map(x=>({product:x.product||null,country:x.country||null,zone:x.zone||null,count:Number(x.count||0),confidence:x.confidence||'low',signal_state:x.signal_state||'new',first_seen:x.first_seen||x.last_seen||null,last_seen:x.last_seen||null,fingerprint:x.fingerprint||null})).sort((a,b)=>b.count-a.count).slice(0,50);
-  return {signals:enriched,marketplace_offer_count:offers.length,matched_signal_count:matchedSignals,unmatched_signal_count:unmatchedSignals,matched_demand_count:matchedDemand,unmatched_demand_count:unmatchedDemand,demand_signal_total:demandTotal,coverage_rate:demandTotal?Math.round(matchedDemand/demandTotal*10000)/100:0,gaps,matching_method:'published Marketplace offers only; deterministic normalized lexical + explicit multilingual synonym matching, with geographic corroboration',matching_version:'v3'};
+  const gaps = enriched.filter(x=>x.market_match_status==='unmatched').map(x=>({product:x.product||null,country:x.country||null,zone:x.zone||null,count:Number(x.count||0),confidence:x.confidence||'low',evidence_level:x.evidence_level||'E0',freshness_status:x.freshness_status||'unknown',signal_state:x.signal_state||'new',first_seen:x.first_seen||x.last_seen||null,last_seen:x.last_seen||null,fingerprint:x.fingerprint||null})).sort((a,b)=>b.count-a.count).slice(0,50);
+  return {signals:enriched,marketplace_offer_count:offers.length,matched_signal_count:matchedSignals,unmatched_signal_count:unmatchedSignals,matched_demand_count:matchedDemand,unmatched_demand_count:unmatchedDemand,demand_signal_total:demandTotal,coverage_rate:demandTotal?Math.round(matchedDemand/demandTotal*10000)/100:0,gaps,matching_method:'published Marketplace offers only; deterministic normalized lexical + explicit multilingual synonym matching; web matches require fresh E2/E3 evidence; geography is corroborative',matching_version:'v4'};
 }
 
 async function persistRadarReport(result) {
@@ -322,6 +330,7 @@ async function persistRadarReport(result) {
       const evidence = Array.isArray(p.evidence) ? p.evidence : [];
       const urls = [...new Set(evidence.map(e => String(e?.source_url || '').trim()).filter(Boolean))];
       const sourceUrl = urls[0] || '';
+      if(sourceType==='web' && p.eligible_for_demand===false) continue;
       const base = {
         product: p.product,
         unit: null,
@@ -429,6 +438,7 @@ async function persistRadarReport(result) {
   topDemands = matching.signals;
   const mergedStates=[...topDemands,...disappeared];
   const sourceBreakdown = {[sourceType]: Number(result.signal_count || 0)};
+  const eligibleDemandCount = zones.reduce((n,z)=>n+(Array.isArray(z.products)?z.products.filter(p=>sourceType!=='web'||p.eligible_for_demand!==false).reduce((m,p)=>m+Number(p.signal_count||0),0):0),0);
 
 const previousGapMap = new Map();
   const historicalGapCounts = new Map();
@@ -457,7 +467,7 @@ const previousGapMap = new Map();
   const payload = {
     period_start: start.toISOString(),
     period_end: now.toISOString(),
-    demand_count: zones.reduce((n, z) => n + Number(z.demand_count || 0), 0),
+    demand_count: sourceType==='web' ? eligibleDemandCount : zones.reduce((n, z) => n + Number(z.demand_count || 0), 0),
     grouped_product_count: Number(result.discovered_count || 0),
     total_quantity: { value: 0 },
     top_demands: mergedStates.slice(0, 100),
@@ -621,7 +631,7 @@ Retourne UNIQUEMENT ce JSON:
   const cleanUrl=(v)=>{try{const u=new URL(String(v||''));return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}};
   const cleanArr=(v,max=20)=>Array.isArray(v)?v.map(x=>cleanWeb(x,max)).filter(Boolean).slice(0,max):[];
   const now=new Date();
-  const zones=safeLocations.map(loc=>{const z=(Array.isArray(parsed.zones)?parsed.zones:[]).find(x=>radarNorm(x.country)===radarNorm(loc.country)&&radarNorm(x.location)===radarNorm(loc.location))||{};return {country:loc.country,location:loc.location,demand_count:Math.max(0,Number(z.demand_count)||0),products:(Array.isArray(z.products)?z.products:[]).map(p=>{const evidence=(Array.isArray(p.evidence)?p.evidence:[]).map(e=>{const date=cleanWeb(e.date,80);const freshness=radarFreshness(date,hours,now);return {text:cleanWeb(e.text,500),source_title:cleanWeb(e.source_title,220),source_url:cleanUrl(e.source_url),date,freshness_status:freshness.status,freshness_hours:freshness.hours,source_date:freshness.source_date,evidence_level:radarEvidenceLevel(e.text,p.intent)}}).filter(e=>e.source_url).slice(0,8);const fresh=evidence.filter(e=>e.freshness_status==='fresh');const freshness_status=fresh.length?'fresh':evidence.some(e=>e.freshness_status==='stale')?'stale':'unknown';const evidence_level=evidence.reduce((best,e)=>({E0:0,E1:1,E2:2,E3:3}[e.evidence_level]||0)>({E0:0,E1:1,E2:2,E3:3}[best]||0)?e.evidence_level:best,evidence[0]?.evidence_level||'E0');return {product:cleanWeb(p.product,180),category:cleanWeb(p.category,120),signal_count:Math.max(0,Number(p.signal_count)||0),intent:cleanWeb(p.intent,280),evidence,communities:(Array.isArray(p.communities)?p.communities:[]).map(x=>({name:cleanWeb(x.name,160),type:cleanWeb(x.type,80),url:cleanUrl(x.url)})).filter(x=>x.name&&x.url).slice(0,8),professional_contacts:(Array.isArray(p.professional_contacts)?p.professional_contacts:[]).map(x=>({organization:cleanWeb(x.organization,180),name:cleanWeb(x.name,140),role:cleanWeb(x.role,120),email:cleanWeb(x.email,180),phone:cleanWeb(x.phone,80),website:cleanUrl(x.website),source_url:cleanUrl(x.source_url),contact_type:'professional_public',contact_relation:'source_context'})).filter(x=>x.organization||x.email||x.phone).slice(0,8),confidence:/^(high|medium|low)$/i.test(String(p.confidence))?String(p.confidence).toLowerCase():'low',evidence_level,freshness_status,last_seen:cleanWeb(p.last_seen,80)};}).filter(p=>p.product&&p.evidence.length).slice(0,50),offers:(Array.isArray(z.offers)?z.offers:[]).map(x=>({product:cleanWeb(x.product,180),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url),date:cleanWeb(x.date,80)})).filter(x=>x.product&&x.source_url).slice(0,30),uncertain:(Array.isArray(z.uncertain)?z.uncertain:[]).map(x=>({product:cleanWeb(x.product,180),reason:cleanWeb(x.reason,350),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url)})).filter(x=>x.product&&x.source_url).slice(0,30)};});
+  const zones=safeLocations.map(loc=>{const z=(Array.isArray(parsed.zones)?parsed.zones:[]).find(x=>radarGeoEqual(x.country,loc.country)&&radarGeoEqual(x.location,loc.location))||{};return {country:loc.country,location:loc.location,demand_count:Math.max(0,Number(z.demand_count)||0),products:(Array.isArray(z.products)?z.products:[]).map(p=>{const evidence=(Array.isArray(p.evidence)?p.evidence:[]).map(e=>{const date=cleanWeb(e.date,80);const freshness=radarFreshness(date,hours,now);return {text:cleanWeb(e.text,500),source_title:cleanWeb(e.source_title,220),source_url:cleanUrl(e.source_url),date,freshness_status:freshness.status,freshness_hours:freshness.hours,source_date:freshness.source_date,evidence_level:radarEvidenceLevel(e.text,p.intent)}}).filter(e=>e.source_url).slice(0,8);const fresh=evidence.filter(e=>e.freshness_status==='fresh');const freshness_status=fresh.length?'fresh':evidence.some(e=>e.freshness_status==='stale')?'stale':'unknown';const evidence_level=evidence.reduce((best,e)=>({E0:0,E1:1,E2:2,E3:3}[e.evidence_level]||0)>({E0:0,E1:1,E2:2,E3:3}[best]||0)?e.evidence_level:best,evidence[0]?.evidence_level||'E0');const eligible_for_demand=freshness_status==='fresh'&&(evidence_level==='E2'||evidence_level==='E3');return {product:cleanWeb(p.product,180),category:cleanWeb(p.category,120),signal_count:Math.max(0,Number(p.signal_count)||0),intent:cleanWeb(p.intent,280),evidence,communities:(Array.isArray(p.communities)?p.communities:[]).map(x=>({name:cleanWeb(x.name,160),type:cleanWeb(x.type,80),url:cleanUrl(x.url)})).filter(x=>x.name&&x.url).slice(0,8),professional_contacts:(Array.isArray(p.professional_contacts)?p.professional_contacts:[]).map(x=>({organization:cleanWeb(x.organization,180),name:cleanWeb(x.name,140),role:cleanWeb(x.role,120),email:cleanWeb(x.email,180),phone:cleanWeb(x.phone,80),website:cleanUrl(x.website),source_url:cleanUrl(x.source_url),contact_type:'professional_public',contact_relation:'source_context'})).filter(x=>x.organization||x.email||x.phone).slice(0,8),confidence:/^(high|medium|low)$/i.test(String(p.confidence))?String(p.confidence).toLowerCase():'low',evidence_level,freshness_status,eligible_for_demand,last_seen:cleanWeb(p.last_seen,80)};}).filter(p=>p.product&&p.evidence.length).slice(0,50),offers:(Array.isArray(z.offers)?z.offers:[]).map(x=>({product:cleanWeb(x.product,180),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url),date:cleanWeb(x.date,80)})).filter(x=>x.product&&x.source_url).slice(0,30),uncertain:(Array.isArray(z.uncertain)?z.uncertain:[]).map(x=>({product:cleanWeb(x.product,180),reason:cleanWeb(x.reason,350),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url)})).filter(x=>x.product&&x.source_url).slice(0,30)};});
   const sources=new Map();for(const z of zones){for(const p of z.products){for(const e of p.evidence)sources.set(e.source_url,{url:e.source_url,title:e.source_title||e.source_url});for(const x of p.communities)sources.set(x.url,{url:x.url,title:x.name});for(const x of p.professional_contacts)if(x.source_url)sources.set(x.source_url,{url:x.source_url,title:x.organization||x.source_url});}for(const x of [...z.offers,...z.uncertain])sources.set(x.source_url,{url:x.source_url,title:x.source_title||x.source_url});}
   const result={ok:true,mode:'geo-radar',hours,locations:safeLocations,products,discovered_count:zones.reduce((n,z)=>n+z.products.length,0),signal_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.signal_count,0),0),community_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.communities.length,0),0),contact_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.professional_contacts.length,0),0),zones,summary:cleanWeb(parsed.summary,1600),sources:[...sources.values()].slice(0,120),generated_at:new Date().toISOString(),search_method:'OpenAI Responses API + web search'};
   const persistence=await persistRadarReport(result).catch((error)=>({persisted:false,reason:error?.message||'radar_persistence_failed'}));
