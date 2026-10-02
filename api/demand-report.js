@@ -35,30 +35,31 @@ async function generateForAdmin({ token, hours, countries, zones, products }) {
 
 async function generateForCron({ hours, countries, zones, products }) {
   if (!SUPABASE_SERVICE_ROLE_KEY) return { ok: false, status: 503, reason: 'supabase_cron_env_missing' };
-  const start = new Date(Date.now() - hours * 60 * 60 * 1000), end = new Date();
-  const headers = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
-  const url = new URL(`${SUPABASE_URL}/rest/v1/demand_observations`);
-  url.searchParams.set('select', 'id,normalized_product,quantity,unit,public_contact,source_platform,location_text,country_code,status,observed_at');
-  url.searchParams.set('observed_at', `gte.${start.toISOString()}`); url.searchParams.append('observed_at', `lte.${end.toISOString()}`); url.searchParams.set('status', 'neq.rejected'); url.searchParams.set('order', 'observed_at.desc');
-  const response = await fetch(url, { headers, cache: 'no-store' });
-  if (!response.ok) return { ok: false, status: 502, reason: `observation_query_failed_${response.status}` };
-  const observations = await response.json();
-  const matches = (value, filters) => !filters.length || filters.some((filter) => String(value || '').toLowerCase().includes(filter.toLowerCase()));
-  const filtered = observations.filter((item) => matches(item.country_code, countries) && matches(item.location_text, zones) && matches(item.normalized_product, products));
-  const groups = new Map();
-  for (const item of filtered) {
-    const key = `${String(item.normalized_product || '').toLowerCase().trim()}|${String(item.unit || '').toLowerCase().trim()}`;
-    if (key === '|') continue;
-    if (!groups.has(key)) groups.set(key, { product: item.normalized_product, unit: item.unit, quantity: 0, count: 0, contacts: 0 });
-    const group = groups.get(key); group.quantity += Number(item.quantity || 0); group.count += 1; if (item.public_contact) group.contacts += 1;
+  const countryList=Array.isArray(countries)?countries.filter(Boolean):[];
+  const zoneList=Array.isArray(zones)?zones.filter(Boolean):[];
+  const locations=[];
+  if(zoneList.length){
+    for(let i=0;i<zoneList.length;i++){
+      const country=countryList.length===1?countryList[0]:(countryList[i]||'');
+      if(country) locations.push({country,location:zoneList[i]});
+    }
+  } else if(countryList.length){
+    // Country-only CRON scopes use the country as the geographic location.
+    for(const country of countryList) locations.push({country,location:country});
   }
-  const clusters = [...groups.values()].sort((a, b) => b.count - a.count || b.quantity - a.quantity);
-  const reportPayload = { period_start: start.toISOString(), period_end: end.toISOString(), demand_count: filtered.length, grouped_product_count: clusters.length, total_quantity: { value: clusters.reduce((sum, item) => sum + item.quantity, 0) }, top_demands: clusters, source_breakdown: filtered.reduce((acc, item) => { const key = item.source_platform || 'unknown'; acc[key] = (acc[key] || 0) + 1; return acc; }, {}), contactable_count: filtered.filter((item) => item.public_contact).length, unresolved_count: filtered.filter((item) => ['detected', 'verified', 'clustered', 'contact_ready'].includes(item.status)).length, report: { generated_by: 'wassafrica-demand-intelligence', hours, scope: { countries, zones, products }, clusters }, generation_status: 'generated' };
-  const reportResponse = await fetch(`${SUPABASE_URL}/rest/v1/demand_reports`, { method: 'POST', headers: { ...headers, Prefer: 'return=representation' }, body: JSON.stringify(reportPayload) });
-  if (!reportResponse.ok) return { ok: false, status: 502, reason: `report_insert_failed_${reportResponse.status}` };
-  const [saved] = await reportResponse.json();
-  if (saved?.id && clusters.length) await fetch(`${SUPABASE_URL}/rest/v1/demand_report_items`, { method: 'POST', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(clusters.map((cluster) => ({ report_id: saved.id, priority: cluster.count >= 10 ? 'urgent' : cluster.count >= 5 ? 'high' : 'normal', action_status: 'pending', notes: `${cluster.count} demande(s), ${cluster.quantity || 0} ${cluster.unit || ''}. Contacts publics détectés: ${cluster.contacts}.` }))) });
-  return { ok: true, report_id: saved?.id || null, window_start: start.toISOString(), window_end: end.toISOString(), hours, scope: { countries, zones, products }, demand_count: filtered.length, cluster_count: clusters.length, total_quantity: clusters.reduce((sum, item) => sum + item.quantity, 0), clusters };
+  if(!locations.length)return {ok:false,status:400,reason:'cron_scope_requires_country_and_zone'};
+  const internal=await generateInternalGeoDemandRadar({hours,locations,products});
+  if(!internal?.ok)return internal;
+  // CRON now follows the same durable Radar V2 pipeline as the manual Radar:
+  // internal memory -> qualification -> temporal history -> Marketplace matching -> gaps -> persistence.
+  const persistence=await persistRadarReport(internal).catch(error=>({persisted:false,reason:error?.message||'cron_persistence_failed'}));
+  return {
+    ...internal,
+    mode:'geo-radar-cron',
+    cron_pipeline:'radar-v2',
+    scope:{countries:countryList,zones:zoneList,products},
+    persistence
+  };
 }
 
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
