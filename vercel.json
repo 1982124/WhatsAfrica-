@@ -182,6 +182,18 @@
       "destination": "/offer-create.html"
     },
     {
+      "source": "/collections",
+      "destination": "/collections-manage.html"
+    },
+    {
+      "source": "/collections/manage",
+      "destination": "/collections-manage.html"
+    },
+    {
+      "source": "/collection/:id",
+      "destination": "/collection.html?id=:id"
+    },
+    {
       "source": "/digital-products",
       "destination": "/offer-create.html?type=digital"
     },
