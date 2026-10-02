@@ -70,7 +70,7 @@ function meta(extra){
   };
 }
 
-function send(e){
+async function send(e){
   const s=session();
   const headers={'apikey':KEY,'Content-Type':'application/json'};
   if(s?.access_token)headers.Authorization='Bearer '+s.access_token;
