@@ -124,10 +124,12 @@ Retourne UNIQUEMENT ce JSON:
 }
 
 function radarNorm(v){return String(v||'').normalize('NFKC').toLowerCase().trim().replace(/\\s+/g,' ');}
-function radarFingerprint(item, sourceUrl=''){
+function radarFingerprint(item){
   const product=radarNorm(item.product), country=radarNorm(item.country), zone=radarNorm(item.zone);
-  const source=radarNorm(sourceUrl);
-  return [product,country,zone,source||'internal'].join('|');
+  return [product,country,zone].join('|');
+}
+function radarEvidenceFingerprint(item, sourceUrl=''){
+  return [radarFingerprint(item),radarNorm(sourceUrl)].join('|');
 }
 function radarScopeComparable(a,b){
   const normScope=(s)=>({locations:(Array.isArray(s?.locations)?s.locations:[]).map(x=>radarNorm((x?.country||'')+'|'+(x?.location||''))).sort(),products:(Array.isArray(s?.products)?s.products:[]).map(radarNorm).sort()});
@@ -138,29 +140,21 @@ function radarComparableWindow(currentHours, previous){
   const h=Number(currentHours||0), ph=Number(previous?.report?.hours||0);
   return h>0 && ph>0 && Math.abs(h-ph)<=Math.max(1,h*0.1);
 }
-async function loadPreviousComparableRadar(result, headers){
+async function loadComparableRadarHistory(result, headers){
   try{
     const url=new URL(SUPABASE_URL+'/rest/v1/demand_reports');
     url.searchParams.set('select','id,period_start,period_end,demand_count,grouped_product_count,top_demands,report,generation_status');
-    url.searchParams.set('generation_status','eq.generated');
-    url.searchParams.set('order','period_end.desc');
-    url.searchParams.set('limit','25');
-    const r=await fetch(url,{headers,cache:'no-store'});
-    if(!r.ok)return null;
-    const rows=await r.json().catch(()=>[]);
-    const currentScope={locations:result.locations||[],products:result.products||[]};
+    url.searchParams.set('generation_status','eq.generated'); url.searchParams.set('order','period_end.desc'); url.searchParams.set('limit','50');
+    const r=await fetch(url,{headers,cache:'no-store'}); if(!r.ok)return [];
+    const rows=await r.json().catch(()=>[]), currentScope={locations:result.locations||[],products:result.products||[]};
     const currentEnd=new Date(result.generated_at||Date.now()).getTime();
-    return rows.find(x=>{
-      if(!x?.period_end)return false;
-      const end=new Date(x.period_end).getTime();
-      if(!Number.isFinite(end)||end>=currentEnd)return false;
-      return radarScopeComparable(currentScope,x.report?.scope) && radarComparableWindow(result.hours,x);
-    })||null;
-  }catch{return null}
+    return rows.filter(x=>{if(!x?.period_end)return false;const end=new Date(x.period_end).getTime();return Number.isFinite(end)&&end<currentEnd&&radarScopeComparable(currentScope,x.report?.scope)&&radarComparableWindow(result.hours,x);});
+  }catch{return []}
 }
+async function loadPreviousComparableRadar(result, headers){const history=await loadComparableRadarHistory(result,headers);return history[0]||null;}
 function extractPreviousSignals(previous){
   const rows=Array.isArray(previous?.top_demands)?previous.top_demands:[];
-  return rows.map(x=>({...x,fingerprint:x.fingerprint||radarFingerprint(x,x.source_url||'')})).filter(x=>x.product&&x.country&&x.zone);
+  return rows.map(x=>({...x,fingerprint:x.fingerprint||radarFingerprint(x)})).filter(x=>x.product&&x.country&&x.zone);
 }
 async function loadPublishedMarketplaceOffers(headers){
   try{
@@ -248,7 +242,7 @@ async function persistRadarReport(result) {
         evidence_count: evidence.length,
         unique_source_count: urls.length
       };
-      base.fingerprint = radarFingerprint(base, sourceUrl);
+      base.fingerprint = radarFingerprint(base);
       candidates.push(base);
     }
   }
@@ -256,7 +250,7 @@ async function persistRadarReport(result) {
   // Exact logical duplicates in one run are merged without inflating their count.
   const dedup = new Map();
   for (const item of candidates) {
-    const key = radarFingerprint(item, item.source_url || '');
+    const key = radarFingerprint(item);
     const existing = dedup.get(key);
     if (!existing) dedup.set(key, item);
     else {
@@ -269,10 +263,13 @@ async function persistRadarReport(result) {
   }
   let topDemands = [...dedup.values()].sort((a,b) => b.count - a.count).slice(0, 100);
 
-  const previous = await loadPreviousComparableRadar(result, headers);
+  const history = await loadComparableRadarHistory(result, headers);
+  const previous = history[0] || null;
   const previousSignals = extractPreviousSignals(previous);
   const previousByFingerprint = new Map(previousSignals.map(x => [x.fingerprint, x]));
   const currentFingerprints = new Set(topDemands.map(x => x.fingerprint));
+  const historicalSignalCounts = new Map();
+  for (const report of history) for (const signal of extractPreviousSignals(report)) historicalSignalCounts.set(signal.fingerprint,(historicalSignalCounts.get(signal.fingerprint)||0)+1);
 
   topDemands = topDemands.map(item => {
     const prev = previousByFingerprint.get(item.fingerprint);
@@ -280,7 +277,8 @@ async function persistRadarReport(result) {
     const cc = Number(item.count || 0);
     const delta = cc - pc;
     const deltaPercent = pc ? Math.round((delta / pc) * 100) : null;
-    let state = prev ? (delta > 0 ? 'progressing' : delta < 0 ? 'declining' : (prev.first_seen && prev.previous_report_id ? 'recurring' : 'stable')) : 'new';
+    const historicalOccurrences=Number(historicalSignalCounts.get(item.fingerprint)||0);
+    let state = prev ? (delta > 0 ? 'progressing' : delta < 0 ? 'declining' : historicalOccurrences>=2 ? 'recurring' : 'stable') : (historicalOccurrences>=2 ? 'recurring' : 'new');
     return {
       ...item,
       signal_state: state,
@@ -315,27 +313,18 @@ async function persistRadarReport(result) {
   const sourceBreakdown = {[sourceType]: Number(result.signal_count || 0)};
 
 const previousGapMap = new Map();
-  try {
-    const prevMatching = previous?.report?.matching || {};
-    for (const g of (Array.isArray(prevMatching.gaps) ? prevMatching.gaps : [])) {
-      const key = radarFingerprint({product:g.product,country:g.country,zone:g.zone}, 'gap');
-      previousGapMap.set(key, g);
-    }
-  } catch {}
-  for (const g of matching.gaps) {
-    const prevGap = previousGapMap.get(radarFingerprint({product:g.product,country:g.country,zone:g.zone}, 'gap'));
-    g.previous_gap_count = Number(prevGap?.count || 0);
-    g.gap_delta = Number(g.count || 0) - g.previous_gap_count;
-    g.gap_state = prevGap ? (g.gap_delta > 0 ? 'progressing' : g.gap_delta < 0 ? 'declining' : 'recurring') : 'new';
-    g.gap_persistence = prevGap ? 'confirmed_previous_period' : 'first_observed';
+  const historicalGapCounts = new Map();
+  for (const report of history) {
+    const gaps=Array.isArray(report?.report?.matching?.gaps)?report.report.matching.gaps:[];
+    for (const g of gaps) { const key=radarFingerprint(g); historicalGapCounts.set(key,(historicalGapCounts.get(key)||0)+1); }
   }
-  // Qualify persistence first, then calculate priority from the resulting observed state.
+  const prevMatching=previous?.report?.matching||{};
+  for (const g of (Array.isArray(prevMatching.gaps)?prevMatching.gaps:[])) previousGapMap.set(radarFingerprint(g),g);
   for (const g of matching.gaps) {
-    const prevGap = previousGapMap.get(radarFingerprint({product:g.product,country:g.country,zone:g.zone}, 'gap'));
-    g.previous_gap_count = Number(prevGap?.count || 0);
-    g.gap_delta = Number(g.count || 0) - g.previous_gap_count;
-    g.gap_state = prevGap ? (g.gap_delta > 0 ? 'progressing' : g.gap_delta < 0 ? 'declining' : 'recurring') : 'new';
-    g.gap_persistence = prevGap ? 'confirmed_previous_period' : 'first_observed';
+    const key=radarFingerprint(g), prevGap=previousGapMap.get(key), occurrences=Number(historicalGapCounts.get(key)||0);
+    g.previous_gap_count=Number(prevGap?.count||0); g.gap_delta=Number(g.count||0)-g.previous_gap_count;
+    g.gap_state=prevGap?(g.gap_delta>0?'progressing':g.gap_delta<0?'declining':occurrences>=2?'recurring':'stable'):(occurrences>=2?'recurring':'new');
+    g.gap_occurrences=occurrences+1; g.gap_persistence=occurrences>=2?'recurrent_history':prevGap?'confirmed_previous_period':'first_observed';
   }
   const gapPriority = (g) => {
     const count=Number(g.count||0), conf=g.confidence==='high'?3:g.confidence==='medium'?2:1;
@@ -376,7 +365,9 @@ const previousGapMap = new Map();
         demand_signal_total: matching.demand_signal_total,
         coverage_rate: matching.coverage_rate,
         matching_method: matching.matching_method,
-        gaps: Array.isArray(matching.gaps) ? matching.gaps : []
+        gaps: Array.isArray(matching.gaps) ? matching.gaps : [],
+        gap_history_reports: history.length,
+        gap_prioritization: matching.gap_prioritization || null
       },
       evolution: {
         previous_report_id: previous?.id || null,
@@ -417,10 +408,13 @@ const previousGapMap = new Map();
       unmatched_demand_count: matching.unmatched_demand_count,
       demand_signal_total: matching.demand_signal_total,
       coverage_rate: matching.coverage_rate,
-      matching_method: matching.matching_method
+      matching_method: matching.matching_method,
+      gaps: Array.isArray(matching.gaps) ? matching.gaps : [],
+      gap_history_reports: history.length
     },
     evolution: {
       previous_report_id: previous?.id || null,
+      comparable_history_count: history.length,
       comparable_previous_report: Boolean(previous),
       new_count: stateCounts.new || 0,
       matching: { matched_signal_count: matching.matched_signal_count, unmatched_signal_count: matching.unmatched_signal_count, coverage_rate: matching.coverage_rate },
