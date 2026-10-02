@@ -201,35 +201,93 @@ async function loadPublishedMarketplaceOffers(headers){
   }catch{return []}
 }
 function marketNorm(v){return String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9\\s]/g,' ').replace(/\\s+/g,' ').trim()}
-const MARKET_STOP=new Set(['de','du','des','la','le','les','un','une','et','a','au','aux','pour','avec','sur','dans','the','of','and','for','to','en','ou','par','from','with']);
-function marketTokens(v){return marketNorm(v).split(' ').filter(x=>x.length>2&&!MARKET_STOP.has(x))}
+
+const MARKET_STOP=new Set(['de','du','des','la','le','les','un','une','et','a','au','aux','pour','avec','sur','dans','the','of','and','for','to','en','ou','par','from','with','dear','please']);
+const MARKET_SYNONYM_GROUPS=[
+  ['riz','rice'],['cereale','cereal','grain'],['mais','corn','maize'],['ble','wheat'],
+  ['tomate','tomatoes','tomato'],['oignon','onions','onion'],['pomme','apple','apples'],
+  ['banane','banana','bananas'],['huile','oil'],['sucre','sugar'],['farine','flour'],
+  ['savon','soap'],['vetement','clothing','apparel'],['chaussure','shoes','footwear'],
+  ['telephone','phone','smartphone','mobile'],['ordinateur','computer','laptop'],
+  ['voiture','car','automobile'],['moto','motorcycle'],['camion','truck'],
+  ['maison','house','home'],['meuble','furniture'],['materiel','equipment'],
+  ['machine','machinery'],['solaire','solar'],['panneau','panel'],['batterie','battery'],
+  ['formation','training','course'],['transport','transportation','logistics']
+];
+const MARKET_ALIAS=new Map();
+for(const group of MARKET_SYNONYM_GROUPS){
+  const canonical=group[0];
+  for(const term of group)MARKET_ALIAS.set(term,canonical);
+}
+function marketCanonicalToken(token){return MARKET_ALIAS.get(token)||token}
+function marketTokens(v){
+  return marketNorm(v).split(' ').filter(x=>x.length>2&&!MARKET_STOP.has(x)).map(marketCanonicalToken);
+}
+function marketUniqueTokens(v){return [...new Set(marketTokens(v))]}
+function marketPhrase(v){
+  return marketNorm(v).split(' ').filter(Boolean).map(marketCanonicalToken).join(' ');
+}
 function matchMarketplaceOffer(signal,offer){
   const demand=marketNorm(signal.product), title=marketNorm(offer.title), category=marketNorm(offer.category), desc=marketNorm(offer.description);
   if(!demand||!title)return null;
-  const dTokens=[...new Set(marketTokens(demand))], tTokens=[...new Set([...marketTokens(title),...marketTokens(category),...marketTokens(desc)])];
+
+  const dTokens=marketUniqueTokens(demand);
+  const tTokens=[...new Set([...marketTokens(title),...marketTokens(category),...marketTokens(desc)])];
   const overlap=dTokens.filter(t=>tTokens.includes(t));
-  const phrase=title.includes(demand)||demand.includes(title);
   const lexical=dTokens.length?overlap.length/dTokens.length:0;
-  const categoryNorm=marketNorm(offer.category);
-  const categoryExact=!!(demand&&categoryNorm&&(categoryNorm===demand||categoryNorm.includes(demand)||demand.includes(categoryNorm)));
-  // Prevent one generic token from creating a false marketplace match.
-  // Exact phrase/category matches remain valid; otherwise require stronger lexical overlap.
-  const strongLexical=dTokens.length>=3?overlap.length>=2&&lexical>=0.5:dTokens.length===2?overlap.length>=2:dTokens.length===1?overlap.length===1&&tTokens.includes(dTokens[0])&&dTokens[0].length>=5:false;
-  if(!phrase && !categoryExact && !strongLexical)return null;
-  const geoEqual=(a,b)=>{
-    const aa=marketNorm(a),bb=marketNorm(b);
+
+  const demandPhrase=marketPhrase(demand);
+  const titlePhrase=marketPhrase(title);
+  const categoryPhrase=marketPhrase(category);
+  const phrase=!!(demandPhrase&&titlePhrase&&(titlePhrase.includes(demandPhrase)||demandPhrase.includes(titlePhrase)));
+  const categoryExact=!!(demandPhrase&&categoryPhrase&&(categoryPhrase===demandPhrase||categoryPhrase.includes(demandPhrase)||demandPhrase.includes(categoryPhrase)));
+
+  const strongLexical=dTokens.length>=3
+    ? overlap.length>=2&&lexical>=0.5
+    : dTokens.length===2
+      ? overlap.length>=2
+      : dTokens.length===1
+        ? overlap.length===1&&dTokens[0].length>=5
+        : false;
+  if(!phrase&&!categoryExact&&!strongLexical)return null;
+
+  const geoEqual=(x,y)=>{
+    const aa=marketNorm(x),bb=marketNorm(y);
     if(!aa||!bb)return false;
     if(aa===bb)return true;
-    const parts=v=>v.split(/[,|/;]+/).map(x=>marketNorm(x)).filter(Boolean);
+    const parts=v=>v.split(/[,|/;]+/).map(z=>marketNorm(z)).filter(Boolean);
     return parts(aa).includes(bb)||parts(bb).includes(aa);
   };
   const demandCountry=marketNorm(signal.country), demandZone=marketNorm(signal.zone);
   const offerCountry=marketNorm(offer.business?.country), offerCity=marketNorm(offer.business?.city);
   const geoCountry=geoEqual(demandCountry,offerCountry);
   const geoZone=geoEqual(demandZone,offerCity);
-  const type=phrase?'exact':categoryExact?'category':'keyword';
-  const reason=phrase?'Le produit publié reprend directement le besoin détecté.':categoryExact?'La catégorie publiée correspond directement au besoin détecté.':'Les mots-clés du besoin recoupent suffisamment le titre ou la description publiée.';
-  return {offer_id:offer.id,title:offer.title,product_type:offer.product_type||'physical',business_name:offer.business?.name||'Vendeur WASSAFRICA',city:offer.business?.city||'',country:offer.business?.country||'',price:offer.price,currency:offer.currency||'XOF',stock:offer.stock,match_type:type,match_reason:reason,geographic_country_match:geoCountry,geographic_zone_match:geoZone,url:'/product/'+encodeURIComponent(offer.id),relevance:Math.round((Math.min(1,lexical)+(phrase?0.5:0)+(geoCountry?0.1:0)+(geoZone?0.15:0))*100)/100};
+
+  const type=phrase?'exact':categoryExact?'category':(overlap.some(t=>MARKET_ALIAS.has(t))?'synonym':'keyword');
+  const scope=geoZone?'local_zone':geoCountry?'local_country':'cross_region';
+  const confidence=phrase||categoryExact
+    ? (geoZone||geoCountry?'high':'medium')
+    : lexical>=0.75
+      ? (geoZone||geoCountry?'high':'medium')
+      : 'medium';
+  const reason=phrase
+    ? 'Correspondance exacte après normalisation multilingue du besoin et du titre publié.'
+    : categoryExact
+      ? 'Correspondance directe entre le besoin normalisé et la catégorie publiée.'
+      : type==='synonym'
+        ? 'Correspondance déterministe via un alias multilingue explicite, sans inférence générative.'
+        : 'Recoupement lexical suffisamment fort entre le besoin et le contenu publié.';
+
+  return {
+    offer_id:offer.id,title:offer.title,product_type:offer.product_type||'physical',
+    business_name:offer.business?.name||'Vendeur WASSAFRICA',
+    city:offer.business?.city||'',country:offer.business?.country||'',
+    price:offer.price,currency:offer.currency||'XOF',stock:offer.stock,
+    match_type:type,match_reason:reason,match_scope:scope,match_confidence:confidence,
+    matched_terms:overlap.slice(0,12),geographic_country_match:geoCountry,
+    geographic_zone_match:geoZone,url:'/product/'+encodeURIComponent(offer.id),
+    relevance:Math.round((Math.min(1,lexical)+(phrase?0.5:0)+(categoryExact?0.35:0)+(geoCountry?0.1:0)+(geoZone?0.15:0))*100)/100
+  };
 }
 async function enrichRadarWithMarketplaceMatching(signals,result,headers){
   const offers=await loadPublishedMarketplaceOffers(headers);
@@ -244,7 +302,7 @@ async function enrichRadarWithMarketplaceMatching(signals,result,headers){
   });
   const demandTotal=current.reduce((n,x)=>n+Number(x.count||0),0);
   const gaps = enriched.filter(x=>x.market_match_status==='unmatched').map(x=>({product:x.product||null,country:x.country||null,zone:x.zone||null,count:Number(x.count||0),confidence:x.confidence||'low',signal_state:x.signal_state||'new',first_seen:x.first_seen||x.last_seen||null,last_seen:x.last_seen||null,fingerprint:x.fingerprint||null})).sort((a,b)=>b.count-a.count).slice(0,50);
-  return {signals:enriched,marketplace_offer_count:offers.length,matched_signal_count:matchedSignals,unmatched_signal_count:unmatchedSignals,matched_demand_count:matchedDemand,unmatched_demand_count:unmatchedDemand,demand_signal_total:demandTotal,coverage_rate:demandTotal?Math.round(matchedDemand/demandTotal*10000)/100:0,gaps,matching_method:'published Marketplace offers only; title/category/description lexical matching with optional geographic corroboration'};
+  return {signals:enriched,marketplace_offer_count:offers.length,matched_signal_count:matchedSignals,unmatched_signal_count:unmatchedSignals,matched_demand_count:matchedDemand,unmatched_demand_count:unmatchedDemand,demand_signal_total:demandTotal,coverage_rate:demandTotal?Math.round(matchedDemand/demandTotal*10000)/100:0,gaps,matching_method:'published Marketplace offers only; deterministic normalized lexical + explicit multilingual synonym matching, with geographic corroboration',matching_version:'v3'};
 }
 
 async function persistRadarReport(result) {
