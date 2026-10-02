@@ -162,6 +162,59 @@ function extractPreviousSignals(previous){
   const rows=Array.isArray(previous?.top_demands)?previous.top_demands:[];
   return rows.map(x=>({...x,fingerprint:x.fingerprint||radarFingerprint(x,x.source_url||'')})).filter(x=>x.product&&x.country&&x.zone);
 }
+async function loadPublishedMarketplaceOffers(headers){
+  try{
+    const url=new URL(SUPABASE_URL+'/rest/v1/products');
+    url.searchParams.set('select','id,title,description,category,product_type,content_kind,business_id,is_published,price,currency,stock,created_at');
+    url.searchParams.set('is_published','eq.true');
+    url.searchParams.set('order','created_at.desc');
+    url.searchParams.set('limit','500');
+    const r=await fetch(url,{headers,cache:'no-store'}); if(!r.ok)return [];
+    const products=await r.json().catch(()=>[]);
+    const ids=[...new Set(products.map(x=>x.business_id).filter(Boolean))];
+    if(!ids.length)return products.map(x=>({...x,business:null}));
+    const bu=new URL(SUPABASE_URL+'/rest/v1/businesses');
+    bu.searchParams.set('select','id,name,city,country');
+    bu.searchParams.set('id','in.('+ids.join(',')+')');
+    const br=await fetch(bu,{headers,cache:'no-store'}); const businesses=br.ok?await br.json().catch(()=>[]):[];
+    const bm=new Map(businesses.map(x=>[x.id,x]));
+    return products.map(x=>({...x,business:bm.get(x.business_id)||null}));
+  }catch{return []}
+}
+function marketNorm(v){return String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9\\s]/g,' ').replace(/\\s+/g,' ').trim()}
+const MARKET_STOP=new Set(['de','du','des','la','le','les','un','une','et','a','au','aux','pour','avec','sur','dans','the','of','and','for','to','en','ou','par','from','with']);
+function marketTokens(v){return marketNorm(v).split(' ').filter(x=>x.length>2&&!MARKET_STOP.has(x))}
+function matchMarketplaceOffer(signal,offer){
+  const demand=marketNorm(signal.product), title=marketNorm(offer.title), category=marketNorm(offer.category), desc=marketNorm(offer.description);
+  if(!demand||!title)return null;
+  const dTokens=[...new Set(marketTokens(demand))], tTokens=[...new Set([...marketTokens(title),...marketTokens(category),...marketTokens(desc)])];
+  const overlap=dTokens.filter(t=>tTokens.includes(t));
+  const phrase=title.includes(demand)||demand.includes(title);
+  const lexical=dTokens.length?overlap.length/dTokens.length:0;
+  if(!phrase && (overlap.length<1 || lexical<0.5))return null;
+  const demandCountry=marketNorm(signal.country), demandZone=marketNorm(signal.zone);
+  const offerCountry=marketNorm(offer.business?.country), offerCity=marketNorm(offer.business?.city);
+  const geoCountry=!!(demandCountry&&offerCountry&&(offerCountry.includes(demandCountry)||demandCountry.includes(offerCountry)));
+  const geoZone=!!(demandZone&&offerCity&&(offerCity.includes(demandZone)||demandZone.includes(offerCity)));
+  const type=phrase?'exact':category&&dTokens.some(t=>marketNorm(category).includes(t))?'category':'keyword';
+  const reason=phrase?'Le produit publié reprend directement le besoin détecté.':type==='category'?'La catégorie publiée recoupe les termes du besoin détecté.':'Les mots-clés du besoin recoupent le titre ou la description publiée.';
+  return {offer_id:offer.id,title:offer.title,product_type:offer.product_type||'physical',business_name:offer.business?.name||'Vendeur WASSAFRICA',city:offer.business?.city||'',country:offer.business?.country||'',price:offer.price,currency:offer.currency||'XOF',stock:offer.stock,match_type:type,match_reason:reason,geographic_country_match:geoCountry,geographic_zone_match:geoZone,url:'/product/'+encodeURIComponent(offer.id),relevance:Math.round((Math.min(1,lexical)+(phrase?0.5:0)+(geoCountry?0.1:0)+(geoZone?0.15:0))*100)/100};
+}
+async function enrichRadarWithMarketplaceMatching(signals,result,headers){
+  const offers=await loadPublishedMarketplaceOffers(headers);
+  const current=(Array.isArray(signals)?signals:[]).filter(x=>x.signal_state!=='disappeared');
+  let matchedSignals=0, matchedDemand=0, unmatchedSignals=0, unmatchedDemand=0;
+  const enriched=current.map(signal=>{
+    const matches=[]; for(const offer of offers){const m=matchMarketplaceOffer(signal,offer);if(m)matches.push(m)}
+    matches.sort((x,y)=>y.relevance-x.relevance||Number(y.geographic_zone_match)-Number(x.geographic_zone_match)||Number(y.geographic_country_match)-Number(x.geographic_country_match));
+    const top=matches.slice(0,3), has=top.length>0;
+    if(has){matchedSignals++;matchedDemand+=Number(signal.count||0)}else{unmatchedSignals++;unmatchedDemand+=Number(signal.count||0)}
+    return {...signal,market_match_status:has?'matched':'unmatched',market_match_count:matches.length,market_matches:top};
+  });
+  const demandTotal=current.reduce((n,x)=>n+Number(x.count||0),0);
+  return {signals:enriched,marketplace_offer_count:offers.length,matched_signal_count:matchedSignals,unmatched_signal_count:unmatchedSignals,matched_demand_count:matchedDemand,unmatched_demand_count:unmatchedDemand,demand_signal_total:demandTotal,coverage_rate:demandTotal?Math.round(matchedDemand/demandTotal*10000)/100:0,matching_method:'published Marketplace offers only; title/category/description lexical matching with optional geographic corroboration'};
+}
+
 async function persistRadarReport(result) {
   if (!SUPABASE_SERVICE_ROLE_KEY || !result?.ok) return { persisted: false, reason: 'service_role_unavailable' };
   const now = new Date();
@@ -255,6 +308,9 @@ async function persistRadarReport(result) {
 
   const allStates = [...topDemands, ...disappeared];
   const stateCounts = allStates.reduce((acc,x)=>{acc[x.signal_state]=(acc[x.signal_state]||0)+1;return acc;},{});
+  const matching = await enrichRadarWithMarketplaceMatching(topDemands,result,headers).catch(()=>({signals:topDemands,marketplace_offer_count:0,matched_signal_count:0,unmatched_signal_count:topDemands.length,matched_demand_count:0,unmatched_demand_count:topDemands.reduce((n,x)=>n+Number(x.count||0),0),demand_signal_total:topDemands.reduce((n,x)=>n+Number(x.count||0),0),coverage_rate:0,matching_method:'matching indisponible'}));
+  topDemands = matching.signals;
+  const mergedStates=[...topDemands,...disappeared];
   const sourceBreakdown = {[sourceType]: Number(result.signal_count || 0)};
 
   const payload = {
@@ -263,7 +319,7 @@ async function persistRadarReport(result) {
     demand_count: zones.reduce((n, z) => n + Number(z.demand_count || 0), 0),
     grouped_product_count: Number(result.discovered_count || 0),
     total_quantity: { value: 0 },
-    top_demands: allStates.slice(0, 100),
+    top_demands: mergedStates.slice(0, 100),
     source_breakdown: sourceBreakdown,
     contactable_count: Number(result.contact_count || 0),
     unresolved_count: Number(result.signal_count || 0),
@@ -277,6 +333,16 @@ async function persistRadarReport(result) {
       summary: result.summary || '',
       generated_at: result.generated_at || now.toISOString(),
       source_type: sourceType,
+      matching: {
+        marketplace_offer_count: matching.marketplace_offer_count,
+        matched_signal_count: matching.matched_signal_count,
+        unmatched_signal_count: matching.unmatched_signal_count,
+        matched_demand_count: matching.matched_demand_count,
+        unmatched_demand_count: matching.unmatched_demand_count,
+        demand_signal_total: matching.demand_signal_total,
+        coverage_rate: matching.coverage_rate,
+        matching_method: matching.matching_method
+      },
       evolution: {
         previous_report_id: previous?.id || null,
         comparable_previous_report: Boolean(previous),
@@ -295,7 +361,7 @@ async function persistRadarReport(result) {
   const saved = (await response.json().catch(() => []))[0];
 
   if (saved?.id && allStates.length) {
-    const items = allStates.slice(0, 50).map((x) => ({
+    const items = mergedStates.slice(0, 50).map((x) => ({
       report_id: saved.id,
       priority: x.signal_state === 'progressing' || x.count >= 10 ? 'urgent' : x.count >= 5 ? 'high' : 'normal',
       action_status: 'pending',
@@ -308,10 +374,21 @@ async function persistRadarReport(result) {
   return {
     persisted: Boolean(saved?.id),
     report_id: saved?.id || null,
+    matching: {
+      marketplace_offer_count: matching.marketplace_offer_count,
+      matched_signal_count: matching.matched_signal_count,
+      unmatched_signal_count: matching.unmatched_signal_count,
+      matched_demand_count: matching.matched_demand_count,
+      unmatched_demand_count: matching.unmatched_demand_count,
+      demand_signal_total: matching.demand_signal_total,
+      coverage_rate: matching.coverage_rate,
+      matching_method: matching.matching_method
+    },
     evolution: {
       previous_report_id: previous?.id || null,
       comparable_previous_report: Boolean(previous),
       new_count: stateCounts.new || 0,
+      matching: { matched_signal_count: matching.matched_signal_count, unmatched_signal_count: matching.unmatched_signal_count, coverage_rate: matching.coverage_rate },
       progressing_count: stateCounts.progressing || 0,
       stable_count: stateCounts.stable || 0,
       declining_count: stateCounts.declining || 0,
