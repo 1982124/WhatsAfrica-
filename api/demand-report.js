@@ -123,6 +123,64 @@ Retourne UNIQUEMENT ce JSON:
   return {ok:true,scope:{countries,zones,products,hours},demand_count:demands.length,signal_count:demands.length+offers.length+uncertain.length,offer_count:offers.length,uncertain_count:uncertain.length,demands:demands.slice(0,30),offers:offers.slice(0,30),uncertain,sources:sources.slice(0,30),summary:cleanWeb(parsed.summary,1200),generated_at:new Date().toISOString(),note:'Les résultats web sont des signaux publics sourcés. Les offres/vendeurs ne sont jamais comptés comme demandes. Une vente réelle doit être confirmée par une transaction ou un signal WassAfrica.',search_method:'OpenAI Responses API + web search'};
 }
 
+async function persistRadarReport(result) {
+  if (!SUPABASE_SERVICE_ROLE_KEY || !result?.ok) return { persisted: false, reason: 'service_role_unavailable' };
+  const now = new Date();
+  const start = new Date(now.getTime() - Number(result.hours || 6) * 60 * 60 * 1000);
+  const zones = Array.isArray(result.zones) ? result.zones : [];
+  const topDemands = zones.flatMap((z) => (Array.isArray(z.products) ? z.products : []).map((p) => ({
+    product: p.product,
+    unit: null,
+    quantity: 0,
+    count: Number(p.signal_count || 0),
+    contacts: Array.isArray(p.professional_contacts) ? p.professional_contacts.length : 0,
+    country: z.country,
+    zone: z.location,
+    confidence: p.confidence || 'low',
+    last_seen: p.last_seen || null
+  }))).sort((a,b) => b.count - a.count).slice(0, 100);
+  const headers = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
+  const payload = {
+    period_start: start.toISOString(),
+    period_end: now.toISOString(),
+    demand_count: zones.reduce((n, z) => n + Number(z.demand_count || 0), 0),
+    grouped_product_count: Number(result.discovered_count || 0),
+    total_quantity: { value: 0 },
+    top_demands: topDemands,
+    source_breakdown: { web: Number(result.signal_count || 0) },
+    contactable_count: Number(result.contact_count || 0),
+    unresolved_count: Number(result.signal_count || 0),
+    report: {
+      generated_by: 'wassafrica-geo-demand-radar',
+      mode: 'geo-radar',
+      hours: Number(result.hours || 6),
+      scope: { locations: result.locations || [], products: result.products || [] },
+      zones,
+      sources: Array.isArray(result.sources) ? result.sources.slice(0, 120) : [],
+      summary: result.summary || '',
+      generated_at: result.generated_at || now.toISOString()
+    },
+    generation_status: 'generated'
+  };
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/demand_reports`, {
+    method: 'POST', headers: { ...headers, Prefer: 'return=representation' }, body: JSON.stringify(payload)
+  });
+  if (!response.ok) return { persisted: false, reason: `report_insert_failed_${response.status}` };
+  const saved = (await response.json().catch(() => []))[0];
+  if (saved?.id && topDemands.length) {
+    const items = topDemands.slice(0, 50).map((x) => ({
+      report_id: saved.id,
+      priority: x.count >= 10 ? 'urgent' : x.count >= 5 ? 'high' : 'normal',
+      action_status: 'pending',
+      notes: `${x.country || ''} / ${x.zone || ''} — ${x.product || 'Besoin'} — ${x.count} signal(s), ${x.contacts} contact(s) public(s), confiance ${x.confidence}.`
+    }));
+    await fetch(`${SUPABASE_URL}/rest/v1/demand_report_items`, {
+      method: 'POST', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(items)
+    }).catch(() => {});
+  }
+  return { persisted: Boolean(saved?.id), report_id: saved?.id || null };
+}
+
 async function generateGeoDemandRadar({hours,locations,products}) {
   const OPENAI_KEY=process.env.OPENAI_API_KEY||process.env.wassAfrica;
   if(!OPENAI_KEY)return {ok:false,status:503,reason:'OPENAI_API_KEY_missing'};
@@ -155,7 +213,9 @@ Retourne UNIQUEMENT ce JSON:
   const cleanArr=(v,max=20)=>Array.isArray(v)?v.map(x=>cleanWeb(x,max)).filter(Boolean).slice(0,max):[];
   const zones=safeLocations.map(loc=>{const z=(Array.isArray(parsed.zones)?parsed.zones:[]).find(x=>String(x.country||'').toLowerCase()===loc.country.toLowerCase()&&String(x.location||'').toLowerCase()===loc.location.toLowerCase())||{};return {country:loc.country,location:loc.location,demand_count:Math.max(0,Number(z.demand_count)||0),products:(Array.isArray(z.products)?z.products:[]).map(p=>({product:cleanWeb(p.product,180),category:cleanWeb(p.category,120),signal_count:Math.max(0,Number(p.signal_count)||0),intent:cleanWeb(p.intent,280),evidence:(Array.isArray(p.evidence)?p.evidence:[]).map(e=>({text:cleanWeb(e.text,500),source_title:cleanWeb(e.source_title,220),source_url:cleanUrl(e.source_url),date:cleanWeb(e.date,80)})).filter(e=>e.source_url).slice(0,8),communities:(Array.isArray(p.communities)?p.communities:[]).map(x=>({name:cleanWeb(x.name,160),type:cleanWeb(x.type,80),url:cleanUrl(x.url)})).filter(x=>x.name&&x.url).slice(0,8),professional_contacts:(Array.isArray(p.professional_contacts)?p.professional_contacts:[]).map(x=>({organization:cleanWeb(x.organization,180),name:cleanWeb(x.name,140),role:cleanWeb(x.role,120),email:cleanWeb(x.email,180),phone:cleanWeb(x.phone,80),website:cleanUrl(x.website),source_url:cleanUrl(x.source_url)})).filter(x=>x.organization||x.email||x.phone).slice(0,8),confidence:/^(high|medium|low)$/i.test(String(p.confidence))?String(p.confidence).toLowerCase():'low',last_seen:cleanWeb(p.last_seen,80)})).filter(p=>p.product&&p.evidence.length).slice(0,50),offers:(Array.isArray(z.offers)?z.offers:[]).map(x=>({product:cleanWeb(x.product,180),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url),date:cleanWeb(x.date,80)})).filter(x=>x.product&&x.source_url).slice(0,30),uncertain:(Array.isArray(z.uncertain)?z.uncertain:[]).map(x=>({product:cleanWeb(x.product,180),reason:cleanWeb(x.reason,350),source_title:cleanWeb(x.source_title,220),source_url:cleanUrl(x.source_url)})).filter(x=>x.product&&x.source_url).slice(0,30)};});
   const sources=new Map();for(const z of zones){for(const p of z.products){for(const e of p.evidence)sources.set(e.source_url,{url:e.source_url,title:e.source_title||e.source_url});for(const x of p.communities)sources.set(x.url,{url:x.url,title:x.name});for(const x of p.professional_contacts)if(x.source_url)sources.set(x.source_url,{url:x.source_url,title:x.organization||x.source_url});}for(const x of [...z.offers,...z.uncertain])sources.set(x.source_url,{url:x.source_url,title:x.source_title||x.source_url});}
-  return {ok:true,mode:'geo-radar',hours,locations:safeLocations,products,discovered_count:zones.reduce((n,z)=>n+z.products.length,0),signal_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.signal_count,0),0),community_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.communities.length,0),0),contact_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.professional_contacts.length,0),0),zones,summary:cleanWeb(parsed.summary,1600),sources:[...sources.values()].slice(0,120),generated_at:new Date().toISOString(),search_method:'OpenAI Responses API + web search'};
+  const result={ok:true,mode:'geo-radar',hours,locations:safeLocations,products,discovered_count:zones.reduce((n,z)=>n+z.products.length,0),signal_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.signal_count,0),0),community_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.communities.length,0),0),contact_count:zones.reduce((n,z)=>n+z.products.reduce((m,p)=>m+p.professional_contacts.length,0),0),zones,summary:cleanWeb(parsed.summary,1600),sources:[...sources.values()].slice(0,120),generated_at:new Date().toISOString(),search_method:'OpenAI Responses API + web search'};
+  const persistence=await persistRadarReport(result).catch((error)=>({persisted:false,reason:error?.message||'radar_persistence_failed'}));
+  return {...result,persistence};
 }
 
 async function generateGlobalDemandRadar({hours,target=100}){
