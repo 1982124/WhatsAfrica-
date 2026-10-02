@@ -314,6 +314,21 @@ async function persistRadarReport(result) {
   const mergedStates=[...topDemands,...disappeared];
   const sourceBreakdown = {[sourceType]: Number(result.signal_count || 0)};
 
+  const previousGapMap = new Map();
+  try {
+    const prevMatching = previous?.report?.matching || {};
+    for (const g of (Array.isArray(prevMatching.gaps) ? prevMatching.gaps : [])) {
+      const key = radarFingerprint({product:g.product,country:g.country,zone:g.zone}, 'gap');
+      previousGapMap.set(key, g);
+    }
+  } catch {}
+  for (const g of matching.gaps) {
+    const prevGap = previousGapMap.get(radarFingerprint({product:g.product,country:g.country,zone:g.zone}, 'gap'));
+    g.previous_gap_count = Number(prevGap?.count || 0);
+    g.gap_delta = Number(g.count || 0) - g.previous_gap_count;
+    g.gap_state = prevGap ? (g.gap_delta > 0 ? 'progressing' : g.gap_delta < 0 ? 'declining' : 'recurring') : 'new';
+    g.gap_persistence = prevGap ? 'confirmed_previous_period' : 'first_observed';
+  }
   const payload = {
     period_start: start.toISOString(),
     period_end: now.toISOString(),
