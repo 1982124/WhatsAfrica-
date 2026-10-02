@@ -104,7 +104,7 @@ RÈGLE ABSOLUE:
 
 Retourne UNIQUEMENT ce JSON:
 {"demands":[{"product":"","location":"","intent":"","evidence":"","source_title":"","source_url":"","date":""}],"offers":[{"product":"","location":"","evidence":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","location":"","reason":"","source_title":"","source_url":""}],"summary":"","search_method":""}`;
-  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'low'}],input:prompt,max_output_tokens:2500})});
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-sol',tools:[{type:'web_search',search_context_size:'low'}],input:prompt,max_output_tokens:2500})});
   const data=await r.json().catch(()=>({}));
   if(!r.ok){
     const providerMessage=String(data?.error?.message||'').toLowerCase();
@@ -253,7 +253,7 @@ RÈGLES:
 
 Retourne UNIQUEMENT ce JSON:
 {"zones":[{"country":"","location":"","demand_count":0,"products":[{"product":"","category":"","signal_count":0,"intent":"","evidence":[{"text":"","source_title":"","source_url":"","date":""}],"communities":[{"name":"","type":"","url":""}],"professional_contacts":[{"organization":"","name":"","role":"","email":"","phone":"","website":"","source_url":""}],"confidence":"high|medium|low","last_seen":""}],"offers":[{"product":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","reason":"","source_title":"","source_url":""}]}],"summary":"","search_method":"OpenAI Responses API + web search"}`;
-  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-sol',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
   const data=await r.json().catch(()=>({}));
   if(!r.ok){const msg=String(data?.error?.message||'').toLowerCase();const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(msg);if(quota){const fallback=await generateInternalGeoDemandRadar({hours,locations: safeLocations,products}).catch(()=>null);if(fallback?.ok)return fallback;}return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};}
   const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\\n'))||'');
@@ -289,7 +289,7 @@ RÈGLES ABSOLUES:
 
 Retourne UNIQUEMENT ce JSON:
 {"products":[{"rank":1,"product":"","category":"","demand_signal_count":0,"demand_intent":"","countries":[],"locations":[],"evidence":[{"text":"","source_title":"","source_url":"","date":""}],"communities":[{"name":"","type":"","url":"","country":""}],"professional_contacts":[{"organization":"","name":"","role":"","email":"","phone":"","website":"","source_url":""}],"confidence":"high|medium|low","last_seen":""}],"offers":[{"product":"","location":"","source_title":"","source_url":"","date":""}],"uncertain":[{"product":"","location":"","reason":"","source_title":"","source_url":""}],"summary":"","search_method":"OpenAI Responses API + web search"}`;
-  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-sol',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
   const data=await r.json().catch(()=>({}));
   if(!r.ok){
     const providerMessage=String(data?.error?.message||'').toLowerCase();
@@ -339,7 +339,7 @@ RÈGLES: décompose le livre en thèmes, sous-thèmes, entités, mots-clés et p
 
 Retourne UNIQUEMENT ce JSON:
 {"book":{"title":"","themes":[],"keywords":[],"audiences":[]},"markets":[{"country":"","location":"","languages":[],"theme":"","demand_signals":0,"interest_type":"","evidence":[{"text":"","source_title":"","source_url":"","date":""}],"communities":[{"name":"","url":"","type":""}],"competition":[{"title":"","source_url":"","date":""}],"coverage_gap":"","adaptation":"","confidence":"high|medium|low","last_seen":""}],"offers":[{"title":"","country":"","source_url":"","date":"","relevance":""}],"uncertain":[{"country":"","theme":"","reason":"","source_url":""}],"summary":"","search_method":"OpenAI Responses API + web search"}`;
-  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-luna',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_DEMAND_WEB_MODEL||'gpt-5.6-sol',tools:[{type:'web_search',search_context_size:'high'}],input:prompt,max_output_tokens:12000})});
   const data=await r.json().catch(()=>({}));
   if(!r.ok){const msg=String(data?.error?.message||'').toLowerCase();const quota=r.status===429||/no credits|insufficient[_ -]?quota|quota|billing|credit balance|rate limit/.test(msg);return {ok:false,status:quota?503:502,reason:quota?'web_quota_exhausted':'web_provider_unavailable'};}
   const outputText=String(data?.output_text||((data?.output||[]).filter(x=>x?.type==='message').flatMap(x=>x?.content||[]).filter(x=>x?.type==='output_text').map(x=>x?.text||'').join('\n'))||'');
