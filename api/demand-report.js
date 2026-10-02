@@ -314,6 +314,29 @@ async function persistRadarReport(result) {
   const mergedStates=[...topDemands,...disappeared];
   const sourceBreakdown = {[sourceType]: Number(result.signal_count || 0)};
 
+  const gapFrequency = new Map();
+  const gapKeys = new Map();
+  for (const g of matching.gaps) {
+    const key = radarFingerprint({product:g.product,country:g.country,zone:g.zone}, 'gap');
+    gapKeys.set(key,g);
+  }
+  const comparableReports = [];
+  if (previous) comparableReports.push(previous);
+  for (const g of matching.gaps) {
+    const key = radarFingerprint({product:g.product,country:g.country,zone:g.zone}, 'gap');
+    gapFrequency.set(key, (gapFrequency.get(key)||0)+1);
+  }
+  // A factual priority is computed only from observed dimensions; it is not a prediction.
+  const gapPriority = (g) => {
+    const count=Number(g.count||0), conf=g.confidence==='high'?3:g.confidence==='medium'?2:1;
+    const persistence=g.gap_persistence==='confirmed_previous_period'?2:1;
+    const state=g.gap_state==='progressing'?2:g.gap_state==='recurring'?2:g.gap_state==='declining'?1:1;
+    return count*3 + conf*2 + persistence*2 + state;
+  };
+  for (const g of matching.gaps) { g.priority_score=gapPriority(g); }
+  matching.gaps.sort((a,b)=>b.priority_score-a.priority_score || b.count-a.count);
+  matching.gaps = matching.gaps.slice(0,50);
+  matching.gap_prioritization={method:'volume + confidence + prior-period persistence + observed evolution', predictive:false};
   const previousGapMap = new Map();
   try {
     const prevMatching = previous?.report?.matching || {};
