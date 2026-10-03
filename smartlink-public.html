@@ -9,6 +9,8 @@ const safe=v=>WAMedia.safe(v);
 const money=(v,c)=>v==null?'Prix sur demande':new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v||0))+' '+(c||'XOF');
 const _parts=location.pathname.split('/').filter(Boolean).map(decodeURIComponent);
 const slug=(_parts[0]==='marche'&&_parts[1]==='boutique')?_parts[2]:(_parts[0]==='smartlink'?_parts[1]:_parts[0]);
+const legacySlugAliases={'jose-abada':'wassa-8bbaa0f3a738'};
+const lookupSlug=legacySlugAliases[slug]||slug;
 let smartLinkId=null;
 const SB='https://dzifpwqrqnvssfhwjccj.supabase.co';
 const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
@@ -40,7 +42,7 @@ function serviceCard(s){
 let stage='bootstrap';
 async function load(){
   stage='public_market_proxy';
-  const links=await query('smart_links',{select:'id,business_id,title,description,slug,is_public',slug:'eq.'+slug,is_public:'eq.true',limit:'1'});
+  const links=await query('smart_links',{select:'id,business_id,title,description,slug,is_public',slug:'eq.'+lookupSlug,is_public:'eq.true',limit:'1'});
   const link=Array.isArray(links)?links[0]:null;
   if(!link)throw Error('NOT_FOUND');
   smartLinkId=link.id;
