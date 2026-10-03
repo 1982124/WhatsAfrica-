@@ -17,6 +17,24 @@ async function validateAdminBearer(auth) {
   return { ok: true, userId: user.id, token };
 }
 
+async function validatePlatformAdmin(token) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_platform_admin`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: '{}'
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || data !== true) {
+    return { ok: false, status: response.status === 401 ? 401 : 403, reason: 'platform_admin_required' };
+  }
+  return { ok: true };
+}
+
 async function generateForAdmin({ token, hours, countries, zones, products }) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_generate_demand_report`, {
     method: 'POST', cache: 'no-store',
@@ -736,6 +754,8 @@ module.exports = async function handler(req, res) {
   else {
     const admin = await validateAdminBearer(auth).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'authorization_error' }));
     if (!admin.ok) return res.status(admin.status).json({ ok: false, error: admin.reason });
+    const platformAdmin = await validatePlatformAdmin(admin.token).catch((error) => ({ ok: false, status: 503, reason: error?.message || 'admin_authorization_error' }));
+    if (!platformAdmin.ok) return res.status(platformAdmin.status).json({ ok: false, error: platformAdmin.reason });
     if (String(req.query?.mode || '') === 'book-radar') {
       result = await generateBookDemandRadar({ hours, title: bookTitle, description: bookDescription, countries, zones, languages }).catch((error) => ({ ok: false, status: 500, reason: error?.message || 'book_radar_search_failed' }));
     } else if (String(req.query?.mode || '') === 'geo-radar') {
