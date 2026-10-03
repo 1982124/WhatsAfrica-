@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   if (!url || !serviceKey) return res.status(503).json({ error: 'Service de téléchargement indisponible.' });
 
   const authHeader = String(req.headers.authorization || '');
-  const match = authHeader.match(/^Bearer\\s+(.+)$/i);
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
   if (!match) return res.status(401).json({ error: 'Connexion requise.' });
 
   try {
@@ -104,7 +104,7 @@ module.exports = async function handler(req, res) {
     const claimed = Array.isArray(claim.data) ? claim.data[0] : claim.data;
     if (!claimed) return res.status(403).json({ error: 'Limite de téléchargements atteinte.' });
 
-    const storagePath = String(asset.digital_storage_path).replace(/^\\/+/, '');
+    const storagePath = String(asset.digital_storage_path).replace(/^\/+/, '');
     const sign = await supabaseFetch(
       url,
       serviceKey,
@@ -119,7 +119,7 @@ module.exports = async function handler(req, res) {
     const signedUrl = sign.data?.signedURL || sign.data?.signedUrl;
     if (!signedUrl) throw new Error('storage_sign_missing_url');
 
-    const absoluteSignedUrl = /^https?:\\/\\//i.test(signedUrl)
+    const absoluteSignedUrl = /^https?:\/\//i.test(signedUrl)
       ? signedUrl
       : `${url}/storage/v1${signedUrl.startsWith('/') ? '' : '/'}${signedUrl}`;
 
