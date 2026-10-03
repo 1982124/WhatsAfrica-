@@ -406,10 +406,6 @@
       "destination": "/seller-rules.html"
     },
     {
-      "source": "/wassafrica",
-      "destination": "/admin-global-command.html"
-    },
-    {
       "source": "/radar",
       "destination": "/admin-global-command.html"
     },
