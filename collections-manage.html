@@ -84,9 +84,7 @@ function card(c){
  '<hr><div class="row"><h3>Bibliothèque de la collection</h3><span id="count'+c.id+'" class="pill">0 ebook</span></div>'+
  '<p class="muted">Ajoutez plusieurs ebooks déjà présents dans votre catalogue. Chaque ebook reste un produit indépendant, avec sa propre page, son propre fichier et son propre prix.</p>'+
  '<div id="items'+c.id+'">Chargement…</div>'+
- '<div class="card" style="background:#faf8f2"><h3>Ajouter des ebooks</h3>
-<p class="muted">Choisissez un ebook déjà créé ci-dessous, ou créez-en un nouveau directement pour cette Collection.</p>
-<p><a class="btn primary" href="/digital-products?type=digital&contentKind=book&collection='+encodeURIComponent(c.id)+'">📚 Créer / déposer un nouvel ebook dans cette Collection</a></p>'+
+ '<div class="card" style="background:#faf8f2"><h3>Ajouter des ebooks</h3>\\n<p class="muted">Choisissez un ebook déjà créé ci-dessous, ou créez-en un nouveau directement pour cette Collection.</p>\\n<p><a class="btn primary" href="/digital-products?type=digital&contentKind=book&collection='+encodeURIComponent(c.id)+'">📚 Créer / déposer un nouvel ebook dans cette Collection</a></p>'+
  '<input id="q'+c.id+'" oninput="products(\''+c.id+'\')" placeholder="Rechercher un ebook déjà créé…">'+
  '<div id="results'+c.id+'"></div>'+
  '<button id="addSelected'+c.id+'" class="btn primary" style="display:none;margin-top:10px" onclick="addSelected(\''+c.id+'\')">Ajouter les ebooks sélectionnés</button>'+
