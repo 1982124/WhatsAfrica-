@@ -35,23 +35,36 @@
 </main>
 
 <script>
-const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,storage:localStorage,storageKey:'whatsafrica-auth'}});
+const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:localStorage,storageKey:'whatsafrica-auth'}});
 let bid=null,userId=null,current=null,step=1,itemsCache=[],searchTimer=null;
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=(n,c='XOF')=>Number(n||0).toLocaleString('fr-FR')+' '+c;
 const cleanQ=v=>(v||'').replace(/[%_]/g,'').trim();
 
-async function init(){
- $('list').textContent='Initialisation du Studio…';
+let booting=false;
+async function bootFromSession(session){
+ if(booting)return; booting=true;
  try{
-  const s=await db.auth.getSession(); if(s.error)throw s.error;
-  if(!s.data.session)return location.href='/auth?next='+encodeURIComponent(location.href);
-  userId=s.data.session.user.id;
+  if(!session){location.href='/auth?next='+encodeURIComponent(location.href);return}
+  userId=session.user.id;
+  $('list').textContent='Chargement de vos collections…';
   const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();
-  if(r.error)throw r.error;if(!r.data){$('list').textContent='Aucune activité commerciale associée.';return}
-  bid=r.data.id;await loadCollections();
- }catch(e){$('list').textContent='Impossible d’initialiser le Studio : '+(e.message||e)}
+  if(r.error)throw r.error;
+  if(!r.data){$('list').textContent='Aucune activité commerciale associée.';return}
+  bid=r.data.id;
+  await loadCollections();
+ }catch(e){
+  $('list').textContent='Impossible de charger vos collections : '+(e.message||e);
+ }finally{booting=false}
+}
+function init(){
+ $('list').textContent='Connexion à votre espace…';
+ db.auth.onAuthStateChange((event,session)=>{
+  if(event==='INITIAL_SESSION'||event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
+   queueMicrotask(()=>bootFromSession(session));
+  }
+ });
 }
 window.addEventListener('error',e=>{if($('list')&&!bid)$('list').textContent='Erreur du Studio : '+(e.message||'JavaScript indisponible.')});
 
