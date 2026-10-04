@@ -73,7 +73,7 @@ function card(c){
  '<div class="field"><label>Âge</label><input id="age'+c.id+'" value="'+esc(c.age_range||'')+'"></div>'+
  '<div class="field"><label>Langue / Région / Catégorie</label><input id="meta'+c.id+'" value="'+esc([c.language,c.region,c.category].filter(Boolean).join(' · '))+'"></div>'+
  '<div class="field"><label>Prix de la collection</label><input id="p'+c.id+'" type="number" min="0" value="'+(c.price??'')+'"></div>'+
- '<div class="field"><label>Devise</label><input id="cur'+c.id+'" value="'+esc(c.currency||'XOF')+'"></div>'+
+ '<div class="field"><label>Devise</label><input id="cur'+c.id+'" value="'+esc(c.currency||'XOF')+'"></div><div class="field"><label>Lien de paiement externe</label><input id="pay'+c.id+'" type="url" inputmode="url" value="'+esc(c.payment_url||'')+'" placeholder="https://… (Maketou, Chariow, etc.)"><small class="muted">Le client sera envoyé vers ce lien pour payer la Collection.</small></div>'+
  '<button class="btn primary" onclick="save(\''+c.id+'\')">Enregistrer</button>'+
  '</div><div>'+
  '<div class="field"><label>Couverture (URL)</label><input id="cover'+c.id+'" value="'+esc(c.cover_url||'')+'" placeholder="https://…"></div>'+
@@ -101,7 +101,7 @@ async function save(id){
  const r=await db.from('product_collections').update({
  name:$('n'+id).value.trim(),subtitle:$('s'+id).value.trim()||null,description:$('d'+id).value.trim()||null,audience:$('a'+id).value.trim()||null,age_range:$('age'+id).value.trim()||null,
  language:meta[0]||null,region:meta[1]||null,category:meta[2]||null,price:$('p'+id).value===''?null:Number($('p'+id).value),
- currency:($('cur'+id).value.trim()||'XOF').toUpperCase(),cover_url:$('cover'+id).value.trim()||null,teaser_video_url:$('teaser'+id).value.trim()||null,presentation_video_url:$('present'+id).value.trim()||null
+ currency:($('cur'+id).value.trim()||'XOF').toUpperCase(),payment_url:$('pay'+id).value.trim()||null,cover_url:$('cover'+id).value.trim()||null,teaser_video_url:$('teaser'+id).value.trim()||null,presentation_video_url:$('present'+id).value.trim()||null
  }).eq('id',id).eq('business_id',bid);
  if(r.error)alert(r.error.message);else load();
 }
