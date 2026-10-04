@@ -1,0 +1,2 @@
+alter table public.product_collections add column if not exists payment_url text;
+alter table public.product_collections add constraint product_collections_payment_url_https_chk check (payment_url is null or payment_url ~ '^https://');
