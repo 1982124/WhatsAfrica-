@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WASSAFRICA — Collection Studio</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(!window.supabase){document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\\/script>')}</script>
 <style>
 body{margin:0;background:#f7f3ea;color:#17231e;font:15px/1.5 system-ui}.wrap{max-width:1120px;margin:auto;padding:18px}
 .card{background:#fff;border:1px solid #ded8ca;border-radius:20px;padding:18px;margin:14px 0}
@@ -29,7 +30,7 @@ input,textarea,select{width:100%;box-sizing:border-box;padding:10px;border:1px s
 <div class="field"><label>Description</label><textarea id="d" rows="3"></textarea></div>
 <div class="field"><label>Public cible</label><input id="a" placeholder="Enfants, étudiants, familles…"></div>
 </div>
-<button class="btn primary" onclick="create()">Créer la collection</button>
+<button id="createBtn" class="btn primary" type="button" onclick="create()">Créer la collection</button>
 </section>
 <div id="list">Chargement…</div>
 </main>
@@ -41,16 +42,25 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 function cleanQ(v){return v.replace(/[%_]/g,'').trim()}
 
 async function init(){
+ $('list').textContent='Initialisation du Studio…';
  const s=await db.auth.getSession();
+ if(s.error)throw s.error;
  if(!s.data.session)return location.href='/auth?next='+encodeURIComponent(location.href);
  userId=s.data.session.user.id;
  const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();
  if(r.error)return $('list').textContent=r.error.message;
  if(!r.data)return $('list').textContent='Aucune activité commerciale associée.';
- bid=r.data.id;load();
+ bid=r.data.id;await load();
+ $('createBtn').disabled=false;
 }
 
+window.addEventListener('error',e=>{ if($('list')) $('list').textContent='Erreur du Studio : '+(e.message||'JavaScript indisponible. Rechargez la page.'); });
+
 async function create(){
+ if(!bid){
+  try{await init().catch(e=>{console.error(e);$('list').textContent='Impossible de charger le Collection Studio : '+(e.message||e);});}catch(e){$('list').textContent='Impossible d’initialiser le Studio : '+(e.message||e);return;}
+ }
+ if(!bid)return;
  if(!$('n').value.trim())return alert('Nom requis.');
  const r=await db.from('product_collections').insert({business_id:bid,name:$('n').value.trim(),subtitle:$('s').value.trim()||null,description:$('d').value.trim()||null,audience:$('a').value.trim()||null,is_published:false});
  if(r.error)alert(r.error.message);else{ $('n').value='';$('s').value='';$('d').value='';$('a').value='';load(); }
