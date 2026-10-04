@@ -42,11 +42,6 @@
       "destination": "/marche",
       "permanent": false
     },
-    {
-      "source": "/vitrine",
-      "destination": "/smartlink",
-      "permanent": false
-    }
   ],
   "rewrites": [
     {
@@ -144,6 +139,10 @@
     {
       "source": "/smartlink",
       "destination": "/smartlink-free-v3.html"
+    },
+    {
+      "source": "/vitrine",
+      "destination": "/business-vitrine-v3.html"
     },
     {
       "source": "/smartlink-ai",
