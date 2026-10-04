@@ -3,8 +3,6 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WASSAFRICA — Collection Studio</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>if(!window.supabase){document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\\/script>')}</script>
 <style>
 :root{--ink:#17231e;--green:#173d2d;--paper:#f7f3ea;--line:#ded8ca;--soft:#f4f1e9}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:980px;margin:auto;padding:22px 18px 60px}
@@ -25,7 +23,7 @@
 <span class="muted">Créez l’offre ici, puis ajoutez vos ebooks.</span>
 </header>
 
-<section id="collections" class="card"><div class="row"><h2 style="margin:0">Mes collections</h2><button class="btn primary" type="button" onclick="startNew()">+ Nouvelle collection</button></div><div id="list" class="muted" style="margin-top:12px">Initialisation…</div></section>
+<section id="collections" class="card"><div class="row"><h2 style="margin:0">Mes collections</h2><button class="btn primary" type="button" onclick="startNew()">+ Nouvelle collection</button></div><div id="list" class="muted" style="margin-top:12px">Connexion à votre espace…</div></section>
 
 <section id="studio" class="card" style="display:none">
 <div class="row"><div><h2 id="studioTitle" style="margin:0">Nouvelle collection</h2><div id="progress" class="progress-note"></div></div><button class="btn" type="button" onclick="closeStudio()">← Mes collections</button></div>
@@ -35,37 +33,27 @@
 </main>
 
 <script>
-const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:localStorage,storageKey:'whatsafrica-auth'}});
+const SUPA_URL='https://dzifpwqrqnvssfhwjccj.supabase.co';
+const SUPA_KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+const AUTH_KEY='whatsafrica-auth';
+const API_TIMEOUT=12000;
+let accessToken=null,refreshToken=null,session=null;
+function apiError(status,message){return {error:{message:message||('Supabase HTTP '+status),status},data:null}};
+function readStoredSession(){try{const raw=localStorage.getItem(AUTH_KEY);if(!raw)return null;const p=JSON.parse(raw);return p?.currentSession||p?.session||p||null}catch{return null}}
+function storeSession(s){session=s;accessToken=s?.access_token||null;refreshToken=s?.refresh_token||null;if(s)localStorage.setItem(AUTH_KEY,JSON.stringify(s))}
+async function refreshSession(){if(!refreshToken)return null;const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),API_TIMEOUT);try{const r=await fetch(SUPA_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:refreshToken}),signal:ctrl.signal});const j=await r.json().catch(()=>({}));if(!r.ok||!j.access_token)throw new Error(j.msg||j.message||'Impossible de renouveler la session.');storeSession(j);return j}finally{clearTimeout(timer)}}
+async function request(path,{method='GET',body,headers={},prefer}={}){const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),API_TIMEOUT);try{const h={apikey:SUPA_KEY,Authorization:'Bearer '+(accessToken||SUPA_KEY),...headers};if(body!==undefined)h['Content-Type']='application/json';if(prefer)h.Prefer=prefer;let r=await fetch(SUPA_URL+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),signal:ctrl.signal});if(r.status===401&&refreshToken){await refreshSession();h.Authorization='Bearer '+(accessToken||SUPA_KEY);r=await fetch(SUPA_URL+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body),signal:ctrl.signal})}const text=await r.text(),data=text?JSON.parse(text):null;if(!r.ok)return apiError(r.status,data?.message||data?.msg||data?.hint||text||'Erreur Supabase.');return {data,error:null}}catch(e){return apiError(0,e.name==='AbortError'?'La requête Supabase a dépassé 12 secondes.':e.message)}finally{clearTimeout(timer)}}
+function builder(table,method='GET',payload=null){const q={table,method,payload,select:'*',filters:[],orders:[],limit:null,mode:null};const b={select(cols='*'){q.select=cols;return b},eq(col,val){q.filters.push([col,'eq',val]);return b},ilike(col,val){q.filters.push([col,'ilike',val]);return b},order(col,{ascending=true}={}){q.orders.push(col+'.'+(ascending?'asc':'desc'));return b},limit(n){q.limit=n;return b},maybeSingle(){q.mode='maybe';return execute(q)},single(){q.mode='single';return execute(q)},then(resolve,reject){return execute(q).then(resolve,reject)}};return b}
+async function execute(q){const qs=new URLSearchParams();if(q.method==='GET'){qs.set('select',q.select);for(const [c,op,v] of q.filters)qs.set(c,op+'.'+v);if(q.orders.length)qs.set('order',q.orders.join(','));if(q.limit!=null)qs.set('limit',q.limit)}else for(const [c,op,v] of q.filters)qs.set(c,op+'.'+v);const path='/rest/v1/'+q.table+(qs.toString()?'?'+qs.toString():'');const r=await request(path,{method:q.method,body:q.payload,prefer:q.method==='POST'||q.method==='PATCH'?'return=representation':undefined});if(r.error)return r;let data=r.data;if(q.mode==='single'){if(!Array.isArray(data)||data.length!==1)return apiError(406,'Résultat inattendu : une seule ligne était attendue.');data=data[0]}else if(q.mode==='maybe'){if(!Array.isArray(data))return apiError(500,'Résultat Supabase inattendu.');if(data.length>1)return apiError(406,'Plusieurs lignes correspondent à cette recherche.');data=data[0]||null}return {data,error:null}}
+const db={from(table){return {select(cols='*'){return builder(table,'GET').select(cols)},insert(payload){return builder(table,'POST',payload)},update(payload){return builder(table,'PATCH',payload)},delete(){return builder(table,'DELETE')}}},storage:{from(bucket){return {async upload(path,file,opts={}){const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),30000);try{const r=await fetch(SUPA_URL+'/storage/v1/object/'+bucket+'/'+path.split('/').map(encodeURIComponent).join('/'),{method:'POST',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+(accessToken||SUPA_KEY),'Content-Type':opts.contentType||file.type||'application/octet-stream','x-upsert':opts.upsert?'true':'false'},body:file,signal:ctrl.signal});const j=await r.json().catch(()=>({}));if(!r.ok)return {data:null,error:{message:j.message||j.error||'Upload impossible.'}};return {data:{path},error:null}}catch(e){return {data:null,error:{message:e.name==='AbortError'?'Upload trop long.':e.message}}}finally{clearTimeout(timer)}},getPublicUrl(path){return {data:{publicUrl:SUPA_URL+'/storage/v1/object/public/'+bucket+'/'+path.split('/').map(encodeURIComponent).join('/')}}}}}};
 let bid=null,userId=null,current=null,step=1,itemsCache=[],searchTimer=null;
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=(n,c='XOF')=>Number(n||0).toLocaleString('fr-FR')+' '+c;
 const cleanQ=v=>(v||'').replace(/[%_]/g,'').trim();
-
 let booting=false;
-async function bootFromSession(session){
- if(booting)return; booting=true;
- try{
-  if(!session){location.href='/auth?next='+encodeURIComponent(location.href);return}
-  userId=session.user.id;
-  $('list').textContent='Chargement de vos collections…';
-  const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();
-  if(r.error)throw r.error;
-  if(!r.data){$('list').textContent='Aucune activité commerciale associée.';return}
-  bid=r.data.id;
-  await loadCollections();
- }catch(e){
-  $('list').textContent='Impossible de charger vos collections : '+(e.message||e);
- }finally{booting=false}
-}
-function init(){
- $('list').textContent='Connexion à votre espace…';
- db.auth.onAuthStateChange((event,session)=>{
-  if(event==='INITIAL_SESSION'||event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
-   queueMicrotask(()=>bootFromSession(session));
-  }
- });
-}
+async function bootFromSession(s){if(booting)return;booting=true;try{if(!s){location.href='/auth?next='+encodeURIComponent(location.href);return}storeSession(s);userId=s.user.id;$('list').textContent='Chargement de vos collections…';const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();if(r.error)throw r.error;if(!r.data){$('list').textContent='Aucune activité commerciale associée.';return}bid=r.data.id;await loadCollections()}catch(e){$('list').textContent='Impossible de charger vos collections : '+(e.message||e)}finally{booting=false}}
+async function init(){$('list').textContent='Connexion à votre espace…';let s=readStoredSession();if(s?.access_token){storeSession(s);const exp=Number(s.expires_at||0)*1000;if(exp&&exp<Date.now()+60000)s=await refreshSession().catch(()=>null)}if(!s?.access_token){location.href='/auth?next='+encodeURIComponent(location.href);return}await bootFromSession(s);window.addEventListener('storage',e=>{if(e.key===AUTH_KEY){const next=readStoredSession();if(next?.access_token&&next.access_token!==accessToken)bootFromSession(next)}})}
 window.addEventListener('error',e=>{if($('list')&&!bid)$('list').textContent='Erreur du Studio : '+(e.message||'JavaScript indisponible.')});
 
 async function loadCollections(){
@@ -112,8 +100,8 @@ async function saveBasics(){
 }
 
 async function paneBooks(){
- await loadItems();
  $('pane').innerHTML='<h3>Quels ebooks voulez-vous vendre ensemble ?</h3><p class="muted">Cochez les livres. Ils restent vendables séparément et seront simplement regroupés dans cette offre.</p><div class="row"><b>'+itemsCache.length+' ebook'+(itemsCache.length>1?'s':'')+' dans la collection</b><a class="btn primary" href="/digital-products?type=digital&contentKind=book&collection='+encodeURIComponent(current.id)+'">📚 Créer un ebook</a></div><div id="selectedList" style="margin-top:10px">'+renderSelected()+'</div><div class="searchrow" style="margin-top:15px"><input id="pq" placeholder="Rechercher un ebook publié…" oninput="scheduleSearch()"><button class="btn" type="button" onclick="searchProducts()">Rechercher</button></div><div id="results" class="product-grid"></div><button id="addPending" class="btn primary" type="button" style="display:none;margin-top:10px" onclick="addPending()">Ajouter les ebooks sélectionnés</button><div class="actions"><button class="btn" type="button" onclick="setStep(1)">← Retour</button><button class="btn primary" type="button" onclick="setStep(3)">Prix et publication →</button></div>';
+ loadItems().then(()=>{ $('selectedList').innerHTML=renderSelected(); searchProducts(); }).catch(e=>{ $('results').textContent='Impossible de charger les ebooks : '+(e.message||e); });
 }
 async function loadItems(){
  const r=await db.from('product_collection_items').select('id,product_id,sort_order,products(id,title,price,currency,image_url)').eq('collection_id',current.id).order('sort_order',{ascending:true});
@@ -149,7 +137,7 @@ async function moveItem(itemId,delta){
 function panePublish(){
  const total=itemsCache.reduce((n,x)=>n+Number(x.products?.price||0),0),price=current.price; const suggested=total>0?Math.round((total*0.6)/100)*100:null;
  const ok=itemsCache.length>=2;
- $('pane').innerHTML='<h3>Prix et publication</h3><div class="summary"><div>Valeur séparée des ebooks</div><div class="price">'+money(total,current.currency||'XOF')+'</div><div class="muted">Prix conseillé indicatif pour créer une offre attractive.</div>'+ (suggested?'<div style="margin-top:8px"><b>Prix conseillé : '+money(suggested,current.currency||'XOF')+'</b> <button class="btn" type="button" onclick="$('cp').value='+suggested+'">Utiliser</button></div>':'') +'</div><div class="field"><label>Prix de la collection</label><input id="cp" type="number" min="0" value="'+(price??'')+'" placeholder="Ex. 10000"></div><div class="field"><label>Devise</label><input id="ccur" value="'+esc(current.currency||'XOF')+'" placeholder="XOF"></div><div class="checklist"><div class="check '+(ok?'ok':'bad')+'">'+(ok?'✓':'○')+' Au moins 2 ebooks dans la collection</div><div class="check">✓ Les ebooks sélectionnés doivent être publiés pour pouvoir publier la collection</div></div><details><summary>Options avancées (facultatives)</summary><div class="advanced-grid"><div class="field"><label>Sous-titre</label><input id="cs" value="'+esc(current.subtitle||'')+'"></div><div class="field"><label>Public cible</label><input id="ca" value="'+esc(current.audience||'')+'"></div><div class="field"><label>Âge</label><input id="cage" value="'+esc(current.age_range||'')+'"></div><div class="field"><label>Langue</label><input id="clang" value="'+esc(current.language||'')+'"></div><div class="field"><label>Région</label><input id="creg" value="'+esc(current.region||'')+'"></div><div class="field"><label>Catégorie</label><input id="ccat" value="'+esc(current.category||'')+'"></div><div class="field"><label>Lien de paiement externe</label><input id="cpay" type="url" value="'+esc(current.payment_url||'')+'" placeholder="https://…"></div><div class="field"><label>Couverture URL</label><input id="coverAdv" type="url" value="'+esc(current.cover_url||'')+'"></div><div class="field"><label>Teaser vidéo URL</label><input id="teaser" type="url" value="'+esc(current.teaser_video_url||'')+'"></div><div class="field"><label>Présentation vidéo URL</label><input id="present" type="url" value="'+esc(current.presentation_video_url||'')+'"></div></div></details><div class="actions"><button class="btn" type="button" onclick="setStep(2)">← Ebooks</button><div style="display:flex;gap:8px"><a class="btn" href="/collection/'+encodeURIComponent(current.id)+'?preview=1" target="_blank">👀 Aperçu de vente</a><button class="btn" type="button" onclick="previewCollection()">👀 Aperçu de vente</button><button class="btn" type="button" onclick="saveOffer(false)">Enregistrer</button><button class="btn primary" type="button" onclick="saveOffer(true)" '+(ok?'':'disabled')+'>'+(current.is_published?'Mettre à jour la publication':'Publier la collection')+'</button></div></div>';
+ $('pane').innerHTML='<h3>Prix et publication</h3><div class="summary"><div>Valeur séparée des ebooks</div><div class="price">'+money(total,current.currency||'XOF')+'</div><div class="muted">Prix conseillé indicatif pour créer une offre attractive.</div>'+ (suggested?'<div style="margin-top:8px"><b>Prix conseillé : '+money(suggested,current.currency||'XOF')+'</b> <button class="btn" type="button" onclick="$('cp').value='+suggested+'">Utiliser</button></div>':'') +'</div><div class="field"><label>Prix de la collection</label><input id="cp" type="number" min="0" value="'+(price??'')+'" placeholder="Ex. 10000"></div><div class="field"><label>Devise</label><input id="ccur" value="'+esc(current.currency||'XOF')+'" placeholder="XOF"></div><div class="checklist"><div class="check '+(ok?'ok':'bad')+'">'+(ok?'✓':'○')+' Au moins 2 ebooks dans la collection</div><div class="check">✓ Les ebooks sélectionnés doivent être publiés pour pouvoir publier la collection</div></div><details><summary>Options avancées (facultatives)</summary><div class="advanced-grid"><div class="field"><label>Sous-titre</label><input id="cs" value="'+esc(current.subtitle||'')+'"></div><div class="field"><label>Public cible</label><input id="ca" value="'+esc(current.audience||'')+'"></div><div class="field"><label>Âge</label><input id="cage" value="'+esc(current.age_range||'')+'"></div><div class="field"><label>Langue</label><input id="clang" value="'+esc(current.language||'')+'"></div><div class="field"><label>Région</label><input id="creg" value="'+esc(current.region||'')+'"></div><div class="field"><label>Catégorie</label><input id="ccat" value="'+esc(current.category||'')+'"></div><div class="field"><label>Lien de paiement externe</label><input id="cpay" type="url" value="'+esc(current.payment_url||'')+'" placeholder="https://…"></div><div class="field"><label>Couverture URL</label><input id="coverAdv" type="url" value="'+esc(current.cover_url||'')+'"></div><div class="field"><label>Teaser vidéo URL</label><input id="teaser" type="url" value="'+esc(current.teaser_video_url||'')+'"></div><div class="field"><label>Présentation vidéo URL</label><input id="present" type="url" value="'+esc(current.presentation_video_url||'')+'"></div></div></details><div class="actions"><button class="btn" type="button" onclick="setStep(2)">← Ebooks</button><div style="display:flex;gap:8px"><button class="btn" type="button" onclick="previewCollection()">👀 Aperçu de vente</button><button class="btn" type="button" onclick="saveOffer(false)">Enregistrer</button><button class="btn primary" type="button" onclick="saveOffer(true)" '+(ok?'':'disabled')+'>'+(current.is_published?'Mettre à jour la publication':'Publier la collection')+'</button></div></div>';
 }
 async function saveOffer(publish){
  const payload={price:$('cp').value===''?null:Number($('cp').value),currency:($('ccur').value.trim()||'XOF').toUpperCase(),subtitle:$('cs')?.value.trim()||null,audience:$('ca')?.value.trim()||null,age_range:$('cage')?.value.trim()||null,language:$('clang')?.value.trim()||null,region:$('creg')?.value.trim()||null,category:$('ccat')?.value.trim()||null,payment_url:$('cpay')?.value.trim()||null,cover_url:$('coverAdv')?.value.trim()||current.cover_url||null,teaser_video_url:$('teaser')?.value.trim()||null,presentation_video_url:$('present')?.value.trim()||null};
