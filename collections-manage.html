@@ -76,9 +76,9 @@ function card(c){
  '<div class="field"><label>Devise</label><input id="cur'+c.id+'" value="'+esc(c.currency||'XOF')+'"></div><div class="field"><label>Lien de paiement externe</label><input id="pay'+c.id+'" type="url" inputmode="url" value="'+esc(c.payment_url||'')+'" placeholder="https://… (Maketou, Chariow, etc.)"><small class="muted">Le client sera envoyé vers ce lien pour payer la Collection.</small></div>'+
  '<button class="btn primary" onclick="save(\''+c.id+'\')">Enregistrer</button>'+
  '</div><div>'+
- '<div class="field"><label>Couverture (URL)</label><input id="cover'+c.id+'" value="'+esc(c.cover_url||'')+'" placeholder="https://…"></div>'+
- '<div class="field"><label>Teaser vidéo (URL)</label><input id="teaser'+c.id+'" value="'+esc(c.teaser_video_url||'')+'" placeholder="URL MP4/WebM"></div>'+
- '<div class="field"><label>Présentation vidéo (URL)</label><input id="present'+c.id+'" value="'+esc(c.presentation_video_url||'')+'" placeholder="URL MP4/WebM"></div>'+
+ '<div class="field"><label>Couverture (URL ou fichier)</label><input id="cover'+c.id+'" value="'+esc(c.cover_url||'')+'" placeholder="https://…"><input id="coverFile'+c.id+'" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-top:6px"><small class="muted">Choisissez une image ou gardez une URL.</small></div>'+
+ '<div class="field"><label>Teaser vidéo</label><input id="teaser'+c.id+'" value="'+esc(c.teaser_video_url||'')+'" placeholder="URL MP4/WebM"><input id="teaserFile'+c.id+'" type="file" accept="video/mp4,video/webm,video/quicktime" style="margin-top:6px"><small class="muted">Courte vidéo d’accroche · 50 Mo maximum.</small></div>'+
+ '<div class="field"><label>Présentation vidéo</label><input id="present'+c.id+'" value="'+esc(c.presentation_video_url||'')+'" placeholder="URL MP4/WebM"><input id="presentFile'+c.id+'" type="file" accept="video/mp4,video/webm,video/quicktime" style="margin-top:6px"><small class="muted">Présentation complète · 50 Mo maximum.</small></div>'+
  '<button class="btn" onclick="save(\''+c.id+'\')">Enregistrer les médias</button>'+
  '</div></div>'+
  '<hr><div class="row"><h3>Bibliothèque de la collection</h3><span id="count'+c.id+'" class="pill">0 ebook</span></div>'+
@@ -98,12 +98,22 @@ function card(c){
 
 async function save(id){
  const meta=$('meta'+id).value.split('·').map(x=>x.trim()).filter(Boolean);
- const r=await db.from('product_collections').update({
- name:$('n'+id).value.trim(),subtitle:$('s'+id).value.trim()||null,description:$('d'+id).value.trim()||null,audience:$('a'+id).value.trim()||null,age_range:$('age'+id).value.trim()||null,
- language:meta[0]||null,region:meta[1]||null,category:meta[2]||null,price:$('p'+id).value===''?null:Number($('p'+id).value),
- currency:($('cur'+id).value.trim()||'XOF').toUpperCase(),payment_url:$('pay'+id).value.trim()||null,cover_url:$('cover'+id).value.trim()||null,teaser_video_url:$('teaser'+id).value.trim()||null,presentation_video_url:$('present'+id).value.trim()||null
- }).eq('id',id).eq('business_id',bid);
- if(r.error)alert(r.error.message);else load();
+ const uploadPublic=async(bucket,path,file,max)=>{if(!file)return null;if(file.size>max)throw Error('Fichier trop volumineux : '+file.name);const r=await db.storage.from(bucket).upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});if(r.error)throw r.error;return db.storage.from(bucket).getPublicUrl(path).data.publicUrl};
+ try{
+  let coverUrl=$('cover'+id).value.trim()||null, teaserUrl=$('teaser'+id).value.trim()||null, presentUrl=$('present'+id).value.trim()||null;
+  const base=userId+'/collections/'+id+'/';
+  const cf=$('coverFile'+id)?.files?.[0], tf=$('teaserFile'+id)?.files?.[0], pf=$('presentFile'+id)?.files?.[0];
+  if(cf)coverUrl=await uploadPublic('public-media',base+'cover-'+crypto.randomUUID(),cf,10*1024*1024);
+  if(tf)teaserUrl=await uploadPublic('product-video-media',base+'teaser-'+crypto.randomUUID(),tf,50*1024*1024);
+  if(pf)presentUrl=await uploadPublic('product-video-media',base+'presentation-'+crypto.randomUUID(),pf,50*1024*1024);
+  const r=await db.from('product_collections').update({
+   name:$('n'+id).value.trim(),subtitle:$('s'+id).value.trim()||null,description:$('d'+id).value.trim()||null,audience:$('a'+id).value.trim()||null,age_range:$('age'+id).value.trim()||null,
+   language:meta[0]||null,region:meta[1]||null,category:meta[2]||null,price:$('p'+id).value===''?null:Number($('p'+id).value),
+   currency:($('cur'+id).value.trim()||'XOF').toUpperCase(),payment_url:$('pay'+id).value.trim()||null,cover_url:coverUrl,teaser_video_url:teaserUrl,presentation_video_url:presentUrl
+  }).eq('id',id).eq('business_id',bid);
+  if(r.error)throw r.error;
+  load();
+ }catch(e){alert(e.message||'Enregistrement impossible.')}
 }
 
 async function publish(id,v){
