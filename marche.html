@@ -270,7 +270,10 @@ async function load(){
   const productRows=products.map(x=>{
    const b=byId.get(x.business_id)||{},type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
-   return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:isSmartLink?(b.cover_image_url||x.image_url):x.image_url,isRealImage:isSmartLink&&Boolean(b.cover_image_url),coverImage:isVitrine?b.cover_image_url:null,logoImage:isVitrine?b.logo_url:null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
+   // Product media is authoritative. Never replace a WASSAFRICA product visual with a seller cover/map.
+   // Seller cover/logo are used only for an actual marketplace vitrine card.
+   const authoritativeImage=x.image_url||'';
+   return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
   });
   const serviceRows=servicesRaw.map(x=>{
    const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg',isVitrine=norm(x.title).includes('vitrine');
