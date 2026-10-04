@@ -166,6 +166,10 @@
       "destination": "/demo-business.html"
     },
     {
+      "source": "/wassafrica",
+      "destination": "/wassafrica-official.html"
+    },
+    {
       "source": "/presentation",
       "destination": "/presentation.html"
     },
