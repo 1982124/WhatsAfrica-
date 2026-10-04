@@ -82,7 +82,7 @@ function card(c){
  '<button class="btn" onclick="save(\''+c.id+'\')">Enregistrer les médias</button>'+
  '</div></div>'+
  '<hr><div class="row"><h3>Bibliothèque de la collection</h3><span id="count'+c.id+'" class="pill">0 ebook</span></div>'+
- '<p class="muted">Ajoutez plusieurs ebooks déjà présents dans votre catalogue. Chaque ebook reste un produit indépendant.</p>'+
+ '<p class="muted">Ajoutez plusieurs ebooks déjà présents dans votre catalogue. Chaque ebook reste un produit indépendant, avec sa propre page, son propre fichier et son propre prix.</p>'+
  '<div id="items'+c.id+'">Chargement…</div>'+
  '<div class="card" style="background:#faf8f2"><h3>Ajouter des ebooks</h3>
 <p class="muted">Choisissez un ebook déjà créé ci-dessous, ou créez-en un nouveau directement pour cette Collection.</p>
@@ -91,7 +91,7 @@ function card(c){
  '<div id="results'+c.id+'"></div>'+
  '<button id="addSelected'+c.id+'" class="btn primary" style="display:none;margin-top:10px" onclick="addSelected(\''+c.id+'\')">Ajouter les ebooks sélectionnés</button>'+
  '</div>'+
- '<div class="summary" id="summary'+c.id+'">Valeur des ebooks : 0 · Prix collection : '+(c.price==null?'Non défini':Number(c.price).toLocaleString('fr-FR')+' '+esc(c.currency||'XOF'))+'</div>'+
+ '<div class="summary" id="summary'+c.id+'">Valeur des ebooks : 0 · Prix collection : '+(c.price==null?'Non défini':Number(c.price).toLocaleString('fr-FR')+' '+esc(c.currency||'XOF'))+' · Une Collection publiable = 2 ebooks publiés minimum.</div>'+
  '<p><a class="btn primary" href="/collection/'+c.id+'?preview=1" target="_blank">Aperçu</a> <button class="btn" onclick="publish(\''+c.id+'\','+(!c.is_published)+')">'+(c.is_published?'Dépublier':'Publier')+'</button></p>'+
  '</section>';
 }
@@ -117,6 +117,12 @@ async function save(id){
 }
 
 async function publish(id,v){
+ if(v){
+  const q=await db.from('product_collection_items').select('product_id,products!inner(id,is_published,product_type,content_kind)').eq('collection_id',id).eq('products.is_published',true).eq('products.product_type','digital').eq('products.content_kind','book');
+  if(q.error)return alert(q.error.message);
+  const count=(q.data||[]).length;
+  if(count<2)return alert('Une Collection doit contenir au moins 2 ebooks publiés avant d’être publiée.');
+ }
  const r=await db.from('product_collections').update({is_published:v}).eq('id',id).eq('business_id',bid);
  if(r.error)alert(r.error.message);else load();
 }
@@ -129,7 +135,7 @@ async function items(id){
  $('items'+id).innerHTML=rows.map((x,i)=>'<div class="item"><div class="row"><div><b>'+String(i+1).padStart(2,'0')+' · '+esc(x.products?.title||'Produit')+'</b><br><span class="muted">'+Number(x.products?.price||0).toLocaleString('fr-FR')+' '+esc(x.products?.currency||'XOF')+'</span></div><div><button class="btn" onclick="moveItem(\''+id+'\',\''+x.id+'\',-1)">↑</button> <button class="btn" onclick="moveItem(\''+id+'\',\''+x.id+'\',1)">↓</button> <button class="btn" onclick="removeItem(\''+id+'\',\''+x.product_id+'\')">Retirer</button></div></div></div>').join('')||'<span class="muted">Aucun ebook. Cliquez sur « Ajouter des ebooks ».</span>';
  const total=rows.reduce((n,x)=>n+Number(x.products?.price||0),0);
  const cprice=$('p'+id)?.value;
- $('summary'+id).textContent='Valeur des ebooks : '+total.toLocaleString('fr-FR')+' · Prix collection : '+(cprice===''?'Non défini':Number(cprice||0).toLocaleString('fr-FR')+' '+($('cur'+id)?.value||'XOF'));
+ const cp=cprice===''?null:Number(cprice||0); const savings=(cp!=null&&total>0)?Math.max(0,total-cp):0; const pct=(cp!=null&&total>0)?Math.max(0,Math.round((savings/total)*100)):0; $('summary'+id).textContent='Valeur des ebooks : '+total.toLocaleString('fr-FR')+' · Prix collection : '+(cp==null?'Non défini':cp.toLocaleString('fr-FR')+' '+($('cur'+id)?.value||'XOF'))+(savings>0?' · Économie client : '+savings.toLocaleString('fr-FR')+' ('+pct+'%)':'');
 }
 
 async function products(id){
@@ -137,7 +143,7 @@ async function products(id){
  if(q.length<2){$('results'+id).innerHTML='';$('addSelected'+id).style.display='none';return}
  const existing=await db.from('product_collection_items').select('product_id').eq('collection_id',id);
  const ids=new Set((existing.data||[]).map(x=>x.product_id));
- const r=await db.from('products').select('id,title,price,currency,image_url,product_type,content_kind').eq('business_id',bid).eq('is_published',true).eq('product_type','digital').ilike('title','%'+q+'%').limit(30);
+ const r=await db.from('products').select('id,title,price,currency,image_url,product_type,content_kind,author_name,page_count').eq('business_id',bid).eq('is_published',true).eq('product_type','digital').eq('content_kind','book').ilike('title','%'+q+'%').limit(30);
  if(r.error){$('results'+id).textContent=r.error.message;return}
  const rows=(r.data||[]).filter(p=>!ids.has(p.id));
  $('results'+id).innerHTML=rows.map(p=>'<label class="product-choice"><input type="checkbox" class="pick'+id+'" value="'+p.id+'">'+(p.image_url?'<img class="thumb" src="'+esc(p.image_url)+'" alt="">':'')+'<span><b>'+esc(p.title)+'</b><br><span class="muted">'+Number(p.price||0).toLocaleString('fr-FR')+' '+esc(p.currency||'XOF')+'</span></span></label>').join('')||'<span class="muted">Aucun ebook disponible pour cette recherche.</span>';
