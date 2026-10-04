@@ -197,6 +197,14 @@
       "destination": "/collections-manage.html"
     },
     {
+      "source": "/collection-studio",
+      "destination": "/collections-manage.html"
+    },
+    {
+      "source": "/collections-manage",
+      "destination": "/collections-manage.html"
+    },
+    {
       "source": "/collection/:id",
       "destination": "/collection.html?id=:id"
     },
