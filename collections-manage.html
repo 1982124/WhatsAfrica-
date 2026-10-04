@@ -6,182 +6,132 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>if(!window.supabase){document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\\/script>')}</script>
 <style>
-body{margin:0;background:#f7f3ea;color:#17231e;font:15px/1.5 system-ui}.wrap{max-width:1120px;margin:auto;padding:18px}
-.card{background:#fff;border:1px solid #ded8ca;border-radius:20px;padding:18px;margin:14px 0}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.row{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
-.btn{border:1px solid #d8d3c8;background:#fff;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer;text-decoration:none;color:inherit}
-.primary{background:#173d2d;color:#fff}.muted{color:#6c746f}.field{margin:9px 0}.field label{display:block;font-weight:700;margin-bottom:5px}
-input,textarea,select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #d8d3c8;border-radius:9px;font:inherit}
-.item{border:1px solid #e1ddd4;border-radius:12px;padding:10px;margin:7px 0}.pill{background:#edf3ee;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:800}
-.product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}.product-choice{border:1px solid #ddd7ca;border-radius:12px;padding:10px;display:flex;gap:10px;align-items:flex-start}
-.product-choice input{width:auto;margin-top:4px}.thumb{width:54px;height:70px;object-fit:cover;border-radius:7px;background:#eee}.summary{padding:10px;border-radius:10px;background:#f4f1e9;margin:10px 0;font-weight:700}
-@media(max-width:760px){.grid,.product-grid{grid-template-columns:1fr}}
+:root{--ink:#17231e;--green:#173d2d;--paper:#f7f3ea;--line:#ded8ca;--soft:#f4f1e9}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:980px;margin:auto;padding:22px 18px 60px}
+.row{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}.muted{color:#6c746f}.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;margin:14px 0;box-shadow:0 2px 12px #17231e08}
+.btn{border:1px solid #d8d3c8;background:#fff;color:inherit;border-radius:11px;padding:10px 14px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px}.btn:disabled{opacity:.5;cursor:not-allowed}.primary{background:var(--green);color:#fff;border-color:var(--green)}
+.field{margin:12px 0}.field label{display:block;font-weight:800;margin-bottom:6px}input,textarea{width:100%;padding:11px 12px;border:1px solid #d8d3c8;border-radius:10px;font:inherit;background:#fff}
+.hero{padding:8px 0 18px}.hero h1{margin:0 0 4px;font-size:28px}.hero p{margin:0}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0}.step{padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;font-weight:800;color:#747b76}.step.active{background:var(--green);border-color:var(--green);color:#fff}.step.done{color:var(--green)}
+.progress-note{font-size:13px;color:#6c746f;margin-top:4px}.actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:18px;flex-wrap:wrap}
+.searchrow{display:flex;gap:8px}.searchrow input{flex:1}.product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:10px}.product-choice{border:1px solid #ddd7ca;border-radius:13px;padding:10px;display:flex;gap:10px;align-items:center;cursor:pointer}.product-choice:has(input:checked){border-color:var(--green);background:#f2f7f3}.product-choice input{width:auto}.thumb{width:48px;height:62px;object-fit:cover;border-radius:7px;background:#eee}.selected{border:1px solid #e1ddd4;border-radius:12px;padding:10px;margin:7px 0;display:flex;gap:10px;align-items:center}.selected .grow{flex:1}.iconbtn{padding:6px 9px}.summary{padding:14px;border-radius:13px;background:var(--soft);margin:12px 0}.price{font-size:22px;font-weight:900}.checklist{display:grid;gap:7px;margin:12px 0}.check{padding:9px 11px;border-radius:10px;background:#f7f7f5}.ok{color:#17633e}.bad{color:#8a3d2f}.collection-row{display:flex;gap:12px;align-items:center}.cover{width:58px;height:76px;object-fit:cover;border-radius:9px;background:#eee}.collection-row .grow{flex:1}.status{font-size:12px;font-weight:900;border-radius:999px;padding:4px 9px;background:#edf3ee}.status.draft{background:#f1eee7;color:#71695d}details{margin-top:14px;border-top:1px solid #eee9df;padding-top:12px}summary{cursor:pointer;font-weight:800}.advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.product-grid,.advanced-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.hero h1{font-size:24px}.searchrow{flex-direction:column}}
 </style>
 </head>
 <body>
 <main class="wrap">
-<div class="row"><h1>WASSAFRICA · Collection Studio</h1><a class="btn" href="/digital-products">+ Créer un ebook</a></div>
-<p class="muted">Une collection regroupe plusieurs ebooks indépendants dans une même offre.</p>
-<section class="card">
-<h2>Créer une collection</h2>
-<div class="grid">
-<div class="field"><label>Nom</label><input id="n" placeholder="Ex. Les Héros Inoubliables de l’Afrique"></div>
-<div class="field"><label>Sous-titre</label><input id="s" placeholder="10 histoires à découvrir"></div>
-<div class="field"><label>Description</label><textarea id="d" rows="3"></textarea></div>
-<div class="field"><label>Public cible</label><input id="a" placeholder="Enfants, étudiants, familles…"></div>
-</div>
-<button id="createBtn" class="btn primary" type="button" onclick="create()">Créer la collection</button>
+<header class="hero row">
+<div><h1>WASSAFRICA · Collection Studio</h1><p class="muted">Créez une offre de plusieurs ebooks en quelques étapes.</p></div>
+<a class="btn" href="/digital-products">+ Créer un ebook</a>
+</header>
+
+<section id="collections" class="card"><div class="row"><h2 style="margin:0">Mes collections</h2><button class="btn primary" type="button" onclick="startNew()">+ Nouvelle collection</button></div><div id="list" class="muted" style="margin-top:12px">Initialisation…</div></section>
+
+<section id="studio" class="card" style="display:none">
+<div class="row"><div><h2 id="studioTitle" style="margin:0">Nouvelle collection</h2><div id="progress" class="progress-note"></div></div><button class="btn" type="button" onclick="closeStudio()">← Mes collections</button></div>
+<div class="steps"><div id="st1" class="step active">1 · Créer</div><div id="st2" class="step">2 · Ajouter les ebooks</div><div id="st3" class="step">3 · Prix & publier</div></div>
+<div id="pane"></div>
 </section>
-<div id="list">Chargement…</div>
 </main>
+
 <script>
 const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,storage:localStorage,storageKey:'whatsafrica-auth'}});
-let bid=null,userId=null;
-const $=x=>document.getElementById(x);
+let bid=null,userId=null,current=null,step=1,itemsCache=[],searchTimer=null;
+const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function cleanQ(v){return v.replace(/[%_]/g,'').trim()}
+const money=(n,c='XOF')=>Number(n||0).toLocaleString('fr-FR')+' '+c;
+const cleanQ=v=>(v||'').replace(/[%_]/g,'').trim();
 
 async function init(){
  $('list').textContent='Initialisation du Studio…';
- const s=await db.auth.getSession();
- if(s.error)throw s.error;
- if(!s.data.session)return location.href='/auth?next='+encodeURIComponent(location.href);
- userId=s.data.session.user.id;
- const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();
- if(r.error)return $('list').textContent=r.error.message;
- if(!r.data)return $('list').textContent='Aucune activité commerciale associée.';
- bid=r.data.id;await load();
- $('createBtn').disabled=false;
-}
-
-window.addEventListener('error',e=>{ if($('list')) $('list').textContent='Erreur du Studio : '+(e.message||'JavaScript indisponible. Rechargez la page.'); });
-
-async function create(){
- if(!bid){
-  try{await init().catch(e=>{console.error(e);$('list').textContent='Impossible de charger le Collection Studio : '+(e.message||e);});}catch(e){$('list').textContent='Impossible d’initialiser le Studio : '+(e.message||e);return;}
- }
- if(!bid)return;
- if(!$('n').value.trim())return alert('Nom requis.');
- const r=await db.from('product_collections').insert({business_id:bid,name:$('n').value.trim(),subtitle:$('s').value.trim()||null,description:$('d').value.trim()||null,audience:$('a').value.trim()||null,is_published:false});
- if(r.error)alert(r.error.message);else{ $('n').value='';$('s').value='';$('d').value='';$('a').value='';load(); }
-}
-
-async function load(){
- const r=await db.from('product_collections').select('*').eq('business_id',bid).order('created_at',{ascending:false});
- if(r.error)return $('list').textContent=r.error.message;
- $('list').innerHTML=(r.data||[]).map(c=>card(c)).join('')||'<section class="card muted">Aucune collection.</section>';
- for(const c of r.data||[])items(c.id);
-}
-
-function card(c){
- return '<section class="card"><div class="row"><h2>'+esc(c.name)+'</h2><span class="pill">'+(c.is_published?'PUBLIÉE':'BROUILLON')+'</span></div>'+
- '<div class="grid"><div>'+
- '<div class="field"><label>Nom</label><input id="n'+c.id+'" value="'+esc(c.name)+'"></div>'+
- '<div class="field"><label>Sous-titre</label><input id="s'+c.id+'" value="'+esc(c.subtitle||'')+'"></div>'+
- '<div class="field"><label>Description</label><textarea id="d'+c.id+'" rows="4">'+esc(c.description||'')+'</textarea></div>'+
- '<div class="field"><label>Public cible</label><input id="a'+c.id+'" value="'+esc(c.audience||'')+'"></div>'+
- '<div class="field"><label>Âge</label><input id="age'+c.id+'" value="'+esc(c.age_range||'')+'"></div>'+
- '<div class="field"><label>Langue / Région / Catégorie</label><input id="meta'+c.id+'" value="'+esc([c.language,c.region,c.category].filter(Boolean).join(' · '))+'"></div>'+
- '<div class="field"><label>Prix de la collection</label><input id="p'+c.id+'" type="number" min="0" value="'+(c.price??'')+'"></div>'+
- '<div class="field"><label>Devise</label><input id="cur'+c.id+'" value="'+esc(c.currency||'XOF')+'"></div><div class="field"><label>Lien de paiement externe</label><input id="pay'+c.id+'" type="url" inputmode="url" value="'+esc(c.payment_url||'')+'" placeholder="https://… (Maketou, Chariow, etc.)"><small class="muted">Le client sera envoyé vers ce lien pour payer la Collection.</small></div>'+
- '<button class="btn primary" onclick="save(\''+c.id+'\')">Enregistrer</button>'+
- '</div><div>'+
- '<div class="field"><label>Couverture (URL ou fichier)</label><input id="cover'+c.id+'" value="'+esc(c.cover_url||'')+'" placeholder="https://…"><input id="coverFile'+c.id+'" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-top:6px"><small class="muted">Choisissez une image ou gardez une URL.</small></div>'+
- '<div class="field"><label>Teaser vidéo</label><input id="teaser'+c.id+'" value="'+esc(c.teaser_video_url||'')+'" placeholder="URL MP4/WebM"><input id="teaserFile'+c.id+'" type="file" accept="video/mp4,video/webm,video/quicktime" style="margin-top:6px"><small class="muted">Courte vidéo d’accroche · 50 Mo maximum.</small></div>'+
- '<div class="field"><label>Présentation vidéo</label><input id="present'+c.id+'" value="'+esc(c.presentation_video_url||'')+'" placeholder="URL MP4/WebM"><input id="presentFile'+c.id+'" type="file" accept="video/mp4,video/webm,video/quicktime" style="margin-top:6px"><small class="muted">Présentation complète · 50 Mo maximum.</small></div>'+
- '<button class="btn" onclick="save(\''+c.id+'\')">Enregistrer les médias</button>'+
- '</div></div>'+
- '<hr><div class="row"><h3>Bibliothèque de la collection</h3><span id="count'+c.id+'" class="pill">0 ebook</span></div>'+
- '<p class="muted">Ajoutez plusieurs ebooks déjà présents dans votre catalogue. Chaque ebook reste un produit indépendant, avec sa propre page, son propre fichier et son propre prix.</p>'+
- '<div id="items'+c.id+'">Chargement…</div>'+
- '<div class="card" style="background:#faf8f2"><h3>Ajouter des ebooks</h3>\\n<p class="muted">Choisissez un ebook déjà créé ci-dessous, ou créez-en un nouveau directement pour cette Collection.</p>\\n<p><a class="btn primary" href="/digital-products?type=digital&contentKind=book&collection='+encodeURIComponent(c.id)+'">📚 Créer / déposer un nouvel ebook dans cette Collection</a></p>'+
- '<input id="q'+c.id+'" oninput="products(\''+c.id+'\')" placeholder="Rechercher un ebook déjà créé…">'+
- '<div id="results'+c.id+'"></div>'+
- '<button id="addSelected'+c.id+'" class="btn primary" style="display:none;margin-top:10px" onclick="addSelected(\''+c.id+'\')">Ajouter les ebooks sélectionnés</button>'+
- '</div>'+
- '<div class="summary" id="summary'+c.id+'">Valeur des ebooks : 0 · Prix collection : '+(c.price==null?'Non défini':Number(c.price).toLocaleString('fr-FR')+' '+esc(c.currency||'XOF'))+' · Une Collection publiable = 2 ebooks publiés minimum.</div>'+
- '<p><a class="btn primary" href="/collection/'+c.id+'?preview=1" target="_blank">Aperçu</a> <button class="btn" onclick="publish(\''+c.id+'\','+(!c.is_published)+')">'+(c.is_published?'Dépublier':'Publier')+'</button></p>'+
- '</section>';
-}
-
-async function save(id){
- const meta=$('meta'+id).value.split('·').map(x=>x.trim()).filter(Boolean);
- const uploadPublic=async(bucket,path,file,max)=>{if(!file)return null;if(file.size>max)throw Error('Fichier trop volumineux : '+file.name);const r=await db.storage.from(bucket).upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});if(r.error)throw r.error;return db.storage.from(bucket).getPublicUrl(path).data.publicUrl};
  try{
-  let coverUrl=$('cover'+id).value.trim()||null, teaserUrl=$('teaser'+id).value.trim()||null, presentUrl=$('present'+id).value.trim()||null;
-  const base=userId+'/collections/'+id+'/';
-  const cf=$('coverFile'+id)?.files?.[0], tf=$('teaserFile'+id)?.files?.[0], pf=$('presentFile'+id)?.files?.[0];
-  if(cf)coverUrl=await uploadPublic('public-media',base+'cover-'+crypto.randomUUID(),cf,10*1024*1024);
-  if(tf)teaserUrl=await uploadPublic('product-video-media',base+'teaser-'+crypto.randomUUID(),tf,50*1024*1024);
-  if(pf)presentUrl=await uploadPublic('product-video-media',base+'presentation-'+crypto.randomUUID(),pf,50*1024*1024);
-  const r=await db.from('product_collections').update({
-   name:$('n'+id).value.trim(),subtitle:$('s'+id).value.trim()||null,description:$('d'+id).value.trim()||null,audience:$('a'+id).value.trim()||null,age_range:$('age'+id).value.trim()||null,
-   language:meta[0]||null,region:meta[1]||null,category:meta[2]||null,price:$('p'+id).value===''?null:Number($('p'+id).value),
-   currency:($('cur'+id).value.trim()||'XOF').toUpperCase(),payment_url:$('pay'+id).value.trim()||null,cover_url:coverUrl,teaser_video_url:teaserUrl,presentation_video_url:presentUrl
-  }).eq('id',id).eq('business_id',bid);
-  if(r.error)throw r.error;
-  load();
- }catch(e){alert(e.message||'Enregistrement impossible.')}
+  const s=await db.auth.getSession(); if(s.error)throw s.error;
+  if(!s.data.session)return location.href='/auth?next='+encodeURIComponent(location.href);
+  userId=s.data.session.user.id;
+  const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();
+  if(r.error)throw r.error;if(!r.data){$('list').textContent='Aucune activité commerciale associée.';return}
+  bid=r.data.id;await loadCollections();
+ }catch(e){$('list').textContent='Impossible d’initialiser le Studio : '+(e.message||e)}
 }
+window.addEventListener('error',e=>{if($('list')&&!bid)$('list').textContent='Erreur du Studio : '+(e.message||'JavaScript indisponible.')});
 
-async function publish(id,v){
- if(v){
-  const q=await db.from('product_collection_items').select('product_id,products!inner(id,is_published,product_type,content_kind)').eq('collection_id',id).eq('products.is_published',true).eq('products.product_type','digital').eq('products.content_kind','book');
-  if(q.error)return alert(q.error.message);
-  const count=(q.data||[]).length;
-  if(count<2)return alert('Une Collection doit contenir au moins 2 ebooks publiés avant d’être publiée.');
- }
- const r=await db.from('product_collections').update({is_published:v}).eq('id',id).eq('business_id',bid);
- if(r.error)alert(r.error.message);else load();
-}
-
-async function items(id){
- const r=await db.from('product_collection_items').select('id,product_id,sort_order,products(id,title,price,currency,image_url,product_type)').eq('collection_id',id).order('sort_order',{ascending:true});
- if(r.error){$('items'+id).textContent=r.error.message;return}
+async function loadCollections(){
+ const r=await db.from('product_collections').select('*').eq('business_id',bid).order('created_at',{ascending:false});
+ if(r.error){$('list').textContent=r.error.message;return}
  const rows=r.data||[];
- $('count'+id).textContent=rows.length+' ebook'+(rows.length>1?'s':'');
- $('items'+id).innerHTML=rows.map((x,i)=>'<div class="item"><div class="row"><div><b>'+String(i+1).padStart(2,'0')+' · '+esc(x.products?.title||'Produit')+'</b><br><span class="muted">'+Number(x.products?.price||0).toLocaleString('fr-FR')+' '+esc(x.products?.currency||'XOF')+'</span></div><div><button class="btn" onclick="moveItem(\''+id+'\',\''+x.id+'\',-1)">↑</button> <button class="btn" onclick="moveItem(\''+id+'\',\''+x.id+'\',1)">↓</button> <button class="btn" onclick="removeItem(\''+id+'\',\''+x.product_id+'\')">Retirer</button></div></div></div>').join('')||'<span class="muted">Aucun ebook. Cliquez sur « Ajouter des ebooks ».</span>';
- const total=rows.reduce((n,x)=>n+Number(x.products?.price||0),0);
- const cprice=$('p'+id)?.value;
- const cp=cprice===''?null:Number(cprice||0); const savings=(cp!=null&&total>0)?Math.max(0,total-cp):0; const pct=(cp!=null&&total>0)?Math.max(0,Math.round((savings/total)*100)):0; $('summary'+id).textContent='Valeur des ebooks : '+total.toLocaleString('fr-FR')+' · Prix collection : '+(cp==null?'Non défini':cp.toLocaleString('fr-FR')+' '+($('cur'+id)?.value||'XOF'))+(savings>0?' · Économie client : '+savings.toLocaleString('fr-FR')+' ('+pct+'%)':'');
+ $('list').innerHTML=rows.length?rows.map(c=>'<div class="card" style="margin:10px 0;padding:13px"><div class="collection-row">'+(c.cover_url?'<img class="cover" src="'+esc(c.cover_url)+'" alt="">':'<div class="cover"></div>')+'<div class="grow"><b>'+esc(c.name)+'</b><div class="muted">'+esc(c.subtitle||c.description||'Collection d’ebooks')+'</div></div><span class="status '+(c.is_published?'':'draft')+'">'+(c.is_published?'PUBLIÉE':'BROUILLON')+'</span><button class="btn" type="button" onclick="openStudio(\''+c.id+'\')">Gérer</button></div></div>').join(''):'<div class="muted">Aucune collection. Commencez par créer votre première offre.</div>';
 }
 
-async function products(id){
- const q=cleanQ($('q'+id).value);
- if(q.length<2){$('results'+id).innerHTML='';$('addSelected'+id).style.display='none';return}
- const existing=await db.from('product_collection_items').select('product_id').eq('collection_id',id);
- const ids=new Set((existing.data||[]).map(x=>x.product_id));
- const r=await db.from('products').select('id,title,price,currency,image_url,product_type,content_kind,author_name,page_count').eq('business_id',bid).eq('is_published',true).eq('product_type','digital').eq('content_kind','book').ilike('title','%'+q+'%').limit(30);
- if(r.error){$('results'+id).textContent=r.error.message;return}
+function startNew(){current=null;step=1;openStudio()}
+async function openStudio(id){
+ if(id){const r=await db.from('product_collections').select('*').eq('id',id).eq('business_id',bid).maybeSingle();if(r.error)return alert(r.error.message);current=r.data}
+ step=current?2:1;$('collections').style.display='none';$('studio').style.display='block';render()
+}
+function closeStudio(){$('studio').style.display='none';$('collections').style.display='block';loadCollections()}
+function setStep(n){step=n;render()}
+function render(){
+ $('studioTitle').textContent=current?current.name:'Nouvelle collection';
+ $('progress').textContent=step===1?'Les informations essentielles.':step===2?'Choisissez les ebooks à inclure.':'Définissez le prix puis publiez.';
+ ['1','2','3'].forEach(n=>{$('st'+n).className='step '+(Number(n)===step?'active':Number(n)<step?'done':'')});
+ if(step===1)paneCreate(); else if(step===2)paneBooks(); else panePublish();
+}
+
+function paneCreate(){
+ $('pane').innerHTML='<h3>Créer votre collection</h3><p class="muted">Pas besoin de remplir dix champs. Le reste pourra être ajouté plus tard.</p><div class="field"><label>Nom de la collection *</label><input id="cn" value="'+esc(current?.name||'')+'" placeholder="Ex. Les Héros inoubliables de l’Afrique"></div><div class="field"><label>Description courte</label><textarea id="cd" rows="4" placeholder="Expliquez en quelques lignes ce que le lecteur va découvrir.">'+esc(current?.description||'')+'</textarea></div><div class="field"><label>Couverture <span class="muted">(optionnelle)</span></label><input id="cc" type="url" value="'+esc(current?.cover_url||'')+'" placeholder="https://…"><small class="muted">Vous pourrez aussi l’ajouter dans les options avancées.</small></div><div class="actions"><span class="muted">Vous pourrez modifier ces informations à tout moment.</span><button class="btn primary" type="button" onclick="saveBasics()">'+(current?'Continuer':'Créer et continuer')+' →</button></div>';
+}
+async function saveBasics(){
+ const name=$('cn').value.trim();if(!name)return alert('Le nom de la collection est requis.');
+ const payload={name,description:$('cd').value.trim()||null,cover_url:$('cc').value.trim()||null,is_published:false};
+ let r;
+ if(current)r=await db.from('product_collections').update(payload).eq('id',current.id).eq('business_id',bid);
+ else r=await db.from('product_collections').insert({business_id:bid,...payload}).select('*').single();
+ if(r.error)return alert(r.error.message);current=current?{...current,...payload}:r.data;step=2;render();
+}
+
+async function paneBooks(){
+ await loadItems();
+ $('pane').innerHTML='<h3>Ajouter les ebooks</h3><p class="muted">Sélectionnez plusieurs ebooks déjà publiés. Un ebook reste indépendant avec sa propre page et son propre fichier.</p><div class="row"><b>'+itemsCache.length+' ebook'+(itemsCache.length>1?'s':'')+' dans la collection</b><a class="btn primary" href="/digital-products?type=digital&contentKind=book&collection='+encodeURIComponent(current.id)+'">📚 Créer un ebook</a></div><div id="selectedList" style="margin-top:10px">'+renderSelected()+'</div><div class="searchrow" style="margin-top:15px"><input id="pq" placeholder="Rechercher un ebook publié…" oninput="scheduleSearch()"><button class="btn" type="button" onclick="searchProducts()">Rechercher</button></div><div id="results" class="product-grid"></div><div class="actions"><button class="btn" type="button" onclick="setStep(1)">← Retour</button><button class="btn primary" type="button" onclick="setStep(3)">Prix et publication →</button></div>';
+}
+async function loadItems(){
+ const r=await db.from('product_collection_items').select('id,product_id,sort_order,products(id,title,price,currency,image_url)').eq('collection_id',current.id).order('sort_order',{ascending:true});
+ if(r.error){alert(r.error.message);return}itemsCache=r.data||[];
+}
+function renderSelected(){
+ if(!itemsCache.length)return '<div class="summary">Aucun ebook pour le moment. Ajoutez-en au moins 2 pour publier la collection.</div>';
+ return itemsCache.map((x,i)=>'<div class="selected"><span class="pill">'+String(i+1).padStart(2,'0')+'</span>'+(x.products?.image_url?'<img class="thumb" src="'+esc(x.products.image_url)+'" alt="">':'')+'<div class="grow"><b>'+esc(x.products?.title||'Ebook')+'</b><br><span class="muted">'+money(x.products?.price,x.products?.currency||'XOF')+'</span></div><button class="btn iconbtn" type="button" onclick="moveItem(\''+x.id+'\',-1)">↑</button><button class="btn iconbtn" type="button" onclick="moveItem(\''+x.id+'\',1)">↓</button><button class="btn iconbtn" type="button" onclick="removeItem(\''+x.product_id+'\')">Retirer</button></div>').join('');
+}
+function scheduleSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(searchProducts,250)}
+async function searchProducts(){
+ const q=cleanQ($('pq')?.value);if(!q){$('results').innerHTML='';return}
+ const ids=new Set(itemsCache.map(x=>x.product_id));
+ const r=await db.from('products').select('id,title,price,currency,image_url').eq('business_id',bid).eq('is_published',true).eq('product_type','digital').eq('content_kind','book').ilike('title','%'+q+'%').limit(30);
+ if(r.error){$('results').textContent=r.error.message;return}
  const rows=(r.data||[]).filter(p=>!ids.has(p.id));
- $('results'+id).innerHTML=rows.map(p=>'<label class="product-choice"><input type="checkbox" class="pick'+id+'" value="'+p.id+'">'+(p.image_url?'<img class="thumb" src="'+esc(p.image_url)+'" alt="">':'')+'<span><b>'+esc(p.title)+'</b><br><span class="muted">'+Number(p.price||0).toLocaleString('fr-FR')+' '+esc(p.currency||'XOF')+'</span></span></label>').join('')||'<span class="muted">Aucun ebook disponible pour cette recherche.</span>';
- $('addSelected'+id).style.display=rows.length?'inline-block':'none';
+ $('results').innerHTML=rows.map(p=>'<label class="product-choice"><input type="checkbox" value="'+p.id+'" onchange="toggleProduct(\''+p.id+'\',this.checked)">'+(p.image_url?'<img class="thumb" src="'+esc(p.image_url)+'" alt="">':'')+'<span><b>'+esc(p.title)+'</b><br><span class="muted">'+money(p.price,p.currency||'XOF')+'</span></span></label>').join('')||'<span class="muted">Aucun ebook publié trouvé.</span>';
 }
-
-async function addSelected(cid){
- const picks=[...document.querySelectorAll('.pick'+cid+':checked')].map(x=>x.value);
- if(!picks.length)return alert('Sélectionnez au moins un ebook.');
- const m=await db.from('product_collection_items').select('sort_order').eq('collection_id',cid).order('sort_order',{ascending:false}).limit(1);
- let n=((m.data||[])[0]?.sort_order||0);
- const payload=picks.map(pid=>({collection_id:cid,product_id:pid,sort_order:++n}));
+let pending=new Set();
+async function toggleProduct(id,checked){checked?pending.add(id):pending.delete(id);if(checked){const r=await db.from('product_collection_items').select('product_id').eq('collection_id',current.id).eq('product_id',id).maybeSingle();if(r.data){pending.delete(id);alert('Cet ebook est déjà dans la collection.')}}}
+async function addPending(){
+ if(!pending.size)return;let max=itemsCache.reduce((n,x)=>Math.max(n,Number(x.sort_order||0)),0);
+ const payload=[...pending].map(product_id=>({collection_id:current.id,product_id,sort_order:++max}));
  const r=await db.from('product_collection_items').insert(payload);
- if(r.error)alert(r.error.message);else load();
+ if(r.error)return alert(r.error.message);pending.clear();await paneBooks();
+}
+async function removeItem(pid){const r=await db.from('product_collection_items').delete().eq('collection_id',current.id).eq('product_id',pid);if(r.error)return alert(r.error.message);await paneBooks()}
+async function moveItem(itemId,delta){
+ const rows=itemsCache,i=rows.findIndex(x=>x.id===itemId),j=i+delta;if(i<0||j<0||j>=rows.length)return;
+ const a=rows[i],b=rows[j];const x=await db.from('product_collection_items').update({sort_order:b.sort_order}).eq('id',a.id);const y=await db.from('product_collection_items').update({sort_order:a.sort_order}).eq('id',b.id);if(x.error||y.error)return alert((x.error||y.error).message);await paneBooks()
 }
 
-async function removeItem(cid,pid){
- const r=await db.from('product_collection_items').delete().eq('collection_id',cid).eq('product_id',pid);
- if(r.error)alert(r.error.message);else load();
+function panePublish(){
+ const total=itemsCache.reduce((n,x)=>n+Number(x.products?.price||0),0),price=current.price;
+ const ok=itemsCache.length>=2;
+ $('pane').innerHTML='<h3>Prix et publication</h3><div class="summary"><div>Valeur séparée des ebooks</div><div class="price">'+money(total,current.currency||'XOF')+'</div><div class="muted">Le prix de la collection peut être inférieur pour créer une offre avantageuse.</div></div><div class="field"><label>Prix de la collection</label><input id="cp" type="number" min="0" value="'+(price??'')+'" placeholder="Ex. 10000"></div><div class="field"><label>Devise</label><input id="ccur" value="'+esc(current.currency||'XOF')+'" placeholder="XOF"></div><div class="checklist"><div class="check '+(ok?'ok':'bad')+'">'+(ok?'✓':'○')+' Au moins 2 ebooks dans la collection</div><div class="check">✓ Les ebooks sélectionnés doivent être publiés pour pouvoir publier la collection</div></div><details><summary>Options avancées (facultatives)</summary><div class="advanced-grid"><div class="field"><label>Sous-titre</label><input id="cs" value="'+esc(current.subtitle||'')+'"></div><div class="field"><label>Public cible</label><input id="ca" value="'+esc(current.audience||'')+'"></div><div class="field"><label>Âge</label><input id="cage" value="'+esc(current.age_range||'')+'"></div><div class="field"><label>Langue</label><input id="clang" value="'+esc(current.language||'')+'"></div><div class="field"><label>Région</label><input id="creg" value="'+esc(current.region||'')+'"></div><div class="field"><label>Catégorie</label><input id="ccat" value="'+esc(current.category||'')+'"></div><div class="field"><label>Lien de paiement externe</label><input id="cpay" type="url" value="'+esc(current.payment_url||'')+'" placeholder="https://…"></div><div class="field"><label>Couverture URL</label><input id="coverAdv" type="url" value="'+esc(current.cover_url||'')+'"></div><div class="field"><label>Teaser vidéo URL</label><input id="teaser" type="url" value="'+esc(current.teaser_video_url||'')+'"></div><div class="field"><label>Présentation vidéo URL</label><input id="present" type="url" value="'+esc(current.presentation_video_url||'')+'"></div></div></details><div class="actions"><button class="btn" type="button" onclick="setStep(2)">← Ebooks</button><div style="display:flex;gap:8px"><button class="btn" type="button" onclick="saveOffer(false)">Enregistrer</button><button class="btn primary" type="button" onclick="saveOffer(true)" '+(ok?'':'disabled')+'>'+(current.is_published?'Mettre à jour la publication':'Publier la collection')+'</button></div></div>';
 }
-
-async function moveItem(cid,itemId,delta){
- const r=await db.from('product_collection_items').select('id,sort_order').eq('collection_id',cid).order('sort_order',{ascending:true});
- if(r.error)return alert(r.error.message);
- const rows=r.data||[],i=rows.findIndex(x=>x.id===itemId),j=i+delta;
- if(i<0||j<0||j>=rows.length)return;
- const a=rows[i],b=rows[j];
- const x=await db.from('product_collection_items').update({sort_order:b.sort_order}).eq('id',a.id);
- const y=await db.from('product_collection_items').update({sort_order:a.sort_order}).eq('id',b.id);
- if(x.error||y.error)alert((x.error||y.error).message);else items(cid);
+async function saveOffer(publish){
+ const payload={price:$('cp').value===''?null:Number($('cp').value),currency:($('ccur').value.trim()||'XOF').toUpperCase(),subtitle:$('cs')?.value.trim()||null,audience:$('ca')?.value.trim()||null,age_range:$('cage')?.value.trim()||null,language:$('clang')?.value.trim()||null,region:$('creg')?.value.trim()||null,category:$('ccat')?.value.trim()||null,payment_url:$('cpay')?.value.trim()||null,cover_url:$('coverAdv')?.value.trim()||current.cover_url||null,teaser_video_url:$('teaser')?.value.trim()||null,presentation_video_url:$('present')?.value.trim()||null};
+ if(publish){const q=await db.from('product_collection_items').select('product_id,products!inner(id,is_published,product_type,content_kind)').eq('collection_id',current.id).eq('products.is_published',true).eq('products.product_type','digital').eq('products.content_kind','book');if(q.error)return alert(q.error.message);if((q.data||[]).length<2)return alert('Une collection doit contenir au moins 2 ebooks publiés.');payload.is_published=true}
+ const r=await db.from('product_collections').update(payload).eq('id',current.id).eq('business_id',bid);if(r.error)return alert(r.error.message);current={...current,...payload};if(publish)alert('Collection publiée.');render();
 }
 init();
 </script>
