@@ -102,6 +102,10 @@
     },
     {
       "source": "/",
+      "destination": "/wassafrica-official.html"
+    },
+    {
+      "source": "/app",
       "destination": "/launch-shell.html"
     },
     {
