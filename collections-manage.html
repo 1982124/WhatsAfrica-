@@ -77,11 +77,21 @@ function render(){
 }
 
 function paneCreate(){
- $('pane').innerHTML='<h3>Créer votre collection</h3><p class="muted">Pas besoin de remplir dix champs. Le reste pourra être ajouté plus tard.</p><div class="field"><label>Nom de la collection *</label><input id="cn" value="'+esc(current?.name||'')+'" placeholder="Ex. Les Héros inoubliables de l’Afrique"></div><div class="field"><label>Description courte</label><textarea id="cd" rows="4" placeholder="Expliquez en quelques lignes ce que le lecteur va découvrir.">'+esc(current?.description||'')+'</textarea></div><div class="field"><label>Couverture <span class="muted">(optionnelle)</span></label><input id="cc" type="url" value="'+esc(current?.cover_url||'')+'" placeholder="https://…"><small class="muted">Vous pourrez aussi l’ajouter dans les options avancées.</small></div><div class="actions"><span class="muted">Vous pourrez modifier ces informations à tout moment.</span><button class="btn primary" type="button" onclick="saveBasics()">'+(current?'Continuer':'Créer et continuer')+' →</button></div>';
+ $('pane').innerHTML='<h3>Créer votre collection</h3><p class="muted">Pas besoin de remplir dix champs. Le reste pourra être ajouté plus tard.</p><div class="field"><label>Nom de la collection *</label><input id="cn" value="'+esc(current?.name||'')+'" placeholder="Ex. Les Héros inoubliables de l’Afrique"></div><div class="field"><label>Description courte</label><textarea id="cd" rows="4" placeholder="Expliquez en quelques lignes ce que le lecteur va découvrir.">'+esc(current?.description||'')+'</textarea></div><div class="field"><label>Couverture <span class="muted">(optionnelle)</span></label><input id="cc" type="url" value="'+esc(current?.cover_url||'')+'" placeholder="https://…"><input id="ccFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-top:7px"><div id="coverPreview" style="margin-top:9px">'+(current?.cover_url?'<img src="'+esc(current.cover_url)+'" alt="Aperçu de la couverture" style="width:96px;height:126px;object-fit:cover;border-radius:10px;border:1px solid #ddd7ca">':'<span class="muted">Importez directement votre couverture (10 Mo maximum).</span>')+'</div></div><div class="actions"><span class="muted">Vous pourrez modifier ces informations à tout moment.</span><button class="btn primary" type="button" onclick="saveBasics()">'+(current?'Continuer':'Créer et continuer')+' →</button></div>';
 }
 async function saveBasics(){
  const name=$('cn').value.trim();if(!name)return alert('Le nom de la collection est requis.');
- const payload={name,description:$('cd').value.trim()||null,cover_url:$('cc').value.trim()||null,is_published:false};
+ const file=$('ccFile')?.files?.[0];let coverUrl=$('cc').value.trim()||null;
+ if(file){
+  if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type))return alert('Format de couverture non pris en charge.');
+  if(file.size>10*1024*1024)return alert('La couverture doit faire 10 Mo maximum.');
+  if(!userId)return alert('Session utilisateur indisponible.');
+  const path=userId+'/collections/'+(current?.id||crypto.randomUUID())+'/cover-'+crypto.randomUUID();
+  const up=await db.storage.from('public-media').upload(path,file,{contentType:file.type,cacheControl:'31536000',upsert:false});
+  if(up.error)return alert('Upload de la couverture impossible : '+up.error.message);
+  coverUrl=db.storage.from('public-media').getPublicUrl(up.data.path).data.publicUrl;
+ }
+ const payload={name,description:$('cd').value.trim()||null,cover_url:coverUrl,is_published:false};
  let r;
  if(current)r=await db.from('product_collections').update(payload).eq('id',current.id).eq('business_id',bid);
  else r=await db.from('product_collections').insert({business_id:bid,...payload}).select('*').single();
