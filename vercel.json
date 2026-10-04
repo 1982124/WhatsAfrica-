@@ -41,7 +41,7 @@
       "source": "/product",
       "destination": "/marche",
       "permanent": false
-    },
+    }
   ],
   "rewrites": [
     {
