@@ -50,7 +50,7 @@ module.exports=async function(req,res){
       return res.status(200).json({ok:true,payment_url:intent.metadata?.payment_url||null,payment_intent_id:intent.id,status:intent.status,provider_reference:intent.provider_reference,already_initiated:true});
     }
 
-    const webhookUrl=SB_URL+'/functions/v1/payment-webhook';
+    const webhookUrl='https://wassafrica.vercel.app/api/payment-webhook';
     const returnUrl='https://wassafrica.vercel.app/commande/'+encodeURIComponent(order.tracking_token)+'?order_id='+encodeURIComponent(order.id);
     const articles=(items.data||[]).map(x=>({name:String(x.title_snapshot||'Produit').slice(0,120),price:Number(x.unit_price||0),quantity:Number(x.quantity||1)}));
     const payload={
