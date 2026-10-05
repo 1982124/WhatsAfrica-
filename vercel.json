@@ -102,11 +102,11 @@
     },
     {
       "source": "/",
-      "destination": "/launch-shell.html"
+      "destination": "/launch-v2.html"
     },
     {
       "source": "/app",
-      "destination": "/launch-shell.html"
+      "destination": "/launch-v2.html"
     },
     {
       "source": "/auth",
