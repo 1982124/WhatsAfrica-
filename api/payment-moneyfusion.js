@@ -39,7 +39,7 @@ module.exports=async function(req,res){
     if(!/^https?:\\/\\//i.test(secretUrl)) return res.status(500).json({error:'payment_provider_config_invalid'});
 
     const idem=encodeURIComponent(idempotencyKey);
-    const pi=await sb('/rest/v1/payment_intents?order_id=eq.'+encodeURIComponent(order.id)+'&idempotency_key=eq.'+idem+'&select=id,provider_reference,status&limit=1');
+    const pi=await sb('/rest/v1/payment_intents?order_id=eq.'+encodeURIComponent(order.id)+'&idempotency_key=eq.'+idem+'&select=id,provider_reference,status,metadata&limit=1');
     let intent=pi.data?.[0]||null;
     if(!intent){
       const ins=await sb('/rest/v1/payment_intents',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({buyer_id:userId,business_id:order.business_id,order_id:order.id,provider:'moneyfusion',method,currency:order.currency,amount:Number(order.total),status:'created',idempotency_key:idempotencyKey,metadata:{source:'digital-checkout'}})});
@@ -47,7 +47,7 @@ module.exports=async function(req,res){
       intent=ins.data?.[0];
     }
     if(intent?.provider_reference){
-      return res.status(200).json({ok:true,payment_url:null,payment_intent_id:intent.id,status:intent.status,provider_reference:intent.provider_reference,already_initiated:true});
+      return res.status(200).json({ok:true,payment_url:intent.metadata?.payment_url||null,payment_intent_id:intent.id,status:intent.status,provider_reference:intent.provider_reference,already_initiated:true});
     }
 
     const webhookUrl=SB_URL+'/functions/v1/payment-webhook';
@@ -68,7 +68,7 @@ module.exports=async function(req,res){
     const pt=await pr.text(); let pd=null; try{pd=pt?JSON.parse(pt):null}catch{}
     if(!pr.ok||!pd?.statut||!pd?.url||!pd?.token) return res.status(502).json({error:'moneyfusion_payment_failed',message:pd?.message||'Money Fusion n’a pas créé la session de paiement.'});
 
-    const up=await sb('/rest/v1/payment_intents?id=eq.'+encodeURIComponent(intent.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({provider_reference:String(pd.token),status:'processing',metadata:{source:'digital-checkout',moneyfusion_token:String(pd.token)}})});
+    const up=await sb('/rest/v1/payment_intents?id=eq.'+encodeURIComponent(intent.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({provider_reference:String(pd.token),status:'processing',metadata:{source:'digital-checkout',moneyfusion_token:String(pd.token),payment_url:String(pd.url)}})});
     if(!up.r.ok) return res.status(500).json({error:'payment_intent_finalize_failed'});
     return res.status(200).json({ok:true,payment_url:pd.url,payment_intent_id:intent.id,provider_reference:pd.token,order_id:order.id});
   }catch(e){console.error('payment-moneyfusion',e);return res.status(500).json({error:'payment_init_failed'});}
