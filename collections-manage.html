@@ -65,7 +65,7 @@ async function loadCollections(){
 
 function startNew(){current=null;step=1;openStudio()}
 async function openStudio(id){
- if(id){const r=await db.from('product_collections').select('*').eq('id',id).eq('business_id',bid).maybeSingle();if(r.error)return alert(r.error.message);current=r.data}
+ if(id){const r=await db.from('product_collections').select('*').eq('id',id).eq('business_id',bid).maybeSingle();if(r.error)return alert(r.error.message);current=r.data;const er=await db.from('external_payment_links').select('provider,url').eq('collection_id',id).eq('owner_id',userId).eq('is_active',true);if(er.error)return alert(er.error.message);current.maketou_payment_url=(er.data||[]).find(x=>x.provider==='maketou')?.url||'';current.chariow_payment_url=(er.data||[]).find(x=>x.provider==='chariow')?.url||''}
  step=current?2:1;$('collections').style.display='none';$('studio').style.display='block';render()
 }
 function closeStudio(){$('studio').style.display='none';$('collections').style.display='block';loadCollections()}
