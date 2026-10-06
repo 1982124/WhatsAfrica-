@@ -307,7 +307,7 @@ async function load(){
   });
   // INVARIANT MARKETPLACE: every published row received from the API is displayable.
   DATA.products=productRows.map(x=>({...x,source:'product'}));
-  DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x)));
+  DATA.services=uniqueByKey(serviceRows.filter(x=>!isLegacyNativeMirror(x)));
   DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
   // Hard invariant: partial API failure must never hide already-published Marketplace content.
   marketState='ready';
