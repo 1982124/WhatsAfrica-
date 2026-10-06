@@ -108,12 +108,32 @@ async function paymentStart(req,res){
   return res.status(200).json({ok:true,payment_intent_id:intent.payment_intent_id,order_id:order.id,status:'requires_action',provider:'moneyfusion',provider_reference:token,payment_url:paymentUrl||null});
 }
 async function paymentWebhook(req,res){
-  if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});const sk=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!sk)return res.status(503).json({ok:false,error:'supabase_env_missing'});
-  const p=typeof req.body==='string'?JSON.parse(req.body):req.body||{},event=String(p.event||''),token=String(p.tokenPay||p.token||'').trim(),transaction=String(p.numeroTransaction||p._id||token).trim();
-  const status=event==='payin.session.completed'?'paid':event==='payin.session.cancelled'?'cancelled':'pending';if(!token)return res.status(400).json({ok:false,error:'provider_token_missing'});
-  const intents=await paymentServiceGet('payment_intents',{provider:'eq.moneyfusion',provider_reference:'eq.'+token,select:'id,order_id,amount,status,provider_reference'});const intent=intents[0];if(!intent?.order_id)return res.status(404).json({ok:false,error:'payment_intent_not_found'});
-  if(p.Montant!=null&&Math.abs(Number(p.Montant)-Number(intent.amount))>0.01)return res.status(409).json({ok:false,error:'amount_mismatch'});
-  const result=await paymentRpc('apply_payment_webhook_event_for_service',{p_order_id:intent.order_id,p_provider:'moneyfusion',p_provider_event_id:token+':'+event,p_event_type:event||'payment',p_transaction_id:transaction,p_status:status,p_payload_hash:null},sk,sk);
+  if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});
+  const sk=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!sk)return res.status(503).json({ok:false,error:'supabase_env_missing'});
+  const p=typeof req.body==='string'?JSON.parse(req.body):req.body||{};
+  const event=String(p.event||''),token=String(p.tokenPay||p.token||'').trim();
+  if(!token)return res.status(400).json({ok:false,error:'provider_token_missing'});
+  const intents=await paymentServiceGet('payment_intents',{provider:'eq.moneyfusion',provider_reference:'eq.'+token,select:'id,order_id,amount,status,provider_reference'});
+  const intent=intents[0];if(!intent?.order_id)return res.status(404).json({ok:false,error:'payment_intent_not_found'});
+  // Never trust the browser/provider callback body as proof of payment.
+  // Money Fusion status is re-read server-to-server using the provider token.
+  let verified;
+  try{
+    const vr=await fetch('https://pay.moneyfusion.net/paiementNotif/'+encodeURIComponent(token),{headers:{'Accept':'application/json'}});
+    const vd=await vr.json().catch(()=>null);
+    if(!vr.ok||!vd?.statut||!vd?.data)return res.status(409).json({ok:false,error:'provider_status_unavailable'});
+    verified=vd.data;
+  }catch(_){return res.status(502).json({ok:false,error:'provider_status_check_failed'});}
+  const amount=Number(verified?.Montant);
+  if(!Number.isFinite(amount)||Math.abs(amount-Number(intent.amount))>0.01)return res.status(409).json({ok:false,error:'amount_mismatch'});
+  const rawStatus=String(verified?.statut||'').toLowerCase();
+  const status=['paid','success','successful','succeeded','completed','complete'].includes(rawStatus)?'paid':
+    ['failed','failure','rejected','declined','error','cancelled','canceled','expired','no paid'].includes(rawStatus)?'failed':'pending';
+  if(status==='pending')return res.status(202).json({ok:true,event,status,result:null});
+  const transaction=String(verified?.numeroTransaction||p.numeroTransaction||p._id||token).trim();
+  const crypto=require('node:crypto');
+  const payloadHash=crypto.createHash('sha256').update(JSON.stringify(p)).digest('hex');
+  const result=await paymentRpc('apply_payment_webhook_event_for_service',{p_order_id:intent.order_id,p_provider:'moneyfusion',p_provider_event_id:token+':'+(event||rawStatus),p_event_type:event||rawStatus||'payment',p_transaction_id:transaction,p_status:status,p_payload_hash:payloadHash},sk,sk);
   return res.status(200).json({ok:true,event,status,result});
 }
 async function marketGet(path,params){
@@ -172,8 +192,9 @@ async function handler(req,res){
   if(route==='payment')return paymentStart(req,res);
   if(route==='payment-webhook')return paymentWebhook(req,res);
   if(req.method==='GET'&&route==='turn'){
-    res.setHeader('Cache-Control','no-store');
-    res.setHeader('Access-Control-Allow-Origin','*');
+    const user=await paymentAuthUser(String(req.headers.authorization||''));
+    if(!user?.id)return res.status(401).json({error:'authentication_required'});
+    res.setHeader('Cache-Control','private, no-store, max-age=0');
     const urlsRaw=process.env.TURN_URLS||process.env.TURN_URL||'';
     const username=process.env.TURN_USERNAME||'';
     const credential=process.env.TURN_PASSWORD||process.env.TURN_CREDENTIAL||'';
@@ -182,7 +203,7 @@ async function handler(req,res){
     if(urls.length&&username&&credential)iceServers.push({urls:urls.length===1?urls[0]:urls,username,credential});
     return res.status(200).json({iceServers,configured:iceServers.length>0});
   }
-  if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
+    if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   const requestId=Math.random().toString(36).slice(2,10);res.setHeader('X-WassAfrica-Request-Id',requestId);res.setHeader('X-Content-Type-Options','nosniff');
   try{
     if(req.body?.image_url){
