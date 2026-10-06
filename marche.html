@@ -100,9 +100,10 @@ function canonicalServiceImage(title){
  return '';
 }
 function renderImage(url,alt,fallback='',real=false){
- const original=imageUrl(url); const u=original||fallback;
+ const original=imageUrl(url),safeFallback=imageUrl(fallback)||'/icon-512.svg',u=original||safeFallback;
  if(!u)return '<div class="empty" style="margin:10px">Visuel indisponible</div>';
- return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(u)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'">';
+ const onerror=original?' onerror="this.onerror=null;this.src=\''+esc(safeFallback)+'\';"':'';
+ return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(u)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'"'+onerror+'>';
 }
 function money(v,c){if(v===null||v===undefined||v==='')return 'Prix sur demande';const n=Number(v);if(!Number.isFinite(n))return 'Prix sur demande';if(n===0)return 'Gratuit';return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(n)+' '+(c||'XOF')}
 function productCard(p){
@@ -210,7 +211,7 @@ function render(){
  const showProducts=view==='all'||view==='physical'||view==='digital',showLibrary=view==='all'||view==='library'||view==='books',showServices=view==='all'||view==='services';
  $('vitrinesSection').hidden=!showVitrines;
  $('productsSection').hidden=!showProducts;$('librarySection').hidden=!showLibrary;$('servicesSection').hidden=!showServices;
- const shownProducts=view==='physical'?physical:view==='digital'?digital:products,shownLibrary=view==='books'?books.filter(x=>x.kind==='book'):books;
+ const shownProducts=view==='physical'?physical:view==='digital'?digital:products.filter(x=>x.type!=='service'),shownLibrary=view==='books'?books.filter(x=>x.kind==='book'):books;
  const vh=showVitrines?safeCards(vitrines,vitrineCard):'';
  const ph=safeCards(shownProducts,productCard);
  const lh=safeCards(shownLibrary,libraryCard);
@@ -315,6 +316,9 @@ async function load(){
   // The live API is the sole source of truth for published Marketplace content.
   if(!DATA.vitrines.length)DATA.vitrines=MARKET_BOOTSTRAP_VITRINES.map(x=>({...x,source:'bootstrap'}));
   const partialErrors=[smartRes.error,pr.error,sr.error,cr.error].filter(Boolean);
+  if(pr.error){
+   throw new Error('MARKET_PRODUCTS_SOURCE_FAILED');
+  }
   if(partialErrors.length){
    $('status').textContent='Certaines catégories du marché sont temporairement indisponibles ; les autres offres publiques restent affichées.';
    $('status').style.display='block';
