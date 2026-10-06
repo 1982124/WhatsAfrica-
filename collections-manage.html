@@ -15,7 +15,7 @@
 .searchrow{display:flex;gap:8px}.searchrow input{flex:1}.product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:10px}.product-choice{border:1px solid #ddd7ca;border-radius:13px;padding:10px;display:flex;gap:10px;align-items:center;cursor:pointer}.product-choice:has(input:checked){border-color:var(--green);background:#f2f7f3}.product-choice input{width:auto}.thumb{width:48px;height:62px;object-fit:cover;border-radius:7px;background:#eee}.selected{border:1px solid #e1ddd4;border-radius:12px;padding:10px;margin:7px 0;display:flex;gap:10px;align-items:center}.selected .grow{flex:1}.iconbtn{padding:6px 9px}.summary{padding:14px;border-radius:13px;background:var(--soft);margin:12px 0}.price{font-size:22px;font-weight:900}.checklist{display:grid;gap:7px;margin:12px 0}.check{padding:9px 11px;border-radius:10px;background:#f7f7f5}.ok{color:#17633e}.bad{color:#8a3d2f}.collection-row{display:flex;gap:12px;align-items:center}.cover{width:58px;height:76px;object-fit:cover;border-radius:9px;background:#eee}.collection-row .grow{flex:1}.status{font-size:12px;font-weight:900;border-radius:999px;padding:4px 9px;background:#edf3ee}.status.draft{background:#f1eee7;color:#71695d}details{margin-top:14px;border-top:1px solid #eee9df;padding-top:12px}summary{cursor:pointer;font-weight:800}.advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:700px){.product-grid,.advanced-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.hero h1{font-size:24px}.searchrow{flex-direction:column}}
 </style>
-</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script></head>
 <body>
 <main class="wrap">
 <header class="hero row">
@@ -100,8 +100,59 @@ async function saveBasics(){
 }
 
 async function paneBooks(){
- $('pane').innerHTML='<h3>Quels ebooks voulez-vous vendre ensemble ?</h3><p class="muted">Cochez les livres. Ils restent vendables séparément et seront simplement regroupés dans cette offre.</p><div class="row"><b>'+itemsCache.length+' ebook'+(itemsCache.length>1?'s':'')+' dans la collection</b><a class="btn primary" href="/digital-products?type=digital&contentKind=book&collection='+encodeURIComponent(current.id)+'">📚 Créer un ebook</a></div><div id="selectedList" style="margin-top:10px">'+renderSelected()+'</div><div class="searchrow" style="margin-top:15px"><input id="pq" placeholder="Rechercher un ebook publié…" oninput="scheduleSearch()"><button class="btn" type="button" onclick="searchProducts()">Rechercher</button></div><div id="results" class="product-grid"></div><button id="addPending" class="btn primary" type="button" style="display:none;margin-top:10px" onclick="addPending()">Ajouter les ebooks sélectionnés</button><div class="actions"><button class="btn" type="button" onclick="setStep(1)">← Retour</button><button class="btn primary" type="button" onclick="setStep(3)">Prix et publication →</button></div>';
+ $('pane').innerHTML='<h3>Ajouter les ebooks</h3><p class="muted">Vous pouvez maintenant déposer plusieurs PDF directement. WASSAFRICA les analyse, crée les fiches ebooks et les ajoute à cette Collection comme brouillons.</p><section class="summary" style="border:1px solid #dfe7e1;background:#f5f8f5"><b>✨ Construire avec mes PDF</b><p class="muted">PDF originaux conservés · analyse IA éditable · aucune publication automatique.</p><input id="pdfBatch" type="file" accept="application/pdf,.pdf" multiple><div id="pdfBatchInfo" class="progress-note">Jusqu’à 12 PDF par analyse, 250 Mo maximum par PDF et 2 Go par lot. Les fichiers sont traités séquentiellement.</div><div class="actions"><input id="pdfInstruction" class="input" maxlength="600" placeholder="Consigne facultative : ex. présenter la collection comme une bibliothèque jeunesse africaine"><button id="analyzePdfBtn" class="btn primary" type="button" onclick="importPdfCollection()" disabled>✨ Analyser et ajouter les PDF</button></div><div id="pdfStatus" class="status"></div></section><hr style="border:0;border-top:1px solid #eee9df;margin:18px 0"><h3>Ou sélectionner des ebooks déjà créés</h3><p class="muted">Ils restent vendables séparément et sont simplement regroupés dans cette offre.</p><div class="row"><b>'+itemsCache.length+' ebook'+(itemsCache.length>1?'s':'')+' dans la collection</b><a class="btn primary" href="/digital-products?type=digital&contentKind=book&collection='+encodeURIComponent(current.id)+'">📚 Créer un ebook</a></div><div id="selectedList" style="margin-top:10px">'+renderSelected()+'</div><div class="searchrow" style="margin-top:15px"><input id="pq" placeholder="Rechercher un ebook publié…" oninput="scheduleSearch()"><button class="btn" type="button" onclick="searchProducts()">Rechercher</button></div><div id="results" class="product-grid"></div><button id="addPending" class="btn primary" type="button" style="display:none;margin-top:10px" onclick="addPending()">Ajouter les ebooks sélectionnés</button><div class="actions"><button class="btn" type="button" onclick="setStep(1)">← Retour</button><button class="btn primary" type="button" onclick="setStep(3)">Prix et publication →</button></div>';
+ const input=$('pdfBatch');if(input)input.onchange=()=>{$('analyzePdfBtn').disabled=!input.files?.length;$('pdfBatchInfo').textContent=input.files?.length?input.files.length+' PDF sélectionné(s).':'Jusqu’à 12 PDF par analyse, 250 Mo maximum par PDF et 2 Go par lot.'};
  loadItems().then(()=>{ $('selectedList').innerHTML=renderSelected(); searchProducts(); }).catch(e=>{ $('results').textContent='Impossible de charger les ebooks : '+(e.message||e); });
+}
+async function getPdfText(file){
+ if(file.size>250*1024*1024)throw Error(file.name+' dépasse 250 Mo.');
+ const data=await file.arrayBuffer();
+ const pdfjs=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+ const doc=await pdfjs.getDocument({data}).promise;let text='';
+ const pages=Math.min(doc.numPages,120);
+ for(let n=1;n<=pages;n++){const p=await doc.getPage(n);const tc=await p.getTextContent();text+=' '+tc.items.map(x=>x.str||'').join(' ');if(text.length>=60000)break}
+ text=text.replace(/\s+/g,' ').trim().slice(0,60000);
+ if(!text)throw Error(file.name+' ne contient pas de texte exploitable. Un PDF scanné devra être OCRisé avant analyse.');
+ return {text,pages:doc.numPages};
+}
+async function importPdfCollection(){
+ const files=Array.from($('pdfBatch')?.files||[]);
+ if(!files.length)return;
+ if(files.length>12)return alert('Maximum 12 PDF par analyse. Vous pourrez lancer un second lot dans la même Collection.');
+ const total=files.reduce((n,f)=>n+f.size,0);
+ if(total>2*1024*1024*1024)return alert('Ce lot dépasse 2 Go. Séparez-le en plusieurs lots.');
+ const btn=$('analyzePdfBtn'),status=$('pdfStatus');btn.disabled=true;
+ try{
+  const analyzed=[];let done=0;
+  for(const file of files){status.textContent='Lecture du PDF '+(++done)+'/'+files.length+' : '+file.name+'…';const x=await getPdfText(file);analyzed.push({name:file.name,text:x.text,pages:x.pages})}
+  status.textContent='Analyse IA de la collection…';
+  const s=await fetch('/api/smartlink-ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessToken},body:JSON.stringify({action:'collection_books_analyze',books:analyzed,instruction:$('pdfInstruction')?.value.trim()||''})});
+  const data=await s.json().catch(()=>({}));if(!s.ok||!data.ok)throw Error(data.error||'Analyse IA impossible.');
+  const draft=data.draft||{},cd=draft.collection||{},books=draft.books||[];
+  const coverBase=current.cover_url||null;
+  const statusBase=status.textContent;
+  for(let i=0;i<files.length;i++){
+    const file=files[i],meta=books[i]||{},id=crypto.randomUUID(),safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,'-');
+    status.textContent='Enregistrement du PDF '+(i+1)+'/'+files.length+' : '+file.name+'…';
+    const path=userId+'/'+id+'/'+crypto.randomUUID()+'-'+safe;
+    const up=await db.storage.from('digital-products').upload(path,file,{upsert:false,contentType:'application/pdf'});
+    if(up.error)throw Error('Upload de '+file.name+' impossible : '+up.error.message);
+    const product={id,business_id:bid,title:meta.title||file.name.replace(/\.pdf$/i,''),description:meta.description||null,price:0,currency:current.currency||'XOF',category:meta.category||cd.category||null,stock:null,is_published:false,product_type:'digital',image_url:coverBase,digital_storage_path:path,digital_file_name:file.name,digital_mime_type:'application/pdf',digital_byte_size:file.size,video_url:null,content_kind:'book',reading_mode:'download_and_reader',author_name:meta.author_name||null,language:meta.language||cd.language||null,isbn:meta.isbn||null,publisher:meta.publisher||null,publication_date:null,page_count:meta.page_count||null,edition:null};
+    const pr=await db.from('products').insert(product).select('id').single();if(pr.error){try{await db.storage.from('digital-products').remove([path])}catch(_){}throw pr.error}
+    const max=itemsCache.reduce((n,x)=>Math.max(n,Number(x.sort_order||0)),0)+i+1;
+    const link=await db.from('product_collection_items').insert({collection_id:current.id,product_id:id,sort_order:max});if(link.error)throw link.error;
+  }
+  const collectionPatch={};
+  if(!current.name&&cd.name)collectionPatch.name=cd.name;
+  if(cd.subtitle)collectionPatch.subtitle=cd.subtitle;
+  if(cd.description)collectionPatch.description=cd.description;
+  if(cd.category)collectionPatch.category=cd.category;
+  if(cd.audience)collectionPatch.audience=cd.audience;
+  if(cd.language)collectionPatch.language=cd.language;
+  if(Object.keys(collectionPatch).length){const cr=await db.from('product_collections').update(collectionPatch).eq('id',current.id).eq('business_id',bid);if(cr.error)throw cr.error;current={...current,...collectionPatch}}
+  status.textContent='✓ '+files.length+' PDF ajouté(s) comme brouillon(s). '+(cd.name?'La présentation de la Collection a aussi été préparée par l’IA.':'');
+  await paneBooks();
+ }catch(e){status.textContent='Erreur : '+(e.message||e);btn.disabled=false}
 }
 async function loadItems(){
  const r=await db.from('product_collection_items').select('id,product_id,sort_order,products(id,title,price,currency,image_url)').eq('collection_id',current.id).order('sort_order',{ascending:true});
