@@ -35,10 +35,8 @@
 </nav>
 <div id="status" class="status" role="status" aria-live="polite"></div>
 <section class="section" id="vitrinesSection"><h2>Vitrines</h2><p class="muted">Découvrez directement les activités et leurs contenus publics.</p><div id="vitrines" class="grid"><div class="empty">Chargement des vitrines…</div></div></section>
-<section class="section" id="productsSection"><h2>Produits</h2><p class="muted">Les offres publiées avec un visuel exploitable.</p><div id="products" class="grid">
-<article class="card"><div class="media real product-photo"><img class="real-img" loading="eager" src="https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/8bbaa0f3-a738-491e-9f20-d873ef0e2cbf/products/9e66c918-8254-48f5-ba3e-178e3e20caed/0da97a52-8412-42c2-911d-e47f541c5e4a.png" alt="Super 10"></div><div class="body"><span class="pill">PRODUIT PHYSIQUE</span><h3>Super 10</h3><div class="muted">WASSAFRICA</div><div class="price">20 XOF</div><div class="actions"><a class="btn primary" href="/product/9e66c918-8254-48f5-ba3e-178e3e20caed">Voir</a></div></div></article>
-<article class="card"><div class="media real product-photo"><img class="real-img" loading="eager" src="https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/8bbaa0f3-a738-491e-9f20-d873ef0e2cbf/products/f851ff38-803b-449a-94ae-28784f0ade64/c50fb41e-36ea-467c-b245-6caf1ec7e2bb.jpg" alt="Light Duty Cleaner (LDC) - 1 Litre"></div><div class="body"><span class="pill">PRODUIT PHYSIQUE</span><h3>Light Duty Cleaner (LDC) - 1 Litre</h3><div class="muted">WASSAFRICA</div><div class="price">18 000 XOF</div><div class="actions"><a class="btn primary" href="/product/f851ff38-803b-449a-94ae-28784f0ade64">Voir</a></div></div></article>
-<article class="card"><div class="media real product-photo"><img class="real-img" loading="eager" src="https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/8bbaa0f3-a738-491e-9f20-d873ef0e2cbf/products/8d2b3d09-0154-4c7b-8f14-ceda16c2e2ef/589c02ed-182a-414f-a960-8d6bfaf1540a.jpg" alt="Super Gro - 5 Litre (Single)"></div><div class="body"><span class="pill">PRODUIT PHYSIQUE</span><h3>Super Gro - 5 Litre (Single)</h3><div class="muted">WASSAFRICA</div><div class="price">65 500 XOF</div><div class="actions"><a class="btn primary" href="/product/8d2b3d09-0154-4c7b-8f14-ceda16c2e2ef">Voir</a></div></div></article>
+<section class="section" id="productsSection"><h2>Produits</h2><p class="muted">Les offres publiées avec un visuel exploitable.</p><div id="products" class="grid"><div class="empty">Chargement des produits…</div>
+<!-- Product cards are rendered exclusively from the live Marketplace payload. -->
 </div></section>
 <section class="section" id="librarySection"><h2>Bibliothèque</h2><p class="muted">Collections et livres publiés avec un visuel exploitable.</p><div id="library" class="grid"><div class="empty">Chargement…</div></div></section>
 <section class="section" id="servicesSection"><h2>Services</h2><p class="muted">Des professionnels et entreprises à découvrir.</p><div id="services" class="grid"><div class="empty">Chargement…</div></div></section>
@@ -142,7 +140,7 @@ const MARKET_BOOTSTRAP_PRODUCTS=[
 {id:'528ce86c-54e7-4d8a-9f00-1b47a2219c7a',title:'Profil professionnel WASSAFRICA',description:'Un profil pensé pour être trouvé, reconnu et contacté.',price:'0.00',currency:'XOF',image_url:'https://wassafrica.vercel.app/assets/wassafrica-profile-realistic.svg',product_type:'service'},
 {id:'cf4c3eba-e91f-4530-888d-0ad9fde0b5f2',title:'Vitrine d’activité WASSAFRICA',description:'Présentez votre activité, vos réalisations, vos produits et vos services.',price:'0.00',currency:'XOF',image_url:'https://wassafrica.vercel.app/assets/wassafrica-vitrine-realistic.svg',product_type:'service'}
 ];
-let DATA={vitrines:[],products:[],services:[],library:[]},view='all';
+let DATA={vitrines:[],products:[],services:[],library:[]},view='all',marketState='loading';
 function vitrineCard(v){
  const cover=v.coverImage||'',logo=v.logoImage||'';
  const initial=esc((v.name||'W').trim().charAt(0).toUpperCase());
@@ -151,7 +149,19 @@ function vitrineCard(v){
  return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(v.name||'Activité WASSAFRICA')+'</h3><div class="muted">'+(v.city?esc(v.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(v.description||'Découvrez directement cette activité et ses offres.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="/'+encodeURIComponent(v.slug)+'">Ouvrir la vitrine</a></div></div></article>';
 }
 function norm(v){return String(v??'').trim().toLowerCase()}
-function matches(x){const q=norm($('q').value);return !q||[x.title,x.name,x.city,x.country,x.description,x.category].filter(Boolean).join(' ').toLowerCase().includes(q)}
+function normalizeProductType(x){
+ const raw=norm(x?.product_type||x?.content_kind||x?.kind||x?.type);
+ if(raw==='service'||raw==='services')return 'service';
+ if(['digital','ebook','e-book','digital_product'].includes(raw))return 'digital';
+ if(['book','books','livre','livres'].includes(raw))return 'book';
+ return 'physical';
+}
+function matches(x){
+ const q=norm($('q').value);
+ if(!q)return true;
+ return [x.title,x.name,x.city,x.country,x.description,x.category,x.author_name,x.author,x.business_name,x.product_type,x.type]
+  .filter(Boolean).join(' ').toLowerCase().includes(q);
+}
 function uniqueByKey(rows){const seen=new Set();return rows.filter(x=>{const key=[norm(x.title),norm(x.name),norm(x.city),norm(x.slug)].join('|');if(seen.has(key))return false;seen.add(key);return true})}
 function isMarketplaceBusiness(b){
  const n=norm(b?.name),slug=norm(b?.slug),type=norm(b?.business_type);
@@ -183,6 +193,18 @@ function safeCards(rows,renderer,label='CONTENU WASSAFRICA'){
  return out.join('');
 }
 function render(){
+ if(marketState==='loading'){
+  $('products').innerHTML='<div class="empty">Chargement des produits…</div>';
+  $('vitrines').innerHTML='<div class="empty">Chargement des vitrines…</div>';
+  $('library').innerHTML='<div class="empty">Chargement…</div>';
+  $('services').innerHTML='<div class="empty">Chargement…</div>';
+  return;
+ }
+ if(marketState==='error'){
+  $('products').innerHTML='<div class="empty"><b>Impossible de charger le Marché pour le moment.</b><div style="margin-top:10px"><button class="btn primary" type="button" id="marketRetry">Réessayer</button></div></div>';
+  $('vitrines').innerHTML='';$('library').innerHTML='';$('services').innerHTML='';
+  return;
+ }
  const vitrines=DATA.vitrines.filter(matches),products=DATA.products.filter(matches), physical=products.filter(x=>x.type==='physical'), digital=products.filter(x=>x.type==='digital'), books=DATA.library.filter(matches), services=uniqueByKey(DATA.services.filter(matches));
  const showVitrines=view==='all';
  const showProducts=view==='all'||view==='physical'||view==='digital',showLibrary=view==='all'||view==='library'||view==='books',showServices=view==='all'||view==='services';
@@ -198,8 +220,13 @@ function render(){
  $('library').innerHTML=lh||'<div class="empty">Aucun contenu disponible actuellement.</div>';
  $('services').innerHTML=sh||'<div class="empty">Aucun contenu disponible actuellement.</div>';
 }
-function setView(next){view=next;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));render()}
+function setView(next){
+ view=['all','library','physical','digital','books','services'].includes(next)?next:'all';
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+ render();
+}
 async function load(){
+ marketState='loading';
  $('status').style.display='none';
  render();
  try{
@@ -268,7 +295,7 @@ async function load(){
   // Products are public offers in their own right: business enrichment is optional.
   // Never hide a published product merely because the seller metadata request failed.
   const productRows=products.map(x=>{
-   const b=byId.get(x.business_id)||{},type=x.product_type==='digital'?'digital':x.product_type==='service'?'service':'physical';
+   const b=byId.get(x.business_id)||{},type=normalizeProductType(x);
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
    // Product media is authoritative. Never replace a WASSAFRICA product visual with a seller cover/map.
    // Seller cover/logo are used only for an actual marketplace vitrine card.
@@ -284,16 +311,8 @@ async function load(){
   DATA.services=uniqueByKey(productRows.filter(x=>x.type==='service').map(x=>({...x,source:'product'})).concat(serviceRows.filter(x=>!isLegacyNativeMirror(x)));
   DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
   // Hard invariant: partial API failure must never hide already-published Marketplace content.
-  const liveProductIds=new Set(DATA.products.map(x=>String(x.id)));
-  for(const x of MARKET_BOOTSTRAP_PRODUCTS){
-   if(x.product_type==='service')continue;
-   if(!liveProductIds.has(String(x.id)))DATA.products.push({...x,type:x.product_type==='digital'?'digital':'physical',source:'bootstrap'});
-  }
-  const liveServiceIds=new Set(DATA.services.map(x=>String(x.id)));
-  for(const x of MARKET_BOOTSTRAP_PRODUCTS){
-   if(x.product_type!=='service')continue;
-   if(!liveServiceIds.has(String(x.id)))DATA.services.push({...x,type:'service',name:'WASSAFRICA',source:'bootstrap'});
-  }
+  marketState='ready';
+  // The live API is the sole source of truth for published Marketplace content.
   if(!DATA.vitrines.length)DATA.vitrines=MARKET_BOOTSTRAP_VITRINES.map(x=>({...x,source:'bootstrap'}));
   const partialErrors=[smartRes.error,pr.error,sr.error,cr.error].filter(Boolean);
   if(partialErrors.length){
@@ -303,27 +322,21 @@ async function load(){
   render();
   marketDiagnostics.renderedCounts={vitrines:DATA.vitrines.filter(matches).length,products:DATA.products.filter(matches).length,services:DATA.services.filter(matches).length,library:DATA.library.filter(matches).length};
   window.__WASSAFRICA_MARKET_DIAGNOSTICS__=marketDiagnostics;
-  if(!DATA.vitrines.length&&!DATA.products.length&&!DATA.services.length&&!DATA.library.length){
-   DATA.vitrines=MARKET_BOOTSTRAP_VITRINES.map(x=>({...x,source:'bootstrap'}));
-   DATA.products=MARKET_BOOTSTRAP_PRODUCTS.filter(x=>x.product_type!=='service').map(x=>({...x,type:'physical',source:'bootstrap'}));
-   DATA.services=MARKET_BOOTSTRAP_PRODUCTS.filter(x=>x.product_type==='service').map(x=>({...x,type:'service',name:'WASSAFRICA',source:'bootstrap'}));
-   render();
-   $('status').textContent='Affichage de secours des offres publiées.';
-   $('status').style.display='block';
-  }
  }catch(e){
-  console.error('market-load',e);
-  DATA={vitrines:MARKET_BOOTSTRAP_VITRINES.map(x=>({...x,source:'bootstrap'})),products:MARKET_BOOTSTRAP_PRODUCTS.filter(x=>x.product_type!=='service').map(x=>({...x,type:'physical',source:'bootstrap'})),services:MARKET_BOOTSTRAP_PRODUCTS.filter(x=>x.product_type==='service').map(x=>({...x,type:'service',name:'WASSAFRICA',source:'bootstrap'})),library:[]};
-  try{render()}catch(renderError){console.error('market-render-fatal',renderError)}
-  $('status').textContent='Le chargement en direct a échoué ; les offres publiées restent visibles.';
+  console.error('[MARKET] load failed',e);
+  marketState='error';
+  DATA={vitrines:[],products:[],services:[],library:[]};
+  $('status').textContent='Impossible de charger le Marché pour le moment.';
   $('status').style.display='block';
-  $('status').textContent='Le marché rencontre un problème de chargement. Réessayez dans quelques instants.';
-  $('status').style.display='block';
- }
-}
+  render();
+ }}
 
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
-$('q').addEventListener('input',render);$('searchBtn').addEventListener('click',render);$('q').addEventListener('keydown',e=>{if(e.key==='Enter')render()});load();
+$('q').addEventListener('input',render);
+$('searchBtn').addEventListener('click',render);
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter')render()});
+document.addEventListener('click',e=>{if(e.target?.id==='marketRetry')load()});
+load();
 </script>
 </body>
 </html>
