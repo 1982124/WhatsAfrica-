@@ -163,8 +163,7 @@ function matches(x){
 }
 function uniqueByKey(rows){const seen=new Set();return rows.filter(x=>{const key=[norm(x.title),norm(x.name),norm(x.city),norm(x.slug)].join('|');if(seen.has(key))return false;seen.add(key);return true})}
 function isMarketplaceBusiness(b){
- const n=norm(b?.name),slug=norm(b?.slug),type=norm(b?.business_type);
- if(type==='platform'||type==='system')return false;
+ const n=norm(b?.name),slug=norm(b?.slug);
  return Boolean(n||slug);
 }
 function isLegacyNativeMirror(s){
