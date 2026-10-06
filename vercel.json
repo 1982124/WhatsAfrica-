@@ -34,7 +34,7 @@
     },
     {
       "source": "/commerce",
-      "destination": "/marche",
+      "destination": "/commerce.html",
       "permanent": false
     },
     {
