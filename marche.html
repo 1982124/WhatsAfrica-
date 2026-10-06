@@ -118,7 +118,7 @@ function productCard(p){
  const target=vitrine&&p.slug?'/'+encodeURIComponent(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:'/product/'+encodeURIComponent(p.id));
  if(vitrine){
   const cover=p.coverImage||p.image,logo=p.logoImage||'',initial=esc((p.name||'W').trim().charAt(0).toUpperCase());
-  const media=cover?'<div class="vitrine-preview">'+renderImage(cover,p.name||p.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,p.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'</div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
+  const media=cover?'<div class="vitrine-preview">'+renderImage(cover,p.name||p.title,'',true).replace('<img ','<img class="cover" ')+(cover&&logo?renderImage(logo,p.name||'Logo','',true).replace('<img ','<img class="logo" '):'')+'</div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
   const offers=(p.vitrineOffers||[]).slice(0,3).map(x=>'<span>'+esc(x)+'</span>').join('');
   return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(p.name||p.title)+'</h3><div class="muted">'+(p.city?esc(p.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(p.businessDescription||p.description||'Découvrez directement cette vitrine et son activité.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="'+target+'">Ouvrir la vitrine</a></div></div></article>';
  }
@@ -133,7 +133,7 @@ function serviceCard(s){
  if(vitrine){
   const target=s.slug?'/'+encodeURIComponent(s.slug):'/'+(s.source==='product'?'product':'service')+'/'+encodeURIComponent(s.id);
   const cover=s.coverImage||s.image,logo=s.logoImage||'',initial=esc((s.name||'W').trim().charAt(0).toUpperCase());
-  const media=cover?'<div class="vitrine-preview">'+renderImage(cover,s.name||s.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,s.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'</div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
+  const media=cover?'<div class="vitrine-preview">'+renderImage(cover,s.name||s.title,'',true).replace('<img ','<img class="cover" ')+(cover&&logo?renderImage(logo,s.name||'Logo','',true).replace('<img ','<img class="logo" '):'')+'</div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
   const offers=(s.vitrineOffers||[]).slice(0,3).map(x=>'<span>'+esc(x)+'</span>').join('');
   return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(s.name||s.title)+'</h3><div class="muted">'+(s.city?esc(s.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(s.businessDescription||s.description||'Découvrez directement cette vitrine et son activité.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="'+target+'">Ouvrir la vitrine</a></div></div></article>';
  }
