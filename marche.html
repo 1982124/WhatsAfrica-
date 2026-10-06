@@ -16,11 +16,11 @@
 .card:hover .smart-3d-stage img{transform:rotateY(-4deg) rotateX(1deg) rotateZ(-.5deg) translateZ(28px) scale(1.02);filter:drop-shadow(28px 30px 26px #173c2250)}
 @media(max-width:650px){.smart-3d-stage img{transform:rotateY(-7deg) rotateX(2deg) rotateZ(-1deg) translateZ(8px)}}
 
-.vitrine-preview{position:relative;width:100%;height:100%;background:#f4f0e8;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
-.vitrine-preview .cover{width:100%;height:100%;object-fit:cover;display:block}
-.vitrine-preview .shade{position:absolute;inset:45% 0 0;background:linear-gradient(transparent,#173c22cc)}
-.vitrine-preview .logo{position:absolute;left:12px;bottom:12px;width:58px;height:58px;border-radius:16px;border:3px solid #fff;object-fit:cover;background:#fff;box-shadow:0 6px 18px #0003}
-.vitrine-preview .initial{font-size:54px;font-weight:950;color:var(--green);padding-bottom:18px}
+.vitrine-preview{position:relative;width:100%;height:100%;background:#f4f0e8;display:grid;place-items:center;overflow:hidden}
+.vitrine-preview .cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+.vitrine-preview .logo{position:relative;z-index:2;width:58px;height:58px;border-radius:16px;border:3px solid #fff;object-fit:cover;background:#fff;box-shadow:0 6px 18px #0003}
+.vitrine-preview .initial{position:relative;z-index:1;font-size:54px;font-weight:950;color:var(--green)}
 .vitrine-content{display:flex;flex-direction:column;gap:7px}
 .vitrine-content .description{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:3px 0 0;color:var(--muted);line-height:1.4}
 .vitrine-offers{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
@@ -118,7 +118,7 @@ function productCard(p){
  const target=vitrine&&p.slug?'/'+encodeURIComponent(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:'/product/'+encodeURIComponent(p.id));
  if(vitrine){
   const cover=p.coverImage||p.image,logo=p.logoImage||'',initial=esc((p.name||'W').trim().charAt(0).toUpperCase());
-  const media=cover?'<div class="vitrine-preview">'+renderImage(cover,p.name||p.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,p.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'<div class="shade"></div></div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
+  const media=cover?'<div class="vitrine-preview">'+renderImage(cover,p.name||p.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,p.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'</div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
   const offers=(p.vitrineOffers||[]).slice(0,3).map(x=>'<span>'+esc(x)+'</span>').join('');
   return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(p.name||p.title)+'</h3><div class="muted">'+(p.city?esc(p.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(p.businessDescription||p.description||'Découvrez directement cette vitrine et son activité.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="'+target+'">Ouvrir la vitrine</a></div></div></article>';
  }
