@@ -36,7 +36,13 @@ module.exports=async function(req,res){
     const conn=await sb('/rest/v1/rpc/get_payment_connection_secret_for_service',{method:'POST',body:JSON.stringify({p_user_id:(await sb('/rest/v1/businesses?id=eq.'+encodeURIComponent(order.business_id)+'&select=owner_id&limit=1')).data?.[0]?.owner_id||null})});
     if(!conn.r.ok||!conn.data?.[0]?.secret) return res.status(409).json({error:'payment_provider_not_connected',message:'Le vendeur doit connecter Money Fusion dans Encaissement.'});
     const secretUrl=String(conn.data[0].secret).trim();
-    if(!/^https?:\\/\\//i.test(secretUrl)) return res.status(500).json({error:'payment_provider_config_invalid'});
+    let providerUrl;
+    try{
+      providerUrl=new URL(secretUrl);
+      if(!['http:','https:'].includes(providerUrl.protocol)||providerUrl.username||providerUrl.password)throw new Error('invalid_url');
+      const host=providerUrl.hostname.toLowerCase();
+      if(!(host==='moneyfusion.net'||host.endsWith('.moneyfusion.net')))throw new Error('untrusted_host');
+    }catch(_){return res.status(500).json({error:'payment_provider_config_invalid'});}
 
     const idem=encodeURIComponent(idempotencyKey);
     const pi=await sb('/rest/v1/payment_intents?order_id=eq.'+encodeURIComponent(order.id)+'&idempotency_key=eq.'+idem+'&select=id,provider_reference,status,metadata&limit=1');
