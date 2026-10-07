@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WASSAFRICA — Collection Studio</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--ink:#17231e;--green:#173d2d;--paper:#f7f3ea;--line:#ded8ca;--soft:#f4f1e9}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:980px;margin:auto;padding:22px 18px 60px}
@@ -53,7 +54,22 @@ const money=(n,c='XOF')=>Number(n||0).toLocaleString('fr-FR')+' '+c;
 const cleanQ=v=>(v||'').replace(/[%_]/g,'').trim();
 let booting=false;
 async function bootFromSession(s){if(booting)return;booting=true;try{if(!s){location.href='/auth?next='+encodeURIComponent(location.href);return}storeSession(s);userId=s.user.id;$('list').textContent='Chargement de vos collections…';const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();if(r.error)throw r.error;if(!r.data){$('list').textContent='Aucune activité commerciale associée.';return}bid=r.data.id;await loadCollections()}catch(e){$('list').textContent='Impossible de charger vos collections : '+(e.message||e)}finally{booting=false}}
-async function init(){$('list').textContent='Connexion à votre espace…';let s=readStoredSession();if(s?.access_token){storeSession(s);const exp=Number(s.expires_at||0)*1000;if(exp&&exp<Date.now()+60000)s=await refreshSession().catch(()=>null)}if(!s?.access_token){location.href='/auth?next='+encodeURIComponent(location.href);return}await bootFromSession(s);window.addEventListener('storage',e=>{if(e.key===AUTH_KEY){const next=readStoredSession();if(next?.access_token&&next.access_token!==accessToken)bootFromSession(next)}})}
+async function init(){
+ $('list').textContent='Connexion à votre espace…';
+ try{
+  const client=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:AUTH_KEY}});
+  const current=await client.auth.getSession();
+  if(current.error)throw current.error;
+  let s=current.data?.session||readStoredSession();
+  if(!s?.access_token){location.href='/auth?next='+encodeURIComponent(location.href);return}
+  storeSession(s);await bootFromSession(s);
+  client.auth.onAuthStateChange((event,next)=>{
+   if(next?.access_token && next.user?.id!==userId || (next?.access_token && next.access_token!==accessToken)) bootFromSession(next);
+   if(event==='SIGNED_OUT') location.href='/auth?next='+encodeURIComponent(location.href);
+  });
+  window.addEventListener('storage',e=>{if(e.key===AUTH_KEY){const next=readStoredSession();if(next?.access_token&&next.access_token!==accessToken)bootFromSession(next)}})
+ }catch(e){$('list').textContent='Impossible d’initialiser votre session : '+(e.message||e)}
+}
 window.addEventListener('error',e=>{if($('list')&&!bid)$('list').textContent='Erreur du Studio : '+(e.message||'JavaScript indisponible.')});
 
 async function loadCollections(){
