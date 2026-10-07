@@ -8,7 +8,7 @@
 <title>Marché WASSAFRICA</title>
 
 <style>
-:root{--bg:#f7f2e9;--surface:#fffdf9;--ink:#20242b;--muted:#72736d;--line:#e5ddd1;--green:#287b36;--deep:#173c22;--gold:#d59b27}
+:root{--bg:#f7f2e9;--surface:#fffdf9;--ink:#20242b;--muted:#72736d;--line:#e5ddd1;--green:#287b36;--deep:#173c22;--gold:#d59b27;--soft:#eee7da;--danger:#9d3b2e}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1180px;margin:auto;padding:0 16px}.top{position:sticky;top:0;z-index:20;background:#f7f2e9ee;backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.row{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:10px}.brand{font-size:22px;font-weight:950;color:var(--ink);text-decoration:none}.topActions{display:flex;gap:8px}.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 13px;font-weight:850;text-decoration:none;cursor:pointer}.primary{background:var(--green);border-color:var(--green);color:#fff}.hero{margin:18px 0;padding:30px;border-radius:28px;background:linear-gradient(125deg,var(--deep),#2d7835 60%,var(--gold));color:#fff;box-shadow:0 14px 36px #173c221f}.hero>*{position:relative;z-index:1}.ey{font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:900;color:#dff0d9}.hero h1{font:700 clamp(34px,6vw,58px)/1.04 Georgia,serif;margin:8px 0 12px}.hero p{max-width:720px;color:#f8f4e9;line-height:1.65;font-size:16px;margin:0 0 18px}.search{display:flex;gap:8px;max-width:850px}.search input{flex:1;padding:14px;border:0;border-radius:14px;font:inherit}.tabs{display:flex;gap:8px;overflow:auto;padding:2px 0 14px}.tab{white-space:nowrap;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 14px;font-weight:850;cursor:pointer}.tab.active{background:var(--green);color:#fff;border-color:var(--green)}.section{margin:30px 0}.section h2{font:700 clamp(27px,4vw,32px)/1.12 Georgia,serif;margin:0 0 6px}.muted{color:var(--muted)}.section>p.muted{max-width:68ch;line-height:1.55;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:stretch}.card{display:flex;flex-direction:column;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 8px 24px #20242b0d;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.card:hover{transform:translateY(-2px);box-shadow:0 14px 32px #20242b16;border-color:#cfc3b4}.media{position:relative;width:100%;aspect-ratio:4/3;height:auto;min-height:220px;flex:0 0 auto;overflow:hidden;background:#fff;display:grid;place-items:center;isolation:isolate}.media img{position:relative;z-index:1}.media>*{min-width:0;min-height:0}.media a{display:block;width:100%;height:100%;position:relative;z-index:1}.media+.body{position:relative;z-index:2}.media.service-illustration{background:#fff}
 .smart-3d-stage{position:relative;width:100%;height:100%;min-height:100%;display:grid;place-items:center;perspective:1100px;overflow:hidden;background:radial-gradient(circle at 50% 42%,#fff 0,#f5efe4 58%,#e9dfcf 100%)}
 .smart-3d-stage:before{content:"";position:absolute;width:70%;height:22%;left:15%;bottom:8%;border-radius:50%;background:#173c2230;filter:blur(18px);transform:rotateX(72deg);pointer-events:none}
@@ -25,6 +25,7 @@
 .vitrine-content .description{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:3px 0 0;color:var(--muted);line-height:1.4}
 .vitrine-offers{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
 .vitrine-offers span{font-size:10px;font-weight:800;padding:5px 7px;border-radius:999px;background:#f1eadf;color:var(--deep);border:1px solid var(--line)}.media.real img{width:100%;height:100%;object-fit:contain;padding:6px;display:block;background:#fff}.media.real.product-photo{background:#fff}.media.real.product-photo img{position:relative!important;z-index:1!important;width:100%!important;height:100%!important;object-fit:contain!important;padding:10px!important;max-width:100%;max-height:100%;display:block}.media.service-illustration img{object-fit:contain!important;padding:6px!important}.media.fallback img{width:100%;height:100%;object-fit:contain;padding:8px;display:block;background:#fff}.body{padding:14px 14px 15px;position:relative;background:var(--surface);display:flex;flex-direction:column;min-width:0;flex:0 0 auto;overflow:visible}.body h3,.body p,.body .muted{overflow-wrap:anywhere;word-break:normal}.body .actions{position:relative;z-index:3}.body .price{order:3}.body .actions{order:4}.body h3{overflow-wrap:anywhere}.price{font-size:17px;font-weight:950;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);position:static;z-index:auto;clear:none;line-height:1.25}.body .description{display:none}.body h3{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.44em}.body>.muted{min-height:1.35em}.body .pill{align-self:flex-start;max-width:100%}.pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#dff0d9;color:var(--green);font-size:10px;font-weight:850;letter-spacing:.02em}.smart-card{border-color:#c9aa63;box-shadow:0 10px 28px #8c6a1a14}.smart-card .media:after{content:none}.body h3{margin:7px 0 5px;font-size:18px;line-height:1.22}.body p{line-height:1.35;margin:5px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.actions{display:flex;gap:7px;margin-top:12px;align-items:stretch}.actions .btn{flex:1;text-align:center;min-width:0;white-space:nowrap}.empty{padding:28px;text-align:center;border:1px dashed var(--line);border-radius:18px;background:var(--surface);color:var(--muted)}.status{margin:12px 0;padding:10px 12px;border-radius:12px;background:#fff7dd;color:#6e5314;display:none}.foot{text-align:center;padding:36px 0 50px;color:var(--muted);font-size:12px}@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.topActions .btn:first-child{display:none}.hero{padding:23px}.search{flex-direction:column}.grid{grid-template-columns:1fr 1fr;gap:12px}.card{border-radius:18px}.body{padding:12px}.body h3{font-size:16px}.media{aspect-ratio:4/3;min-height:170px}}@media(max-width:430px){.grid{grid-template-columns:1fr}.row{align-items:center}.brand{font-size:20px}.media{aspect-ratio:4/3;min-height:220px}}
+.market-intro{display:flex;align-items:end;justify-content:space-between;gap:18px;margin:28px 0 12px}.market-intro h2{margin:0}.market-count{font-size:12px;font-weight:850;color:var(--muted)}.category-rail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:12px 0 26px}.category-chip{min-height:76px;border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:12px;text-align:left;cursor:pointer;font-weight:900;box-shadow:0 5px 16px #20242b08}.category-chip:hover,.category-chip.active{border-color:#a8bf9f;background:#eef5ea}.category-chip span{display:block;font-size:22px;margin-bottom:5px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}.filter-btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 12px;font-weight:850;cursor:pointer}.truth-note{padding:10px 12px;border-left:3px solid var(--gold);background:#fffaf0;border-radius:10px;color:#5e563f;font-size:12px;margin:0 0 16px}.official-demo{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:22px;align-items:center;padding:22px;border-radius:24px;background:var(--deep);color:#fff;overflow:hidden}.official-demo img{width:100%;height:260px;object-fit:cover;border-radius:18px;display:block}.official-demo h2{margin:0 0 8px;font:700 32px/1.1 Georgia,serif}.official-demo p{color:#e8f1e6;max-width:52ch}.official-demo .ey{color:#d8e9d2}.section[data-commercial]{margin-top:34px}.card .seller-line{display:flex;justify-content:space-between;gap:8px;align-items:center}.card .seller-name{font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.card .location{font-size:12px;color:var(--muted);white-space:nowrap}.broken-media{min-height:220px;display:grid;place-items:center;background:#f4efe6;color:var(--muted);font-size:12px;padding:20px;text-align:center}@media(max-width:900px){.category-rail{grid-template-columns:repeat(3,minmax(0,1fr))}.official-demo{grid-template-columns:1fr}}@media(max-width:650px){.market-intro{align-items:start;flex-direction:column;gap:4px}.category-rail{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.category-chip{min-height:68px}.toolbar{align-items:flex-start;flex-direction:column}.official-demo{padding:16px}.official-demo img{height:210px}.official-demo h2{font-size:27px}}
 </style>
 </head>
 <body>
@@ -32,18 +33,56 @@
 <main class="wrap">
 <section class="hero">
 <div class="ey">Marché WASSAFRICA</div>
-<h1>Découvrez. Parlez. Avancez.</h1>
-<p>Découvrez des activités, des produits et des services. Échangez directement avec les personnes qui les proposent.</p>
-<div class="search"><input id="q" placeholder="Rechercher un produit, un service, une activité ou une ville…" autocomplete="off"><button id="searchBtn" class="btn primary" type="button">Rechercher</button></div>
+<h1>Trouvez ce qui se vend vraiment.</h1>
+<p>Produits, services et vitrines publiés sur WASSAFRICA. Recherchez, découvrez le vendeur et passez directement à l’action.</p>
+<div class="search"><input id="q" placeholder="Rechercher un produit, un service, une boutique ou une ville…" autocomplete="off"><button id="searchBtn" class="btn primary" type="button">Rechercher</button></div>
 </section>
-<nav class="tabs" aria-label="Catégories du marché">
-<button class="tab active" data-view="all">Tout</button><button class="tab" data-view="library">📚 Bibliothèque</button><button class="tab" data-view="physical">🛍️ Produits</button><button class="tab" data-view="digital">💻 Digital</button><button class="tab" data-view="books">📖 Livres</button><button class="tab" data-view="services">🧰 Services</button>
+
+<div class="market-intro"><div><h2>Explorer le marché</h2><div class="muted">Les catégories ci-dessous filtrent uniquement les contenus réellement publiés.</div></div><div id="marketCount" class="market-count"></div></div>
+<nav class="category-rail" aria-label="Catégories du marché">
+<button class="category-chip active" data-view="all"><span>✨</span>Tout</button>
+<button class="category-chip" data-view="physical"><span>🛍️</span>Produits</button>
+<button class="category-chip" data-view="digital"><span>💻</span>Digital</button>
+<button class="category-chip" data-view="books"><span>📚</span>Livres</button>
+<button class="category-chip" data-view="services"><span>🧰</span>Services</button>
+<button class="category-chip" data-view="vitrines"><span>🏪</span>Vitrines</button>
 </nav>
+
 <div id="status" class="status" role="status" aria-live="polite"></div>
-<section class="section" id="vitrinesSection"><h2>Vitrines</h2><p class="muted">Découvrez les vitrines réellement publiées. Le démo WASSAFRICA est présenté à partir de sa vitrine officielle.</p><div id="vitrines" class="grid"><div class="empty">Chargement des vitrines publiées…</div></div></section>
-<section class="section" id="productsSection"><h2>Produits du Marché</h2><p class="muted">Une sélection chargée depuis les produits actuellement publiés. Aucun faux produit, aucune carte de démonstration.</p><div id="products" class="grid"><div class="empty">Chargement des produits publiés…</div></div></section>
-<section class="section" id="librarySection"><h2>Bibliothèque</h2><p class="muted">Retrouvez les livres et collections disponibles.</p><div id="library" class="grid"><div class="empty">Chargement…</div></div></section>
-<section class="section" id="servicesSection"><h2>Services</h2><p class="muted">Découvrez les services proposés sur WASSAFRICA.</p><div id="services" class="grid"></div></section>
+
+<section class="section" id="productsSection" data-commercial>
+<div class="market-intro"><div><h2>Produits du Marché</h2><p class="muted">Uniquement les produits actuellement publiés. Aucun faux produit.</p></div><div id="productCount" class="market-count"></div></div>
+<div class="toolbar"><div class="truth-note">Les visuels produits viennent des données publiées. Un produit sans visuel exploitable n’est pas remplacé par une image générique.</div></div>
+<div id="products" class="grid"><div class="empty">Chargement des produits publiés…</div></div>
+</section>
+
+<section class="section" id="vitrinesSection" data-commercial>
+<div class="market-intro"><div><h2>Vitrines à découvrir</h2><p class="muted">Des activités réellement publiées sur WASSAFRICA.</p></div><div id="vitrineCount" class="market-count"></div></div>
+<div id="vitrines" class="grid"><div class="empty">Chargement des vitrines publiées…</div></div>
+</section>
+
+<section class="section" id="servicesSection" data-commercial>
+<div class="market-intro"><div><h2>Services</h2><p class="muted">Des services publiés par les professionnels présents sur WASSAFRICA.</p></div><div id="serviceCount" class="market-count"></div></div>
+<div id="services" class="grid"><div class="empty">Chargement des services…</div></div>
+</section>
+
+<section class="section" id="librarySection" data-commercial>
+<div class="market-intro"><div><h2>Bibliothèque</h2><p class="muted">Livres et collections réellement publiés.</p></div><div id="libraryCount" class="market-count"></div></div>
+<div id="library" class="grid"><div class="empty">Chargement…</div></div>
+</section>
+
+<section class="section" id="officialDemoSection">
+<div class="official-demo">
+<img src="https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png" alt="Vitrine officielle WASSAFRICA">
+<div>
+<div class="ey">WASSAFRICA officiel</div>
+<h2>Voir le démo WASSAFRICA</h2>
+<p>La vitrine officielle n’est pas un faux produit du catalogue. Elle est présentée séparément pour montrer concrètement l’expérience WASSAFRICA.</p>
+<a class="btn primary" href="/wassa-8bbaa0f3a738">Ouvrir le démo</a>
+</div>
+</div>
+</section>
+
 <footer class="foot">WASSAFRICA — Découvrez. Parlez. Faites affaire.</footer>
 </main>
 <script>
@@ -104,9 +143,9 @@ function canonicalServiceImage(title){
  return '';
 }
 function renderImage(url,alt,fallback='',real=false){
- const original=imageUrl(url),safeFallback=imageUrl(fallback)||'/icon-512.svg',u=original||safeFallback;
- if(!u)return '<div class="empty" style="margin:10px">Visuel indisponible</div>';
- return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(u)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'">';
+ const original=imageUrl(url);
+ if(!original)return '';
+ return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(original)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'">';
 }
 function money(v,c){if(v===null||v===undefined||v==='')return 'Prix sur demande';const n=Number(v);if(!Number.isFinite(n))return 'Prix sur demande';if(n===0)return 'Gratuit';return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(n)+' '+(c||'XOF')}
 function productCard(p){
@@ -118,10 +157,13 @@ function productCard(p){
   const offers=(p.vitrineOffers||[]).slice(0,3).map(x=>'<span>'+esc(x)+'</span>').join('');
   return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(p.name||p.title)+'</h3><div class="muted">'+(p.city?esc(p.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(p.businessDescription||p.description||'Découvrez directement cette vitrine et son activité.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(p.isCanonicalDemo?'Voir le démo WASSAFRICA':'Ouvrir la vitrine')+'</a></div></div></article>';
  }
- const illustration=p.image,mediaClass='real product-photo';
+ const illustration=p.image;
+ if(!illustration && !smart)return '';
+ const mediaClass='real product-photo';
  const smartMedia=smart
-  ? '<div class="smart-3d-stage" aria-label="Aperçu illustratif du Smart Link WASSAFRICA">'+renderImage(illustration||canonicalServiceImage(p.title),p.title,canonicalServiceImage(p.title),true)+'</div>'
-  : renderImage(illustration,p.title,canonicalServiceImage(p.title),true);
+  ? '<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(illustration,p.title,'',true)+'</div>'
+  : renderImage(illustration,p.title,'',true);
+ if(!smartMedia)return '';
  return '<article class="card '+(smart?'smart-card':'')+'"><div class="media '+mediaClass+'">'+smartMedia+'</div><div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(p.type==='digital'?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="/'+encodeURIComponent(p.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function serviceCard(s){
@@ -135,9 +177,10 @@ function serviceCard(s){
  }
  const serviceSmart=norm(s.title).includes('smart link');
  const serviceMedia=serviceSmart
-  ? '<div class="smart-3d-stage" aria-label="Aperçu illustratif du Smart Link WASSAFRICA">'+renderImage(s.image||canonicalServiceImage(s.title),s.title,canonicalServiceImage(s.title),true)+'</div>'
-  : renderImage(s.image,s.title,canonicalServiceImage(s.title),Boolean(s.isRealImage));
- return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media '+(s.isRealImage?'real':'fallback')+'">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="/'+(s.source==='product'?'product':'service')+'/'+encodeURIComponent(s.id)+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
+  ? (s.image?'<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(s.image,s.title,'',true)+'</div>':'')
+  : (s.isRealImage?renderImage(s.image,s.title,'',true):'');
+ if(!serviceMedia)return '';
+ return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="/'+(s.source==='product'?'product':'service')+'/'+encodeURIComponent(s.id)+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function libraryCard(c){return '<article class="card"><div class="media fallback">'+renderImage(c.image,c.name)+'</div><div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'BIBLIOTHÈQUE')+'</span><h3>'+esc(c.name)+'</h3><p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
@@ -209,8 +252,11 @@ function render(){
   return;
  }
  const vitrines=DATA.vitrines.filter(matches),products=DATA.products.filter(matches), physical=products.filter(x=>x.type==='physical'), digital=products.filter(x=>x.type==='digital'), books=DATA.library.filter(matches), services=uniqueByKey(DATA.services.filter(matches));
- const showVitrines=view==='all';
- const showProducts=view==='all'||view==='physical'||view==='digital',showLibrary=view==='all'||view==='library'||view==='books',showServices=view==='all'||view==='services';
+ const showVitrines=view==='all'||view==='vitrines';
+ const showProducts=view==='all'||view==='physical'||view==='digital';
+ const showLibrary=view==='all'||view==='library'||view==='books';
+ const showServices=view==='all'||view==='services';
+ $('officialDemoSection').hidden=view!=='all';
  $('vitrinesSection').hidden=!showVitrines;
  $('productsSection').hidden=!showProducts;$('librarySection').hidden=!showLibrary;$('servicesSection').hidden=!showServices;
  const shownProducts=view==='physical'?physical:view==='digital'?digital:products.filter(x=>x.type!=='service'),shownLibrary=view==='books'?books.filter(x=>x.kind==='book'):books;
@@ -218,10 +264,15 @@ function render(){
  const ph=safeCards(shownProducts,productCard);
  const lh=safeCards(shownLibrary,libraryCard);
  const sh=safeCards(services,serviceCard);
- $('vitrines').innerHTML=showVitrines?(vh||'<div class="empty">Aucun contenu disponible actuellement.</div>'):'';
- $('products').innerHTML=ph||'<div class="empty">Aucun contenu disponible actuellement.</div>';
- $('library').innerHTML=lh||'<div class="empty">Aucun contenu disponible actuellement.</div>';
- $('services').innerHTML=sh||'<div class="empty">Aucun contenu disponible actuellement.</div>';
+ $('vitrines').innerHTML=showVitrines?(vh||'<div class="empty">Aucune vitrine disponible actuellement.</div>'):'';
+ $('products').innerHTML=showProducts?(ph||'<div class="empty">Aucun produit disponible actuellement.</div>'):'';
+ $('library').innerHTML=showLibrary?(lh||'<div class="empty">Aucun livre ou collection disponible actuellement.</div>'):'';
+ $('services').innerHTML=showServices?(sh||'<div class="empty">Aucun service disponible actuellement.</div>'):'';
+ $('productCount').textContent=showProducts?shownProducts.length+' publié'+(shownProducts.length>1?'s':''):'';
+ $('vitrineCount').textContent=showVitrines?vitrines.length+' vitrine'+(vitrines.length>1?'s':''):'';
+ $('serviceCount').textContent=showServices?services.length+' service'+(services.length>1?'s':''):'';
+ $('libraryCount').textContent=showLibrary?shownLibrary.length+' contenu'+(shownLibrary.length>1?'s':''):'';
+ $('marketCount').textContent=(DATA.products.length+DATA.services.length+DATA.library.length)+' offres publiées';
 }
 function setView(next){
  view=['all','library','physical','digital','books','services'].includes(next)?next:'all';
@@ -296,8 +347,8 @@ async function load(){
     offers:offersByBiz.get(biz.id)||[]
    };
   }).filter(x=>x.slug && x.name));
-  // Canonical platform demo vitrine: keep it visible even when backend business enrichment is sparse.
-  DATA.vitrines=uniqueByKey(MARKET_BOOTSTRAP_VITRINES.concat(DATA.vitrines));
+  // The official WASSAFRICA demo is editorial and rendered separately.
+  // It is never counted as marketplace inventory.
   // Products are public offers in their own right: business enrichment is optional.
   // Never hide a published product merely because the seller metadata request failed.
   const productRows=products.map(x=>{
