@@ -102,9 +102,9 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function imageUrl(url){try{const u=new URL(String(url||''),location.origin);return /^https?:$/.test(u.protocol)?u.href:''}catch(e){return ''}}
 function canonicalServiceImage(title){
  const t=norm(title);
- if(t.includes('smart link'))return '/assets/wassafrica-smartlink-realistic.svg';
- if(t.includes('profil professionnel')||t.includes('profil pro')||t.includes('présence professionnelle'))return '/assets/wassafrica-profile-realistic.svg';
- if(t.includes('vitrine'))return '/assets/wassafrica-vitrine-realistic.svg';
+ if(t.includes('smart link'))return 'https://images.pexels.com/photos/9432436/pexels-photo-9432436.jpeg?auto=compress&cs=tinysrgb&w=1200';
+ if(t.includes('profil professionnel')||t.includes('profil pro')||t.includes('présence professionnelle'))return 'https://images.pexels.com/photos/6280574/pexels-photo-6280574.jpeg?auto=compress&cs=tinysrgb&w=1200';
+ if(t.includes('vitrine'))return 'https://images.pexels.com/photos/28830324/pexels-photo-28830324.jpeg?auto=compress&cs=tinysrgb&w=1200';
  return '';
 }
 function renderImage(url,alt,fallback='',real=false){
@@ -124,7 +124,7 @@ function productCard(p){
  }
  const illustration=p.image,mediaClass='real product-photo';
  const smartMedia=smart
-  ? '<div class="smart-3d-stage" aria-label="Aperçu illustratif du Smart Link WASSAFRICA">'+renderImage(illustration||'/assets/wassafrica-smartlink-realistic.svg',p.title,'/assets/wassafrica-smartlink-realistic.svg',true)+'</div>'
+  ? '<div class="smart-3d-stage" aria-label="Aperçu illustratif du Smart Link WASSAFRICA">'+renderImage(illustration||canonicalServiceImage(p.title),p.title,canonicalServiceImage(p.title),true)+'</div>'
   : renderImage(illustration,p.title,canonicalServiceImage(p.title),true);
  return '<article class="card '+(smart?'smart-card':'')+'"><div class="media '+mediaClass+'">'+smartMedia+'</div><div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(p.type==='digital'?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="/'+encodeURIComponent(p.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
@@ -139,12 +139,12 @@ function serviceCard(s){
  }
  const serviceSmart=norm(s.title).includes('smart link');
  const serviceMedia=serviceSmart
-  ? '<div class="smart-3d-stage" aria-label="Aperçu illustratif du Smart Link WASSAFRICA">'+renderImage(s.image||'/assets/wassafrica-smartlink-realistic.svg',s.title,'/assets/wassafrica-smartlink-realistic.svg',true)+'</div>'
+  ? '<div class="smart-3d-stage" aria-label="Aperçu illustratif du Smart Link WASSAFRICA">'+renderImage(s.image||canonicalServiceImage(s.title),s.title,canonicalServiceImage(s.title),true)+'</div>'
   : renderImage(s.image,s.title,canonicalServiceImage(s.title),Boolean(s.isRealImage));
  return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media '+(s.isRealImage?'real':'fallback')+'">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="/'+(s.source==='product'?'product':'service')+'/'+encodeURIComponent(s.id)+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function libraryCard(c){return '<article class="card"><div class="media fallback">'+renderImage(c.image,c.name)+'</div><div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'BIBLIOTHÈQUE')+'</span><h3>'+esc(c.name)+'</h3><p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
-const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'WASSAFRICA',description:'La vitrine officielle WASSAFRICA : découvrez la plateforme, ses offres et ses services.',coverImage:'https://wassafrica.vercel.app/assets/vitrines/ma-vitrine-wassafrica.svg',logoImage:'',city:'',country:'',offers:[]}];
+const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'WASSAFRICA',description:'La vitrine officielle WASSAFRICA : découvrez la plateforme, ses offres et ses services.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'',city:'',country:'',offers:[]}];
 let DATA={vitrines:[],products:[],services:[],library:[]},view='all',marketState='loading';
 function vitrineCard(v){
  const cover=v.coverImage||'',logo=v.logoImage||'';
@@ -187,7 +187,7 @@ function fallbackMarketCard(row,label='CONTENU WASSAFRICA'){
  const href=id?(row?.source==='service'?'/service/'+encodeURIComponent(id):'/product/'+encodeURIComponent(id)):'#';
  const meta=row?.metadata&&typeof row.metadata==='object'?row.metadata:{};
  const rawImage=row?.image||row?.image_url||meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||row?.coverImage||row?.cover_image_url||'';
- const fallback=canonicalServiceImage(row?.title||'')||'/assets/wassafrica-vitrine-realistic.svg';
+ const fallback=canonicalServiceImage(row?.title||'')||'https://images.pexels.com/photos/20123401/pexels-photo-20123401.jpeg?auto=compress&cs=tinysrgb&w=1200';
  const image=imageUrl(rawImage)||imageUrl(fallback);
  return '<article class="card"><div class="media real product-photo"><img loading="eager" decoding="async" src="'+esc(image)+'" alt="'+title+'"></div><div class="body"><span class="pill">'+esc(label)+'</span><h3>'+title+'</h3>'+(desc?'<p class="muted">'+desc+'</p>':'')+'<div class="actions"><a class="btn primary" href="'+href+'">Voir</a></div></div></article>';
 }
@@ -313,7 +313,7 @@ async function load(){
    return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
   });
   const serviceRows=servicesRaw.map(x=>{
-   const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'/assets/wassafrica-vitrine-realistic.svg',isVitrine=norm(x.title).includes('vitrine');
+   const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},fallback=canonicalServiceImage(x.title)||'https://images.pexels.com/photos/20123401/pexels-photo-20123401.jpeg?auto=compress&cs=tinysrgb&w=1200',isVitrine=norm(x.title).includes('vitrine');
    return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||fallback,isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
   });
   // INVARIANT MARKETPLACE: every published row received from the API is displayable.
