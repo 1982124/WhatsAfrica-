@@ -149,13 +149,6 @@ async function restSelect(table,params={}){
 const $=id=>document.getElementById(id);
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function imageUrl(url){try{const u=new URL(String(url||''),location.origin);return /^https?:$/.test(u.protocol)?u.href:''}catch(e){return ''}}
-function canonicalServiceImage(title){
- const t=norm(title);
- if(t.includes('smart link'))return 'https://images.pexels.com/photos/9432436/pexels-photo-9432436.jpeg?auto=compress&cs=tinysrgb&w=1200';
- if(t.includes('profil professionnel')||t.includes('profil pro')||t.includes('présence professionnelle'))return 'https://images.pexels.com/photos/6280574/pexels-photo-6280574.jpeg?auto=compress&cs=tinysrgb&w=1200';
- if(t.includes('vitrine'))return 'https://images.pexels.com/photos/28830324/pexels-photo-28830324.jpeg?auto=compress&cs=tinysrgb&w=1200';
- return '';
-}
 function renderImage(url,alt,fallback='',real=false){
  const original=imageUrl(url);
  if(!original)return '';
@@ -255,8 +248,8 @@ function fallbackMarketCard(row,label='CONTENU WASSAFRICA'){
 function safeCards(rows,renderer,label='CONTENU WASSAFRICA'){
  const out=[];
  for(const row of rows){
-  try{const html=renderer(row);if(html)out.push(html);else out.push(fallbackMarketCard(row,label))}
-  catch(e){console.warn('market-card-render',e,row);out.push(fallbackMarketCard(row,label))}
+  try{const html=renderer(row);if(html)out.push(html)}
+  catch(e){console.warn('market-card-render',e,row)}
  }
  return out.join('');
 }
