@@ -182,10 +182,14 @@ function serviceSourceLabel(s){
 }
 function fallbackMarketCard(row,label='CONTENU WASSAFRICA'){
  const title=esc(row?.title||row?.name||'Offre WASSAFRICA');
- const desc=esc(row?.description||'Contenu public disponible sur WASSAFRICA.');
+ const desc=esc(row?.description||'');
  const id=row?.id?String(row.id):'';
  const href=id?(row?.source==='service'?'/service/'+encodeURIComponent(id):'/product/'+encodeURIComponent(id)):'#';
- return '<article class="card"><div class="body"><span class="pill">'+esc(label)+'</span><h3>'+title+'</h3><p class="muted">'+desc+'</p><div class="actions"><a class="btn primary" href="'+href+'">Voir</a></div></div></article>';
+ const meta=row?.metadata&&typeof row.metadata==='object'?row.metadata:{};
+ const rawImage=row?.image||row?.image_url||meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||row?.coverImage||row?.cover_image_url||'';
+ const fallback=canonicalServiceImage(row?.title||'')||'/assets/wassafrica-vitrine-realistic.svg';
+ const image=imageUrl(rawImage)||imageUrl(fallback);
+ return '<article class="card"><div class="media real product-photo"><img loading="eager" decoding="async" src="'+esc(image)+'" alt="'+title+'"></div><div class="body"><span class="pill">'+esc(label)+'</span><h3>'+title+'</h3>'+(desc?'<p class="muted">'+desc+'</p>':'')+'<div class="actions"><a class="btn primary" href="'+href+'">Voir</a></div></div></article>';
 }
 function safeCards(rows,renderer,label='CONTENU WASSAFRICA'){
  const out=[];
