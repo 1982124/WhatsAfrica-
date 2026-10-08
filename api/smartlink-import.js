@@ -186,8 +186,8 @@ async function discoverData(req,res){
   if(req.method!=='GET')return res.status(405).json({ok:false,error:'METHOD_NOT_ALLOWED'});
   res.setHeader('Cache-Control','private, no-store, max-age=0, must-revalidate');
   res.setHeader('X-WASSAFRICA-Discover-Version','discover-v2-server-search');
-  const norm=s=>String(s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim();
-  const clean=s=>String(s||'').replace(/[\\\\,()]/g,' ').replace(/\\*/g,' ').replace(/\\s+/g,' ').trim().slice(0,120);
+  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const clean=s=>String(s||'').replace(/[\\\\,()]/g,' ').replace(/\\*/g,' ').replace(/\s+/g,' ').trim().slice(0,120);
   const q=norm(clean(req.query?.q)),country=norm(clean(req.query?.country)),city=norm(clean(req.query?.city));
   const kind=String(req.query?.kind||'').trim().toLowerCase();
   const limit=Math.min(60,Math.max(1,Number(req.query?.limit||24))||24),offset=Math.max(0,Number(req.query?.offset||0)||0);
