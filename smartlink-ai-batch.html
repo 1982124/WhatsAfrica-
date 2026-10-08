@@ -29,7 +29,7 @@
 <div class="card" style="margin-top:14px"><h2 id="publishTitle">3. Publication</h2><p class="muted" id="publishHelp">Le Smart Link public affiche uniquement le contenu commercial vérifié et le prix de vente.</p><div class="summary"><div class="metric"><small>Produits prêts</small><strong id="ready">0</strong></div><div class="metric"><small>À corriger</small><strong id="bad">0</strong></div><div class="metric"><small>Prix définis</small><strong id="priced">0</strong></div></div><div class="actions"><button id="publish" class="btn gold">Publier les produits + Smart Link</button><button id="reset" class="btn">Recommencer</button></div><div id="publishStatus" class="status"></div></div></section>
 </main>
 <script>
-const SUPA='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',db=supabase.createClient(SUPA,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const SUPA='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',db=supabase.createClient(SUPA,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}});
 const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>\\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#039;'}[m]));
 let session=null,items=[];
 const T={

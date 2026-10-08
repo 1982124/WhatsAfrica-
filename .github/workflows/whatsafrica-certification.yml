@@ -49,7 +49,7 @@ jobs:
           }
           for src,dst in aliases.items():
             assert redirects.get(src)==dst, f'{src}: expected redirect {dst}, got {redirects.get(src)}'
-          assert redirects.get('/vitrine')=='/smartlink', 'Legacy vitrine alias must resolve to Smart Link.'
+          assert rewrites.get('/vitrine')=='/business-vitrine-v3.html', 'Canonical vitrine route must resolve to business-vitrine-v3.html.'
           print('Canonical route certification passed.')
           PY
 
