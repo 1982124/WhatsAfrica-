@@ -10,7 +10,7 @@
 <section class="grid">
 <div class="stat"><span>Vues de vitrine</span><b id="views">0</b><small id="uniqueViews" class="muted">0 visiteurs uniques</small></div>
 <div class="stat"><span>Clics / actions</span><b id="clicks">0</b><small id="ctr" class="muted">0 % des vues</small></div>
-<div class="stat"><span>Contacts</span><b id="contacts">0</b><small class="muted">clics vers la conversation</small></div>
+<div class="stat"><span>Contacts captés</span><b id="contacts">0</b><small class="muted">coordonnées avec consentement</small></div>
 <div class="stat"><span>Actions de conversion</span><b id="conversions">0</b><small id="conversionRate" class="muted">0 % des visiteurs</small></div>
 </section>
 <section class="split">
@@ -25,7 +25,7 @@ const SB='https://dzifpwqrqnvssfhwjccj.supabase.co',KEY='sb_publishable_olHxhduE
 const db=supabase.createClient(SB,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'whatsafrica-auth'}});
 const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let businessId=null,smartLinks=[],days=28;
-const eventClicks=new Set(['smart_link_offer_clicked','smart_link_service_clicked','smart_link_contact_clicked','smart_link_share_clicked','checkout_clicked','external_payment_clicked']);
+const eventClicks=new Set(['smart_link_offer_clicked','smart_link_service_clicked','smart_link_contact_clicked','smart_link_lead_captured','smart_link_share_clicked','checkout_clicked','external_payment_clicked']);
 const conversionEvents=new Set(['order_created','checkout_started','external_payment_clicked','seller_conversation_opened']);
 function pct(a,b){return b?Math.round(a/b*1000)/10:0}
 function domain(ref){try{return new URL(ref).hostname.replace(/^www\./,'').toLowerCase()}catch{return ''}}
@@ -65,7 +65,7 @@ async function refresh(){
 }
 function render(events){
  const views=events.filter(e=>e.event_type==='smart_link_opened'),clicks=events.filter(e=>eventClicks.has(e.event_type));
- const contacts=events.filter(e=>e.event_type==='smart_link_contact_clicked');
+ const contacts=events.filter(e=>e.event_type==='smart_link_lead_captured');
  const conversions=events.filter(e=>conversionEvents.has(e.event_type));
  const uniq=arr=>new Set(arr.map(e=>e.visitor_hash).filter(Boolean)).size;
  $('views').textContent=fmt(views.length);$('uniqueViews').textContent=fmt(uniq(views))+' visiteurs uniques';
@@ -79,7 +79,7 @@ function render(events){
  const src=new Map();views.forEach(e=>{const s=sourceName(e);src.set(s,(src.get(s)||0)+1)});const sources=[...src.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8),maxSrc=sources[0]?.[1]||1;
  $('sources').innerHTML=sources.length?sources.map(([name,n])=>'<div class="source"><label>'+esc(name)+'</label><div class="bar"><i style="width:'+Math.round(n/maxSrc*100)+'%"></i></div><small>'+fmt(n)+'</small></div>').join(''):'<div class="empty">Aucune provenance enregistrée.</div>';
  const byLink=new Map();for(const l of smartLinks)byLink.set(l.id,{...l,views:0,unique:new Set(),clicks:0,contacts:0,conversions:0});
- for(const e of events){const x=byLink.get(e.smart_link_id);if(!x)continue;if(e.event_type==='smart_link_opened'){x.views++;if(e.visitor_hash)x.unique.add(e.visitor_hash)}if(eventClicks.has(e.event_type))x.clicks++;if(e.event_type==='smart_link_contact_clicked')x.contacts++;if(conversionEvents.has(e.event_type))x.conversions++}
+ for(const e of events){const x=byLink.get(e.smart_link_id);if(!x)continue;if(e.event_type==='smart_link_opened'){x.views++;if(e.visitor_hash)x.unique.add(e.visitor_hash)}if(eventClicks.has(e.event_type))x.clicks++;if(e.event_type==='smart_link_lead_captured')x.contacts++;if(conversionEvents.has(e.event_type))x.conversions++}
  $('links').innerHTML=[...byLink.values()].sort((a,b)=>b.views-a.views).map(x=>'<div style="overflow:auto"><table><tr><th>Smart Link</th><th>Vues</th><th>Uniques</th><th>Clics</th><th>Contacts</th><th>Conversions</th><th>CTR</th></tr><tr><td><b>'+esc(x.title||x.slug)+'</b><br><span class="muted">/'+esc(x.slug)+(x.is_public?' · public':' · brouillon')+'</span></td><td>'+fmt(x.views)+'</td><td>'+fmt(x.unique.size)+'</td><td>'+fmt(x.clicks)+'</td><td>'+fmt(x.contacts)+'</td><td>'+fmt(x.conversions)+'</td><td>'+pct(x.clicks,x.views)+' %</td></tr></table></div>').join('')||'<div class="empty">Aucun Smart Link.</div>';
  $('interpretation').textContent=views.length?'Lecture : '+(clicks.length?'vos visiteurs déclenchent déjà des actions ; regardez les offres et sources qui concentrent les clics.':'vous avez des visites mais peu d’actions ; la priorité est le CTA et la mise en avant de l’offre principale.'):'Aucune donnée sur la période. Partagez votre Smart Link pour commencer à mesurer.';
 }
