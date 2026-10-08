@@ -62,7 +62,7 @@ async function load(){
  if(kind==='product')rows=rows.filter(b=>(b.products||[]).length);
  if(kind==='service')rows=rows.filter(b=>(b.services||[]).length);
  render(rows,kind||'all');
- if(pr.error||svr.error)$('status').textContent='Les activités restent consultables ; certaines offres ne sont pas disponibles pour le moment.';
+ if(slr.error||pr.error||svr.error)$('status').textContent='Les activités restent consultables ; certaines données d’offres ou de Smart Link ne sont pas disponibles pour le moment.';
 }
 $('go').onclick=load;
 $('results').addEventListener('click',e=>{if(e.target.closest('[data-retry]'))load()});
