@@ -145,9 +145,18 @@ async function marketData(req,res){
   // must never blank the entire public market.
   const read=async(path,params)=>{try{return {data:await marketGet(path,params),error:null}}catch(e){console.warn('[MARKET_SOURCE]',path,e?.message||e);return {data:[],error:e}}};
   try{
+    const searchRaw=String(req.query?.q||'').trim().slice(0,120);
+    // Search is executed server-side so the browser is not limited to the first 1,000
+    // published products. Sanitize the PostgREST OR expression before use.
+    const searchTerm=searchRaw.replace(/[\\,()]/g,' ').replace(/\*/g,' ').replace(/\s+/g,' ').trim();
+    const productParams={select:'id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'};
+    if(searchTerm){
+      const pattern='*'+searchTerm+'*';
+      productParams.or=['title.ilike.'+pattern,'description.ilike.'+pattern,'category.ilike.'+pattern,'product_type.ilike.'+pattern].join(',');
+    }
     const [sl,pr,ms,pc]=await Promise.all([
       read('smart_links',{select:'business_id,slug,title,description',is_public:'eq.true',order:'created_at.desc',limit:'1000'}),
-      read('products',{select:'id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'}),
+      read('products',productParams),
       read('marketplace_services',{select:'id,title,description,category,price,currency,seller_id,status,metadata,created_at',status:'eq.published',order:'created_at.desc',limit:'1000'}),
       read('product_collections',{select:'id,name,description,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
     ]);
