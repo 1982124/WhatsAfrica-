@@ -41,7 +41,7 @@
 <section class="card"><h2>6. Publication</h2><div class="preview"><b id="previewName">Votre activité</b><p id="previewText" class="muted">Votre présentation apparaîtra ici.</p><div class="row"><span class="pill">🌐 Langue au choix</span><span class="pill">🤖 Assistant</span><span class="pill">💬 Contact</span><span class="pill">📞 Appel WASSAFRICA</span><span class="pill">🛒 Commerce</span></div></div><div class="row"><button id="save" class="btn primary" type="button">🟢 Enregistrer et publier</button><a id="open" class="btn hide" target="_blank" rel="noopener">Ouvrir mon Smart Link</a></div><div id="status" class="status"></div></section>
 </div></main>
 <script>
-const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV');
+const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'whatsafrica-auth'}});
 const $=id=>document.getElementById(id);let user=null,business=null,link=null,items=[];
 const esc=s=>String(s??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
 const norm=s=>String(s||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9-]+/g,'-').replace(/-+/g,'-').replace(/^-+|-+$/g,'').slice(0,48);
