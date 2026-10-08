@@ -38,8 +38,7 @@ if v.exists():
         '/digital-market':'/marche',
         '/commerce':'/marche',
         '/product':'/marche',
-        '/vitrine':'/smartlink',
-    }
+            }
     for r in data.get('redirects',[]):
         src,dst=r.get('source'),r.get('destination')
         if allowed_redirects.get(src) != dst:
@@ -48,6 +47,11 @@ if v.exists():
         actual=next((x.get('destination') for x in data.get('redirects',[]) if x.get('source')==src),None)
         if actual != dst:
             hits.append((v,1,f'{src} -> {actual}','missing canonical redirect'))
+    # /vitrine is a canonical rewrite to the current editor surface, not a redirect.
+    expected_vitrine='/business-vitrine-v3.html'
+    actual_vitrine=next((x.get('destination') for x in data.get('rewrites',[]) if x.get('source')=='/vitrine'),None)
+    if actual_vitrine != expected_vitrine:
+        hits.append((v,1,f'/vitrine -> {actual_vitrine}','missing canonical vitrine rewrite'))
 print('=== WASSAFRICA GLOBAL AUTH / FALLBACK AUDIT ===')
 print(f'Active files scanned: {scanned}')
 print(f'Redirect operations analyzed: {redirects}')
