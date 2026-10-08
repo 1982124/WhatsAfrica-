@@ -19,57 +19,49 @@
 </main><footer class="foot wrap">WASSAFRICA — Le réseau qui rend visible l’activité africaine : qui fait quoi, où, et comment le joindre.</footer>
 <script>
 'use strict';
-const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV');
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const safe=v=>{try{const u=new URL(v);return /^https?:$/.test(u.protocol)?u.href:null}catch{return null}};
 const money=(v,c='XOF')=>v==null||v===''?'':new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v))+' '+c;
-let rows=[];let lastLoadToken=0;
+let offset=0,loading=false,lastKey='',accumulated=[];
 function card(b){
  const cover=safe(b.cover_image_url),logo=safe(b.logo_url),name=b.name||'Activité WASSAFRICA';
  const loc=[b.city,b.country].filter(Boolean).join(' · '),desc=b.presentation||b.description||b.activity||'Activité publiée sur WASSAFRICA.';
- const products=b.products||[],services=b.services||[];
- const productHtml=products.slice(0,3).map(p=>'<div class="match"><b>Produit</b>'+esc(p.title)+(p.price!=null?' — '+esc(money(p.price,p.currency||'XOF')):'')+'</div>').join('');
- const serviceHtml=services.slice(0,3).map(s=>'<div class="match"><b>Service</b>'+esc(s.title)+(s.price!=null?' — '+esc(money(s.price,s.currency||'XOF')):'')+'</div>').join('');
+ const products=(b.products||[]).slice(0,3),services=(b.services||[]).slice(0,3);
+ const productHtml=products.map(p=>'<div class="match"><b>Produit</b>'+esc(p.title)+(p.price!=null?' — '+esc(money(p.price,p.currency||'XOF')):'')+'</div>').join('');
+ const serviceHtml=services.map(s=>'<div class="match"><b>Service</b>'+esc(s.title)+(s.price!=null?' — '+esc(money(s.price,s.currency||'XOF')):'')+'</div>').join('');
  const kinds=(products.length&&services.length)?'ACTIVITÉ · PRODUITS · SERVICES':services.length?'ACTIVITÉ · SERVICES':products.length?'ACTIVITÉ · PRODUITS':'ACTIVITÉ';
- return '<article class="card"><div class="cover" '+(cover?'style="background-image:url(\''+esc(cover)+'\')"':'')+'></div><div class="body">'+(logo?'<img class="logo" src="'+esc(logo)+'" alt="">':'')+'<span class="tag">'+kinds+'</span><h2>'+esc(name)+'</h2>'+(loc?'<div class="where">📍 '+esc(loc)+'</div>':'')+'<p class="desc">'+esc(desc).slice(0,180)+'</p>'+(productHtml?'<div class="offers"><b>Produits publiés</b>'+productHtml+'</div>':'')+(serviceHtml?'<div class="offers"><b>Services publiés</b>'+serviceHtml+'</div>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><a class="btn primary" href="/'+encodeURIComponent(b.smart_slug)+'">Voir la vitrine</a>'+(b.phone?'<a class="btn" href="tel:'+esc(b.phone)+'">Appeler</a>':'')+'<a class="btn" href="/auth?next='+encodeURIComponent('/inbox?business='+b.id)+'">💬 Message</a></div></div></article>';
+ return '<article class="card"><div class="cover" '+(cover?'style="background-image:url(\''+esc(cover)+'\')"':'')+'></div><div class="body">'+(logo?'<img class="logo" src="'+esc(logo)+'" alt="">':'')+'<span class="tag">'+kinds+'</span><h2>'+esc(name)+'</h2>'+(loc?'<div class="where">📍 '+esc(loc)+'</div>':'')+'<p class="desc">'+esc(desc).slice(0,180)+'</p>'+(productHtml?'<div class="offers"><b>Produits publiés</b>'+productHtml+'</div>':'')+(serviceHtml?'<div class="offers"><b>Services publiés</b>'+serviceHtml+'</div>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><a class="btn primary" href="/'+encodeURIComponent(b.smart_slug||b.slug)+'">Voir la vitrine</a>'+(b.phone?'<a class="btn" href="tel:'+esc(b.phone)+'">Appeler</a>':'')+'<a class="btn" href="/auth?next='+encodeURIComponent('/inbox?business='+b.id)+'">💬 Message</a></div></div></article>';
 }
-function render(list,kind){
- const labels={product:'résultat produit',service:'résultat service',business:'activité',all:'résultat'},label=labels[kind]||labels.all;
- $('count').textContent=list.length+' '+(list.length===1?label:label+'s')+' trouvé'+(list.length>1?'s':'');
- $('results').innerHTML=list.length?list.map(card).join(''):'<div class="empty"><b>Aucun résultat.</b><br>Essayez un autre mot, pays ou ville.</div>';
+function setView(list,total,hasMore,replace=true){
+ if(replace)$('results').innerHTML='';
+ if(list.length) $('results').insertAdjacentHTML('beforeend',list.map(card).join(''));
+ else if(replace)$('results').innerHTML='<div class="empty"><b>Aucun résultat.</b><br>Essayez un autre mot, pays ou ville.</div>';
+ if(hasMore)$('results').insertAdjacentHTML('beforeend','<div class="empty" style="grid-column:1/-1"><button id="more" class="btn">Afficher plus</button></div>');
+ const kind=$('kind').value,label=kind==='product'?'résultat produit':kind==='service'?'résultat service':kind==='business'?'activité':'résultat';
+ $('count').textContent=total+' '+(total===1?label:label+'s')+' trouvé'+(total>1?'s':'');
 }
-async function load(){
- const token=++lastLoadToken;
- $('count').textContent='Recherche…';$('status').textContent='';$('results').innerHTML='<div class="empty">Recherche des activités…</div>';
- const normalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
- const q=normalize($('q').value),country=normalize($('country').value),city=normalize($('city').value),kind=String($('kind').value||'').trim().toLowerCase();
- const [br,slr,pr,svr]=await Promise.all([
-  db.from('businesses').select('id,owner_id,name,slug,description,presentation,country,city,logo_url,cover_image_url,phone,activity,category,business_type,is_personal').order('created_at',{ascending:false}).limit(1000),
-  db.from('smart_links').select('business_id,slug,title,description,link_type').eq('is_public',true).limit(1000),
-  db.from('products').select('id,business_id,title,description,price,currency,is_published').eq('is_published',true).limit(1000),
-  db.from('marketplace_services').select('id,seller_id,title,description,price,currency,delivery_mode').eq('status','published').limit(1000)
- ]);
- if(token!==lastLoadToken)return;
- if(br.error){$('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les activités publiques.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';return}
- const businesses=br.data||[],links=slr.error?[]:(slr.data||[]).filter(x=>x.link_type==='business'),products=pr.error?[]:(pr.data||[]),services=svr.error?[]:(svr.data||[]);
- const byLink=new Map();
- links.forEach(link=>{if(link.business_id&&!byLink.has(link.business_id))byLink.set(link.business_id,link)});
- const byProducts=new Map(),byServicesByOwner=new Map();
- products.forEach(p=>{if(!byProducts.has(p.business_id))byProducts.set(p.business_id,[]);byProducts.get(p.business_id).push(p)});
- services.forEach(s=>{if(!byServicesByOwner.has(s.seller_id))byServicesByOwner.set(s.seller_id,[]);byServicesByOwner.get(s.seller_id).push(s)});
- rows=businesses.map(b=>{const link=byLink.get(b.id);return {...b,smart_slug:link?.slug||b.slug,smart_title:link?.title||b.name,products:byProducts.get(b.id)||[],services:byServicesByOwner.get(b.owner_id)||[]}}); 
-if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.activity,b.category,b.country,b.city,...(b.products||[]).flatMap(x=>[x.title,x.description]),...(b.services||[]).flatMap(x=>[x.title,x.description,x.delivery_mode])].filter(Boolean).join(' ')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
- if(country)rows=rows.filter(b=>normalize(b.country).includes(country));
- if(city)rows=rows.filter(b=>normalize(b.city).includes(city));
- if(kind==='product')rows=rows.filter(b=>(b.products||[]).length);
- if(kind==='service')rows=rows.filter(b=>(b.services||[]).length);
- render(rows,kind||'all');
- if(slr.error||pr.error||svr.error)$('status').textContent='Les activités restent consultables ; certaines données d’offres ou de Smart Link ne sont pas disponibles pour le moment.';
+async function load(reset=true){
+ if(loading)return;
+ loading=true;
+ if(reset){offset=0;accumulated=[];$('results').innerHTML='<div class="empty">Recherche des activités…</div>'}
+ $('count').textContent='Recherche…';$('status').textContent='';
+ const params=new URLSearchParams({__route:'discover',q:$('q').value.trim(),country:$('country').value.trim(),city:$('city').value.trim(),kind:$('kind').value,limit:'24',offset:String(offset)});
+ const key=params.toString();
+ try{
+  const r=await fetch('/api/smartlink-import?'+params.toString(),{cache:'no-store'}),j=await r.json();
+  if(!r.ok||!j.ok)throw new Error(j?.error||'DISCOVER_UNAVAILABLE');
+  if(reset){lastKey=key;accumulated=j.results||[];setView(accumulated,j.count||accumulated.length,j.has_more,true)}
+  else {if(key!==lastKey)return;accumulated=accumulated.concat(j.results||[]);setView(accumulated,accumulated.length+(j.has_more?1:0),j.has_more,true)}
+  if(j.partial)$('status').textContent='Certaines données sont momentanément indisponibles ; les résultats disponibles restent affichés.';
+ }catch(e){
+  $('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les activités publiques.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';
+ }finally{loading=false}
 }
-$('go').onclick=load;
-$('results').addEventListener('click',e=>{if(e.target.closest('[data-retry]'))load()});
-$('clear').onclick=()=>{$('q').value='';$('country').value='';$('city').value='';$('kind').value='';load()};
-['q','country','city'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')load()}));
-$('kind').addEventListener('change',load);load();
+$('go').onclick=()=>load(true);
+$('results').addEventListener('click',e=>{if(e.target.closest('[data-retry]'))load(true);if(e.target.closest('#more')){offset+=24;load(false)}});
+$('clear').onclick=()=>{$('q').value='';$('country').value='';$('city').value='';$('kind').value='';load(true)};
+['q','country','city'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')load(true)}));
+$('kind').addEventListener('change',()=>load(true));
+load(true);
 </script></body></html>
