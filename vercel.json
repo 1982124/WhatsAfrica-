@@ -46,11 +46,6 @@
       "source": "/wassafrica",
       "destination": "/",
       "permanent": false
-    },
-    {
-      "source": "/vitrine",
-      "destination": "/smartlink",
-      "permanent": false
     }
   ],
   "rewrites": [
@@ -177,10 +172,6 @@
     {
       "source": "/demo",
       "destination": "/demo-business.html"
-    },
-    {
-      "source": "/wassafrica",
-      "destination": "/wassafrica-official.html"
     },
     {
       "source": "/presentation",
