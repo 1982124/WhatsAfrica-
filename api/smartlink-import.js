@@ -215,7 +215,8 @@ async function discoverData(req,res){
 }
 \nasync function handler(req,res){
   const route=String(req.query?.__route||'');
-  if(route==='market')return marketData(req,res);\n  if(route==='discover')return discoverData(req,res);
+  if(route==='market')return marketData(req,res);
+  if(route==='discover')return discoverData(req,res);
   if(route==='payment')return paymentStart(req,res);
   if(route==='payment-webhook')return paymentWebhook(req,res);
   if(req.method==='GET'&&route==='turn'){
