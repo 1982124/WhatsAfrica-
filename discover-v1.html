@@ -59,7 +59,7 @@ async function load(){
  products.forEach(p=>{if(!byProducts.has(p.business_id))byProducts.set(p.business_id,[]);byProducts.get(p.business_id).push(p)});
  services.forEach(s=>{if(!byServicesByOwner.has(s.seller_id))byServicesByOwner.set(s.seller_id,[]);byServicesByOwner.get(s.seller_id).push(s)});
  rows=businesses.map(b=>{const link=byLink.get(b.id);return {...b,smart_slug:link?.slug||b.slug,smart_title:link?.title||b.name,products:byProducts.get(b.id)||[],services:byServicesByOwner.get(b.owner_id)||[]}}); 
-if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.activity,b.category,b.country,b.city,...(b.products||[]).flatMap(x=>[x.title,x.description]),...(b.services||[]).flatMap(x=>[x.title,x.description,x.delivery_mode])].filter(Boolean).join(' ').toLowerCase().includes(q));
+if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.activity,b.category,b.country,b.city,...(b.products||[]).flatMap(x=>[x.title,x.description]),...(b.services||[]).flatMap(x=>[x.title,x.description,x.delivery_mode])].filter(Boolean).join(' ')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
  if(country)rows=rows.filter(b=>normalize(b.country).includes(country));
  if(city)rows=rows.filter(b=>normalize(b.city).includes(city));
  if(kind==='product')rows=rows.filter(b=>(b.products||[]).length);
