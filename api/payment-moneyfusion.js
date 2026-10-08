@@ -10,7 +10,7 @@ module.exports=async function(req,res){
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST') return res.status(405).json({error:'method_not_allowed'});
   if(!SB_URL||!SB_KEY) return res.status(503).json({error:'service_not_configured'});
-  const auth=String(req.headers.authorization||''); const token=auth.replace(/^Bearer\\s+/i,'').trim();
+  const auth=String(req.headers.authorization||''); const token=auth.replace(/^Bearer\s+/i,'').trim();
   if(!token) return res.status(401).json({error:'unauthorized'});
   try{
     const au=await sb('/auth/v1/user',{headers:{Authorization:'Bearer '+token}});
@@ -36,7 +36,7 @@ module.exports=async function(req,res){
     const conn=await sb('/rest/v1/rpc/get_payment_connection_secret_for_service',{method:'POST',body:JSON.stringify({p_user_id:(await sb('/rest/v1/businesses?id=eq.'+encodeURIComponent(order.business_id)+'&select=owner_id&limit=1')).data?.[0]?.owner_id||null})});
     if(!conn.r.ok||!conn.data?.[0]?.secret) return res.status(409).json({error:'payment_provider_not_connected',message:'Le vendeur doit connecter Money Fusion dans Encaissement.'});
     const secretUrl=String(conn.data[0].secret).trim();
-    if(!/^https?:\\/\\//i.test(secretUrl)) return res.status(500).json({error:'payment_provider_config_invalid'});
+    if(!/^https?:\/\//i.test(secretUrl)) return res.status(500).json({error:'payment_provider_config_invalid'});
 
     const idem=encodeURIComponent(idempotencyKey);
     const pi=await sb('/rest/v1/payment_intents?order_id=eq.'+encodeURIComponent(order.id)+'&idempotency_key=eq.'+idem+'&select=id,provider_reference,status,metadata&limit=1');
@@ -62,7 +62,7 @@ module.exports=async function(req,res){
       return_url:returnUrl,
       webhook_url:webhookUrl
     };
-    if(payload.numeroSend.replace(/\\D/g,'').length<8) return res.status(400).json({error:'buyer_phone_required'});
+    if(payload.numeroSend.replace(/\D/g,'').length<8) return res.status(400).json({error:'buyer_phone_required'});
 
     const pr=await fetch(secretUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const pt=await pr.text(); let pd=null; try{pd=pt?JSON.parse(pt):null}catch{}
