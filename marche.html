@@ -104,20 +104,27 @@
 </main>
 <script>
 let marketPayloadPromise=null;
+let marketPayloadQuery='';
+let marketSearchTimer=null;
 const MARKET_TIMEOUT_MS=10000;
 const marketDiagnostics={startedAt:0,finishedAt:0,url:'/api/smartlink-import?__route=market',status:null,durationMs:null,responseBytes:null,counts:{},error:null};
 async function getMarketPayload(){
- if(!marketPayloadPromise){
+ const query=norm($('q')?.value||'');
+ if(marketPayloadPromise && marketPayloadQuery===query)return marketPayloadPromise;
+ marketPayloadQuery=query;
+ marketPayloadPromise=null;
+ {
   marketDiagnostics.startedAt=performance.now();
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),MARKET_TIMEOUT_MS);
-  marketPayloadPromise=fetch('/api/smartlink-import?__route=market&_='+Date.now(),{cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal})
+  marketPayloadPromise=fetch('/api/smartlink-import?__route=market&_='+Date.now()+(query?'&q='+encodeURIComponent(query):''),{cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal})
    .then(async r=>{
     marketDiagnostics.status=r.status;
     const raw=await r.text();
     marketDiagnostics.responseBytes=new Blob([raw]).size;
     let data=null;try{data=JSON.parse(raw)}catch{}
     if(!r.ok||!data?.ok)throw new Error(data?.error||('MARKET_API_'+r.status));
+    marketDiagnostics.searchQuery=query;
     marketDiagnostics.counts={
       smart_links:Array.isArray(data.smart_links)?data.smart_links.length:0,
       products:Array.isArray(data.products)?data.products.length:0,
@@ -414,9 +421,14 @@ async function load(){
  }}
 
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
-$('q').addEventListener('input',render);
-$('searchBtn').addEventListener('click',render);
-$('q').addEventListener('keydown',e=>{if(e.key==='Enter')render()});
+$('q').addEventListener('input',()=>{
+ clearTimeout(marketSearchTimer);
+ const query=norm($('q').value);
+ if(!query){marketPayloadPromise=null;marketPayloadQuery='';load();return;}
+ marketSearchTimer=setTimeout(()=>load(),280);
+});
+$('searchBtn').addEventListener('click',()=>{clearTimeout(marketSearchTimer);load()});
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(marketSearchTimer);load()}});
 document.querySelectorAll('[data-digital-kind]').forEach(b=>b.addEventListener('click',()=>{digitalKind=b.dataset.digitalKind||'all';render()}));
 document.addEventListener('click',e=>{if(e.target?.id==='marketRetry')load()});
 load();
