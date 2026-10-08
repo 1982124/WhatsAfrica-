@@ -42,7 +42,7 @@ function serviceCard(s){
 let stage='bootstrap';
 async function load(){
   stage='public_market_proxy';
-  const links=await query('smart_links',{select:'id,business_id,title,description,slug,is_public',slug:'eq.'+lookupSlug,is_public:'eq.true',limit:'1'});
+  const links=await query('smart_links',{select:'id,business_id,title,description,slug,is_public,link_type,source_metadata,source_url',slug:'eq.'+lookupSlug,is_public:'eq.true',limit:'1'});
   const link=Array.isArray(links)?links[0]:null;
   if(!link)throw Error('NOT_FOUND');
   smartLinkId=link.id;
@@ -50,6 +50,27 @@ async function load(){
   const businesses=await query('businesses',{select:'id,owner_id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,business_type,slug,phone,accent_color,template,tagline',id:'eq.'+link.business_id,limit:'1'});
   const b=Array.isArray(businesses)?businesses[0]:null;
   if(!b)throw Error('BUSINESS_NOT_FOUND');
+  if(link.link_type==='product' && link.source_metadata?.product_id){
+    stage='product_smart_link';
+    const rows=await query('products',{select:'id,title,description,price,currency,image_url,product_type,category,business_id,is_published',id:'eq.'+link.source_metadata.product_id,business_id:'eq.'+b.id,is_published:'eq.true',limit:'1'});
+    const p=Array.isArray(rows)?rows[0]:null;
+    if(!p)throw Error('PRODUCT_NOT_FOUND');
+    const image=WAMedia.resolve(p.image_url||'', 'product')||WAMedia.fallback('product');
+    const canonical=location.origin+'/'+encodeURIComponent(slug);
+    document.title=p.title+' — WASSAFRICA';
+    document.querySelector('meta[name="description"]')?.setAttribute('content',(p.description||('Découvrez '+p.title+' sur WASSAFRICA.')).slice(0,155));
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content',p.title+' — WASSAFRICA');
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content',(p.description||'Produit disponible sur WASSAFRICA.').slice(0,200));
+    document.querySelector('meta[property="og:url"]')?.setAttribute('content',canonical);
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href',canonical);
+    const productUrl='/product/'+encodeURIComponent(p.id)+'?smart_link_id='+encodeURIComponent(link.id);
+    const contactUrl='/public-message?to='+encodeURIComponent(b.owner_id)+'&smart_link_id='+encodeURIComponent(link.id)+'&product_id='+encodeURIComponent(p.id);
+    $('app').innerHTML='<section class="hero"><div class="cover"><img loading="eager" decoding="async" src="'+esc(image)+'" alt="'+esc(p.title)+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback('product')+'\';"></div><div class="heroBody"><div class="ey">SMART LINK · PRODUIT</div><h1>'+esc(p.title)+'</h1><p>'+esc(b.name||link.title||'Vendeur WASSAFRICA')+(b.city?' · '+esc(b.city):'')+(b.country?' · '+esc(b.country):'')+'</p><p>'+esc(p.description||'Découvrez ce produit sur WASSAFRICA.')+'</p><div style="font-size:24px;font-weight:950;margin-top:14px">'+esc(money(p.price,p.currency))+'</div><div class="actions"><a class="btn primary" data-wa-smart-event="smart_link_product_open" data-smart-link-id="'+esc(link.id)+'" data-product-id="'+esc(p.id)+'" href="'+productUrl+'">🛍️ Voir le produit</a><a class="btn" data-wa-smart-event="smart_link_product_contact" data-smart-link-id="'+esc(link.id)+'" data-product-id="'+esc(p.id)+'" href="'+contactUrl+'">💬 Contacter le vendeur</a><button id="wa-product-share" class="btn">↗ Partager</button></div></div></section><section class="contact"><article class="contactBox"><div class="ey">LIEN DIRECT</div><h2>'+esc(p.title)+'</h2><p class="muted">Un lien unique pour partager ce produit, retrouver sa page complète et contacter directement le vendeur.</p><a class="btn primary" href="'+productUrl+'">Ouvrir la fiche complète</a></article><article class="share"><div class="ey" style="color:#f7d98c">SMART LINK PRODUIT</div><h2>Prêt à être partagé.</h2><p>Ce lien reste rattaché au produit, à son vendeur et à ses événements de partage.</p><button id="wa-product-share-2" class="btn">🔗 Copier le lien</button></article></section>';
+    const share=()=>{const data={title:p.title+' — WASSAFRICA',text:'Découvrez '+p.title+' sur WASSAFRICA',url:location.href};try{if(navigator.share)navigator.share(data);else navigator.clipboard?.writeText(location.href)}catch{}};
+    $('wa-product-share')?.addEventListener('click',share);$('wa-product-share-2')?.addEventListener('click',share);
+    track('smart_link_product_viewed',{entity_type:'product',entity_id:p.id,business_id:b.id,product_id:p.id});
+    return;
+  }
   const accent=/^#[0-9a-f]{6}$/i.test(b.accent_color||'')?b.accent_color:'#173d2d';
   document.documentElement.style.setProperty('--accent',accent);
   stage='optional_data';
