@@ -50,13 +50,15 @@ async function load(){
   db.from('marketplace_services').select('id,seller_id,title,description,price,currency,delivery_mode').eq('status','published').limit(1000)
  ]);
  if(token!==lastLoadToken)return;
- if(br.error||slr.error){$('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les activités publiques.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';return}
- const businesses=br.data||[],links=slr.data||[],products=pr.error?[]:(pr.data||[]),services=svr.error?[]:(svr.data||[]);
- const byId=new Map(businesses.map(b=>[b.id,b])),byProducts=new Map(),byServicesByOwner=new Map();
+ if(br.error){$('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les activités publiques.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';return}
+ const businesses=br.data||[],links=slr.error?[]:(slr.data||[]),products=pr.error?[]:(pr.data||[]),services=svr.error?[]:(svr.data||[]);
+ const byLink=new Map();
+ links.forEach(link=>{if(link.business_id&&!byLink.has(link.business_id))byLink.set(link.business_id,link)});
+ const byProducts=new Map(),byServicesByOwner=new Map();
  products.forEach(p=>{if(!byProducts.has(p.business_id))byProducts.set(p.business_id,[]);byProducts.get(p.business_id).push(p)});
  services.forEach(s=>{if(!byServicesByOwner.has(s.seller_id))byServicesByOwner.set(s.seller_id,[]);byServicesByOwner.get(s.seller_id).push(s)});
- rows=links.map(link=>{const b=byId.get(link.business_id);if(!b)return null;return {...b,smart_slug:link.slug||b.slug,products:byProducts.get(b.id)||[],services:byServicesByOwner.get(b.owner_id)||[]}}).filter(Boolean);
- if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.activity,b.category,b.country,b.city,...(b.products||[]).flatMap(x=>[x.title,x.description]),...(b.services||[]).flatMap(x=>[x.title,x.description,x.delivery_mode])].filter(Boolean).join(' ').toLowerCase().includes(q));
+ rows=businesses.map(b=>{const link=byLink.get(b.id);return {...b,smart_slug:link?.slug||b.slug,smart_title:link?.title||b.name,products:byProducts.get(b.id)||[],services:byServicesByOwner.get(b.owner_id)||[]}}); 
+if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.activity,b.category,b.country,b.city,...(b.products||[]).flatMap(x=>[x.title,x.description]),...(b.services||[]).flatMap(x=>[x.title,x.description,x.delivery_mode])].filter(Boolean).join(' ').toLowerCase().includes(q));
  if(country)rows=rows.filter(b=>String(b.country||'').toLowerCase().includes(country));
  if(city)rows=rows.filter(b=>String(b.city||'').toLowerCase().includes(city));
  if(kind==='product')rows=rows.filter(b=>(b.products||[]).length);
