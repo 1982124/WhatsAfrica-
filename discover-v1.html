@@ -20,24 +20,53 @@
 <script>
 'use strict';
 const db=supabase.createClient('https://dzifpwqrqnvssfhwjccj.supabase.co','sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV');
-const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])), safe=v=>{try{const u=new URL(v);return /^https?:$/.test(u.protocol)?u.href:null}catch{return null}};
-let rows=[]; let lastLoadToken=0;
-function card(b){const cover=safe(b.cover_image_url),logo=safe(b.logo_url),name=b.name||'Activité WASSAFRICA',loc=[b.city,b.country].filter(Boolean).join(' · '),desc=b.presentation||b.description||'Activité publiée sur WASSAFRICA.';const products=(b.products||[]),services=(b.services||[]);const productHtml=products.slice(0,3).map(p=>{const label=p.type==='service'?'Offre':'Produit';return `<div class="match"><b>${label}</b>${esc(p.title)}${p.price!=null?' — '+new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(p.price))+' '+esc(p.currency||'XOF'):''}</div>`}).join('');const serviceHtml=services.slice(0,3).map(s=>`<div class="match"><b>Service</b>${esc(s.title)}${s.price!=null?' — '+new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(s.price))+' '+esc(s.currency||'XOF'):''}</div>`).join('');const productCount=products.length,serviceCount=services.length;const kinds=(productCount&&serviceCount)?'PRODUITS · SERVICES':serviceCount?'SERVICES':productCount?(products.some(p=>p.type==='service')?'OFFRES':'PRODUITS'):'ACTIVITÉ';return `<article class="card"><div class="cover" ${cover?`style="background-image:url('${esc(cover)}')"`:''}></div><div class="body">${logo?`<img class="logo" src="${esc(logo)}" alt="">`:''}<span class="tag">${kinds}</span><h2>${esc(name)}</h2>${loc?`<div class="where">📍 ${esc(loc)}</div>`:''}<p class="desc">${esc(desc).slice(0,180)}</p>${productHtml?'<div class="offers"><b>Offres publiées</b>'+productHtml+'</div>':''}${serviceHtml?'<div class="offers"><b>Services publiés</b>'+serviceHtml+'</div>':''}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><a class="btn primary" href="/${encodeURIComponent(b.smart_slug)}">Voir la vitrine</a>${b.phone?`<a class="btn" href="tel:${esc(b.phone)}">Appeler</a>`:''}<a class="btn" href="/auth?next=${encodeURIComponent('/inbox?business='+b.id)}">💬 Message</a></div></div></article>`}
-
-function render(list,kind){const label=kind==='product'?'résultats produit':kind==='service'?'résultats service':kind==='business'?'activités':'résultats';$('count').textContent=list.length+' '+(list.length>1?label+' trouvés':label+' trouvé');$('results').innerHTML=list.length?list.map(b=>card(b)).join(''):'<div class="empty"><b>Aucun résultat.</b><br>Essayez un autre mot, pays ou ville.</div>'}
-
-async function load(){const token=++lastLoadToken;$('count').textContent='Recherche…';$('status').textContent='';$('results').innerHTML='<div class="empty">Recherche des activités…</div>';let q=String($('q').value||'').trim().toLowerCase(),country=String($('country').value||'').trim().toLowerCase(),city=String($('city').value||'').trim().toLowerCase(),kind=String($('kind').value||'').trim().toLowerCase();
-const r=await db.from('businesses').select('id,owner_id,name,slug,description,presentation,country,city,logo_url,cover_image_url,phone,activity,category,business_type,is_personal').order('created_at',{ascending:false}).limit(1000);if(token!==lastLoadToken)return;if(r.error){$('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les profils publics.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';return}
-const businesses=r.data||[],byId=new Map(businesses.map(b=>[b.id,b]));
-const sl=await db.from('smart_links').select('business_id,slug,title,description').eq('is_public',true).limit(1000);if(token!==lastLoadToken)return;if(sl.error){$('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les Smart Links publics.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';return}
-const publicLinks=sl.data||[];
-const [p,sv]=await Promise.all([db.from('products').select('id,business_id,title,description,price,currency,type').eq('is_published',true).limit(1000),db.from('marketplace_services').select('id,seller_id,title,description,price,currency,delivery_mode').eq('status','published').limit(1000)]);if(token!==lastLoadToken)return;
-const productError=!!p.error,serviceError=!!sv.error,products=p.error?[]:(p.data||[]),services=sv.error?[]:(sv.data||[]);
-const byProducts=new Map();products.forEach(x=>{if(!byProducts.has(x.business_id))byProducts.set(x.business_id,[]);byProducts.get(x.business_id).push(x)});
-const byServicesByOwner=new Map();services.forEach(x=>{if(!byServicesByOwner.has(x.seller_id))byServicesByOwner.set(x.seller_id,[]);byServicesByOwner.get(x.seller_id).push(x)});
-rows=publicLinks.map(link=>{const b=byId.get(link.business_id)||{};return {...b,id:link.business_id||b.id,owner_id:b.owner_id,name:b.name||link.title||'Activité WASSAFRICA',description:b.description||link.description,presentation:b.presentation,country:b.country,city:b.city,logo_url:b.logo_url,cover_image_url:b.cover_image_url,phone:b.phone,products:byProducts.get(link.business_id)||[],services:byServicesByOwner.get(b.owner_id)||[],smart_slug:link.slug||b.slug}}).filter(b=>b.smart_slug);
-if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.country,b.city,...(b.products||[]).flatMap(x=>[x.title,x.description]),...(b.services||[]).flatMap(x=>[x.title,x.description,x.delivery_mode])].join(' ').toLowerCase().includes(q));if(country)rows=rows.filter(b=>String(b.country||'').toLowerCase().includes(country));if(city)rows=rows.filter(b=>String(b.city||'').toLowerCase().includes(city));if(kind==='product')rows=rows.filter(b=>(b.products||[]).some(p=>p.type!=='service'));if(kind==='service')rows=rows.filter(b=>(b.services||[]).length);if(kind==='business')rows=rows.filter(b=>b.smart_slug);
-render(rows,kind);if(productError||serviceError)$('status').textContent='Certaines offres ne sont pas disponibles pour le moment. Les activités restent consultables.'}
-
-$('go').onclick=load;$('results').addEventListener('click',e=>{if(e.target.closest('[data-retry]'))load()});$('clear').onclick=()=>{$('q').value='';$('country').value='';$('city').value='';$('kind').value='';load()};['q','country','city'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')load()}));$('kind').addEventListener('change',load);load();
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const safe=v=>{try{const u=new URL(v);return /^https?:$/.test(u.protocol)?u.href:null}catch{return null}};
+const money=(v,c='XOF')=>v==null||v===''?'':new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v))+' '+c;
+let rows=[];let lastLoadToken=0;
+function card(b){
+ const cover=safe(b.cover_image_url),logo=safe(b.logo_url),name=b.name||'Activité WASSAFRICA';
+ const loc=[b.city,b.country].filter(Boolean).join(' · '),desc=b.presentation||b.description||b.activity||'Activité publiée sur WASSAFRICA.';
+ const products=b.products||[],services=b.services||[];
+ const productHtml=products.slice(0,3).map(p=>'<div class="match"><b>Produit</b>'+esc(p.title)+(p.price!=null?' — '+esc(money(p.price,p.currency||'XOF')):'')+'</div>').join('');
+ const serviceHtml=services.slice(0,3).map(s=>'<div class="match"><b>Service</b>'+esc(s.title)+(s.price!=null?' — '+esc(money(s.price,s.currency||'XOF')):'')+'</div>').join('');
+ const kinds=(products.length&&services.length)?'PRODUITS · SERVICES':services.length?'SERVICES':products.length?'PRODUITS':'ACTIVITÉ';
+ return '<article class="card"><div class="cover" '+(cover?'style="background-image:url(\''+esc(cover)+'\')"':'')+'></div><div class="body">'+(logo?'<img class="logo" src="'+esc(logo)+'" alt="">':'')+'<span class="tag">'+kinds+'</span><h2>'+esc(name)+'</h2>'+(loc?'<div class="where">📍 '+esc(loc)+'</div>':'')+'<p class="desc">'+esc(desc).slice(0,180)+'</p>'+(productHtml?'<div class="offers"><b>Produits publiés</b>'+productHtml+'</div>':'')+(serviceHtml?'<div class="offers"><b>Services publiés</b>'+serviceHtml+'</div>':'')+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:15px"><a class="btn primary" href="/'+encodeURIComponent(b.smart_slug)+'">Voir la vitrine</a>'+(b.phone?'<a class="btn" href="tel:'+esc(b.phone)+'">Appeler</a>':'')+'<a class="btn" href="/auth?next='+encodeURIComponent('/inbox?business='+b.id)+'">💬 Message</a></div></div></article>';
+}
+function render(list,kind){
+ const labels={product:'résultat produit',service:'résultat service',business:'activité',all:'résultat'},label=labels[kind]||labels.all;
+ $('count').textContent=list.length+' '+(list.length===1?label:label+'s')+' trouvé'+(list.length>1?'s':'');
+ $('results').innerHTML=list.length?list.map(card).join(''):'<div class="empty"><b>Aucun résultat.</b><br>Essayez un autre mot, pays ou ville.</div>';
+}
+async function load(){
+ const token=++lastLoadToken;
+ $('count').textContent='Recherche…';$('status').textContent='';$('results').innerHTML='<div class="empty">Recherche des activités…</div>';
+ const q=String($('q').value||'').trim().toLowerCase(),country=String($('country').value||'').trim().toLowerCase(),city=String($('city').value||'').trim().toLowerCase(),kind=String($('kind').value||'').trim().toLowerCase();
+ const [br,slr,pr,svr]=await Promise.all([
+  db.from('businesses').select('id,owner_id,name,slug,description,presentation,country,city,logo_url,cover_image_url,phone,activity,category,business_type,is_personal').order('created_at',{ascending:false}).limit(1000),
+  db.from('smart_links').select('business_id,slug,title,description').eq('is_public',true).limit(1000),
+  db.from('products').select('id,business_id,title,description,price,currency,is_published').eq('is_published',true).limit(1000),
+  db.from('marketplace_services').select('id,seller_id,title,description,price,currency,delivery_mode').eq('status','published').limit(1000)
+ ]);
+ if(token!==lastLoadToken)return;
+ if(br.error||slr.error){$('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les activités publiques.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';return}
+ const businesses=br.data||[],links=slr.data||[],products=pr.error?[]:(pr.data||[]),services=svr.error?[]:(svr.data||[]);
+ const byId=new Map(businesses.map(b=>[b.id,b])),byProducts=new Map(),byServicesByOwner=new Map();
+ products.forEach(p=>{if(!byProducts.has(p.business_id))byProducts.set(p.business_id,[]);byProducts.get(p.business_id).push(p)});
+ services.forEach(s=>{if(!byServicesByOwner.has(s.seller_id))byServicesByOwner.set(s.seller_id,[]);byServicesByOwner.get(s.seller_id).push(s)});
+ rows=links.map(link=>{const b=byId.get(link.business_id);if(!b)return null;return {...b,smart_slug:link.slug||b.slug,products:byProducts.get(b.id)||[],services:byServicesByOwner.get(b.owner_id)||[]}}).filter(Boolean);
+ if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.activity,b.category,b.country,b.city,...(b.products||[]).flatMap(x=>[x.title,x.description]),...(b.services||[]).flatMap(x=>[x.title,x.description,x.delivery_mode])].filter(Boolean).join(' ').toLowerCase().includes(q));
+ if(country)rows=rows.filter(b=>String(b.country||'').toLowerCase().includes(country));
+ if(city)rows=rows.filter(b=>String(b.city||'').toLowerCase().includes(city));
+ if(kind==='product')rows=rows.filter(b=>(b.products||[]).length);
+ if(kind==='service')rows=rows.filter(b=>(b.services||[]).length);
+ render(rows,kind||'all');
+ if(pr.error||svr.error)$('status').textContent='Les activités restent consultables ; certaines offres ne sont pas disponibles pour le moment.';
+}
+$('go').onclick=load;
+$('results').addEventListener('click',e=>{if(e.target.closest('[data-retry]'))load()});
+$('clear').onclick=()=>{$('q').value='';$('country').value='';$('city').value='';$('kind').value='';load()};
+['q','country','city'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')load()}));
+$('kind').addEventListener('change',load);load();
 </script></body></html>
