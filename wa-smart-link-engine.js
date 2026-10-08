@@ -31,6 +31,8 @@ async function resolveSmartLinkId(){
 function meta(extra){
  const u=new URL(location.href);
  return {source:'smart_link',session_id:sid(),path:location.pathname,referrer:document.referrer.slice(0,240),
+  utm_source:u.searchParams.get('utm_source')||null,utm_medium:u.searchParams.get('utm_medium')||null,
+  utm_campaign:u.searchParams.get('utm_campaign')||null,
   smart_link_id:extra?.smart_link_id||u.searchParams.get('smart_link_id')||u.searchParams.get('sl'),
   product_id:extra?.product_id||u.searchParams.get('product_id')||null,language:getLang(),...(extra||{})};
 }
