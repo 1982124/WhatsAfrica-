@@ -209,7 +209,9 @@ async function discoverData(req,res){
     const pMap=new Map(),sMap=new Map();products.forEach(p=>{if(!pMap.has(p.business_id))pMap.set(p.business_id,[]);pMap.get(p.business_id).push(p)});services.forEach(s=>{const b=businesses.find(x=>x.owner_id===s.seller_id);if(b){if(!sMap.has(b.id))sMap.set(b.id,[]);sMap.get(b.id).push(s)}});
     let rows=businesses.map(b=>({...b,smart_slug:linkMap.get(b.id)?.slug||b.slug,products:pMap.get(b.id)||[],services:sMap.get(b.id)||[]}));
     if(q)rows=rows.filter(b=>[b.name,b.description,b.presentation,b.activity,b.category,b.country,b.city,...b.products.flatMap(x=>[x.title,x.description]),...b.services.flatMap(x=>[x.title,x.description,x.delivery_mode])].filter(Boolean).some(x=>norm(x).includes(q)));
-    if(kind==='product')rows=rows.filter(b=>b.products.length); if(kind==='service')rows=rows.filter(b=>b.services.length); if(kind==='business')rows=rows.filter(b=>!q||true);
+    if(country)rows=rows.filter(b=>norm(b.country).includes(country));
+    if(city)rows=rows.filter(b=>norm(b.city).includes(city));
+    if(kind==='product')rows=rows.filter(b=>b.products.length); if(kind==='service')rows=rows.filter(b=>b.services.length);
     return res.status(200).json({ok:true,partial:false,results:rows.slice(0,limit),count:rows.length,offset,limit,has_more:rows.length===limit});
   }catch(e){console.error('[DISCOVER]',e?.message||e);return res.status(200).json({ok:false,partial:true,results:[],count:0,offset,limit,has_more:false,error:'DISCOVER_UNAVAILABLE'});}
 }
