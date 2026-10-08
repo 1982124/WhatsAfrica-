@@ -291,7 +291,7 @@ function render(){
  $('vitrineCount').textContent=showVitrines?vitrines.length+' vitrine'+(vitrines.length>1?'s':''):'';
  $('serviceCount').textContent=showServices?services.length+' service'+(services.length>1?'s':''):'';
  $('libraryCount').textContent=showLibrary?shownLibrary.length+' contenu'+(shownLibrary.length>1?'s':''):'';
- $('marketCount').textContent=(DATA.products.length+DATA.services.length+DATA.library.length)+' offres publiées';
+ const physicalCount=DATA.products.filter(x=>x.type==='physical').length;const digitalCount=DATA.products.filter(x=>x.type==='digital').length;const serviceCount=DATA.services.length;const libraryCount=DATA.library.length;const vitrineCount=DATA.vitrines.length;$('marketCount').textContent=physicalCount+' produit'+(physicalCount>1?'s':'')+' · '+digitalCount+' digital · '+serviceCount+' service'+(serviceCount>1?'s':'')+' · '+libraryCount+' contenu'+(libraryCount>1?'s':'')+' · '+vitrineCount+' vitrine'+(vitrineCount>1?'s':'');
 }
 function setView(next){
  view=['all','library','physical','digital','books','services'].includes(next)?next:'all';
