@@ -167,7 +167,7 @@ function digitalKindOf(p){
 }
 function productCard(p){
  const smart=norm(p.title).includes('smart link'),vitrine=norm(p.title).includes('vitrine');
- const target=vitrine&&p.slug?'/'+encodeURIComponent(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:'/product/'+encodeURIComponent(p.id));
+ const target=vitrine&&p.slug?'/'+encodeURIComponent(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:'/product.html?id='+encodeURIComponent(p.id));
  if(vitrine){
   const cover=p.coverImage||p.image,logo=p.logoImage||'',initial=esc((p.name||'W').trim().charAt(0).toUpperCase());
   const media=cover?'<div class="vitrine-preview">'+renderImage(cover,p.name||p.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,p.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'<div class="shade"></div></div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
@@ -198,7 +198,7 @@ function serviceCard(s){
   ? (s.image?'<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(s.image,s.title,'',true)+'</div>':'')
   : (s.isRealImage?renderImage(s.image,s.title,'',true):'');
  if(!serviceMedia)return '';
- return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="/'+(s.source==='product'?'product':'service')+'/'+encodeURIComponent(s.id)+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
+ return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="/'+(s.source==='product'?'product.html?id=')+encodeURIComponent(s.id)+'"'>Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function libraryCard(c){if(!imageUrl(c.image))return '';return '<article class="card"><div class="media real product-photo">'+renderImage(c.image,c.name,'',true)+'</div><div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'BIBLIOTHÈQUE')+'</span><h3>'+esc(c.name)+'</h3><p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
@@ -376,12 +376,16 @@ async function load(){
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
    // Product media is authoritative. Never replace a WASSAFRICA product visual with a seller cover/map.
    // Seller cover/logo are used only for an actual marketplace vitrine card.
-   const isSmartLinkWassafrica=norm(x.title)==='smart link wassafrica';\n   const illustrativeImage=isSmartLinkWassafrica?'https://images.pexels.com/photos/5999793/pexels-photo-5999793.jpeg?auto=compress&cs=tinysrgb&w=1400':'';\n   const authoritativeImage=illustrativeImage||x.image_url||'';
+   const isSmartLinkWassafrica=norm(x.title)==='smart link wassafrica';
+   const illustrativeImage=isSmartLinkWassafrica?'https://images.pexels.com/photos/5999793/pexels-photo-5999793.jpeg?auto=compress&cs=tinysrgb&w=1400':'';
+   const authoritativeImage=illustrativeImage||x.image_url||'';
    return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),illustrative:Boolean(illustrativeImage),coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
   });
   const serviceRows=servicesRaw.map(x=>{
    const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},isVitrine=norm(x.title).includes('vitrine');
-   const isShareActivity=norm(x.title)==='partager son activité';\n   const serviceImage=isShareActivity?'https://images.pexels.com/photos/20123401/pexels-photo-20123401.jpeg?auto=compress&cs=tinysrgb&w=1400':(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||'');\n   return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:serviceImage,isRealImage:Boolean(serviceImage),illustrative:Boolean(isShareActivity),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
+   const isShareActivity=norm(x.title)==='partager son activité';
+   const serviceImage=isShareActivity?'https://images.pexels.com/photos/20123401/pexels-photo-20123401.jpeg?auto=compress&cs=tinysrgb&w=1400':(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||'');
+   return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:serviceImage,isRealImage:Boolean(serviceImage),illustrative:Boolean(isShareActivity),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
   });
   // INVARIANT MARKETPLACE: every published row received from the API is displayable.
   DATA.products=productRows.map(x=>({...x,source:'product'}));
