@@ -187,18 +187,17 @@ function productCard(p){
 function serviceCard(s){
  const vitrine=norm(s.title).includes('vitrine');
  if(vitrine){
-  const target=s.slug?'/'+encodeURIComponent(s.slug):'/'+(s.source==='product'?('product.html?id='+encodeURIComponent(s.id)):('service-detail-v1.html?id='+encodeURIComponent(s.id)));
+  const target=s.slug?'/'+encodeURIComponent(s.slug):(s.source==='product'?'/product.html?id='+encodeURIComponent(s.id):'/service-detail-v1.html?id='+encodeURIComponent(s.id));
   const cover=s.coverImage||s.image,logo=s.logoImage||'',initial=esc((s.name||'W').trim().charAt(0).toUpperCase());
   const media=cover?'<div class="vitrine-preview">'+renderImage(cover,s.name||s.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,s.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'<div class="shade"></div></div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
   const offers=(s.vitrineOffers||[]).slice(0,3).map(x=>'<span>'+esc(x)+'</span>').join('');
   return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(s.name||s.title)+'</h3><div class="muted">'+(s.city?esc(s.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(s.businessDescription||s.description||'Découvrez directement cette vitrine et son activité.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="'+target+'">Ouvrir la vitrine</a></div></div></article>';
  }
  const serviceSmart=norm(s.title).includes('smart link');
- const serviceMedia=serviceSmart
-  ? (s.image?'<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(s.image,s.title,'',true)+'</div>':'')
-  : (s.isRealImage?renderImage(s.image,s.title,'',true):'');
+ const serviceMedia=serviceSmart?(s.image?'<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(s.image,s.title,'',true)+'</div>':''):(s.isRealImage?renderImage(s.image,s.title,'',true):'');
  if(!serviceMedia)return '';
- return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="'+(s.source==='product'?'/product.html?id=':'/service-detail-v1.html?id=')+encodeURIComponent(s.id)+'"'>Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
+ const detailUrl=s.source==='product'?'/product.html?id='+encodeURIComponent(s.id):'/service-detail-v1.html?id='+encodeURIComponent(s.id);
+ return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="'+detailUrl+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function libraryCard(c){if(!imageUrl(c.image))return '';return '<article class="card"><div class="media real product-photo">'+renderImage(c.image,c.name,'',true)+'</div><div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'BIBLIOTHÈQUE')+'</span><h3>'+esc(c.name)+'</h3><p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
