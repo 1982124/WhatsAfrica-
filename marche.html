@@ -373,12 +373,12 @@ async function load(){
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
    // Product media is authoritative. Never replace a WASSAFRICA product visual with a seller cover/map.
    // Seller cover/logo are used only for an actual marketplace vitrine card.
-   const authoritativeImage=x.image_url||'';
+   const isSmartLinkWassafrica=norm(x.title)==='smart link wassafrica';\n   const authoritativeImage=isSmartLinkWassafrica?'https://images.pexels.com/photos/5999793/pexels-photo-5999793.jpeg?auto=compress&cs=tinysrgb&w=1400':(x.image_url||'');
    return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
   });
   const serviceRows=servicesRaw.map(x=>{
    const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},isVitrine=norm(x.title).includes('vitrine');
-   return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||'',isRealImage:Boolean(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
+   const isShareActivity=norm(x.title)==='partager son activité';\n   const serviceImage=isShareActivity?'https://images.pexels.com/photos/20123401/pexels-photo-20123401.jpeg?auto=compress&cs=tinysrgb&w=1400':(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||'');\n   return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:serviceImage,isRealImage:Boolean(serviceImage),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
   });
   // INVARIANT MARKETPLACE: every published row received from the API is displayable.
   DATA.products=productRows.map(x=>({...x,source:'product'}));
