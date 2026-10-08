@@ -34,12 +34,22 @@
     },
     {
       "source": "/commerce",
-      "destination": "/commerce.html",
+      "destination": "/marche",
       "permanent": false
     },
     {
       "source": "/product",
       "destination": "/marche",
+      "permanent": false
+    },
+    {
+      "source": "/wassafrica",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/vitrine",
+      "destination": "/smartlink",
       "permanent": false
     }
   ],

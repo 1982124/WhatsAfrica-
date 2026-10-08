@@ -20,7 +20,8 @@ async function resolveSmartLinkId(){
  const u=new URL(location.href);
  const explicit=u.searchParams.get('smart_link_id')||u.searchParams.get('sl');
  if(explicit){smartLinkId=explicit;return smartLinkId;}
- const slug=decodeURIComponent(u.pathname.replace(/^\/+/, '').split('/')[0]||'').trim();
+ const parts=u.pathname.replace(/^\/+/, '').split('/').filter(Boolean).map(x=>decodeURIComponent(x));
+ const slug=(parts[0]==='smartlink'?parts[1]:parts[0]||'').trim();
  if(!slug||slug.startsWith('api'))return null;
  try{
   const r=await fetch(SB+'/rest/v1/smart_links?select=id&slug=eq.'+encodeURIComponent(slug)+'&is_public=eq.true&limit=1',{headers:{apikey:KEY,Accept:'application/json'}});
@@ -31,6 +32,8 @@ async function resolveSmartLinkId(){
 function meta(extra){
  const u=new URL(location.href);
  return {source:'smart_link',session_id:sid(),path:location.pathname,referrer:document.referrer.slice(0,240),
+  utm_source:u.searchParams.get('utm_source')||null,utm_medium:u.searchParams.get('utm_medium')||null,
+  utm_campaign:u.searchParams.get('utm_campaign')||null,
   smart_link_id:extra?.smart_link_id||u.searchParams.get('smart_link_id')||u.searchParams.get('sl'),
   product_id:extra?.product_id||u.searchParams.get('product_id')||null,language:getLang(),...(extra||{})};
 }
