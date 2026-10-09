@@ -149,7 +149,7 @@ async function marketData(req,res){
     // Search is executed server-side so the browser is not limited to the first 1,000
     // published products. Sanitize the PostgREST OR expression before use.
     const searchTerm=searchRaw.replace(/[\\,()]/g,' ').replace(/\*/g,' ').replace(/\s+/g,' ').trim();
-    const productParams={select:'id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'};
+    const productParams={select:'id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at,digital_file_name,digital_byte_size,digital_version',is_published:'eq.true',order:'created_at.desc',limit:'1000'};
     if(searchTerm){
       const pattern='*'+searchTerm+'*';
       productParams.or=['title.ilike.'+pattern,'description.ilike.'+pattern,'category.ilike.'+pattern,'product_type.ilike.'+pattern].join(',');
@@ -160,7 +160,29 @@ async function marketData(req,res){
       read('marketplace_services',{select:'id,title,description,category,price,currency,seller_id,status,metadata,created_at',status:'eq.published',order:'created_at.desc',limit:'1000'}),
       read('product_collections',{select:'id,name,description,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
     ]);
-    const smart_links=sl.data,products=pr.data,marketplace_services=ms.data,product_collections=pc.data;
+    const smart_links=sl.data;
+    // Hide only exact duplicate digital listings in the public catalog. Keep every database row intact.
+    // The API query is newest-first; the newest matching listing remains the one users see.
+    const seenDigitalListings=new Set();
+    const products=(pr.data||[]).filter(product=>{
+      if(String(product.product_type||'').trim().toLowerCase()!=='digital')return true;
+      const filename=String(product.digital_file_name||'').trim().toLowerCase();
+      const bytes=Number(product.digital_byte_size||0);
+      if(!filename||!bytes)return true;
+      const signature=[
+        String(product.business_id||''),
+        String(product.title||'').trim().toLowerCase().replace(/\\s+/g,' '),
+        String(Number(product.price||0)),
+        String(product.currency||'').trim().toUpperCase(),
+        filename,
+        String(bytes),
+        String(product.digital_version||'').trim()
+      ].join('|');
+      if(seenDigitalListings.has(signature))return false;
+      seenDigitalListings.add(signature);
+      return true;
+    }).map(({digital_file_name,digital_byte_size,digital_version,...product})=>product);
+    const marketplace_services=ms.data,product_collections=pc.data;
     const businessIds=[...new Set([...products.map(x=>x.business_id),...smart_links.map(x=>x.business_id)].filter(Boolean))];
     const ownerIds=[...new Set(marketplace_services.map(x=>x.seller_id).filter(Boolean))];
     const b1=businessIds.length?await read('businesses',{select:'id,owner_id,name,description,city,country,logo_url,cover_image_url,business_type,slug',id:'in.('+businessIds.join(',')+')'}):{data:[]};
