@@ -103,7 +103,7 @@ async function load(){
   const products=settled[1].status==='fulfilled'?settled[1].value:[];
   const services=settled[2].status==='fulfilled'?settled[2].value:[];
   productMediaById={};
-  if(products.length){try{const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,public_url,sort_order',product_id:'in.('+products.map(p=>p.id).filter(Boolean).join(',')+')',order:'sort_order.asc',limit:'300'});for(const m of pm){(productMediaById[m.product_id]||(productMediaById[m.product_id]=[])).push(m)}}catch{productMediaById={}}}
+  if(products.length){try{const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+products.map(p=>p.id).filter(Boolean).join(',')+')',order:'sort_order.asc',limit:'300'});for(const m of pm){(productMediaById[m.product_id]||(productMediaById[m.product_id]=[])).push(m)}}catch{productMediaById={}}}
 
   stage='render';
   const isWassAfrica=String(slug||'').toLowerCase()==='wassafrica';
