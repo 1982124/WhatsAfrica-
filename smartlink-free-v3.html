@@ -63,7 +63,7 @@ main.wrap>section:nth-of-type(9){order:10}
   items.forEach(([id,col,label])=>{
     const box=$(id); if(!box)return;
     const url=business?.[col];
-    box.innerHTML=url?'<img loading="lazy" src="'+esc(url)+'" alt="Visuel WASSAFRICA"+label+' enregistrée"><button type="button">Supprimer</button>':'<div class="savedEmpty">Aucun '+label.toLowerCase()+' enregistré.</div>';
+    box.innerHTML=url?'<img loading="lazy" src="'+esc(url)+'" alt="'+esc(label+' enregistrée')+'"><button type="button">Supprimer</button>':'<div class="savedEmpty">Aucun '+label.toLowerCase()+' enregistré.</div>';
     const btn=box.querySelector('button');
     if(btn)btn.onclick=async()=>{if(!confirm('Supprimer définitivement cette image de votre vitrine ?'))return;try{btn.disabled=true;const old=business?.[col];const r=await db.from('businesses').update({[col]:null}).eq('id',business.id).eq('owner_id',user.id);if(r.error)throw r.error;business[col]=null;renderProfilePreviews();$('mediaStatus').textContent=label+' supprimée de la vitrine.';if(old){const marker='/profile-media/';const i=old.indexOf(marker);if(i>=0)await db.storage.from('profile-media').remove([decodeURIComponent(old.slice(i+marker.length))])}}catch(e){$('mediaStatus').textContent=e.message||'Suppression impossible.'}};
   });
