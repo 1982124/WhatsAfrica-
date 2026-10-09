@@ -182,14 +182,15 @@ function productCard(p){
   return '<article class="card vitrine-card"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">VITRINE D’ACTIVITÉ</span><div class="vitrine-content"><h3>'+esc(p.name||p.title)+'</h3><div class="muted">'+(p.city?esc(p.city):'Présence sur WASSAFRICA')+'</div><div class="description">'+esc(p.businessDescription||p.description||'Découvrez directement cette vitrine et son activité.')+'</div>'+(offers?'<div class="vitrine-offers">'+offers+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(p.isCanonicalDemo?'Voir le démo WASSAFRICA':'Ouvrir la vitrine')+'</a></div></div></article>';
  }
  const illustration=p.image;
- if(!illustration && !smart)return '';
  const mediaClass='real product-photo';
  const smartMedia=smart
-  ? '<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(illustration,p.title,'',true)+'</div>'
-  : renderImage(illustration,p.title,'',true);
- if(!smartMedia)return '';
+  ? (illustration?'<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(illustration,p.title,'',true)+'</div>':'')
+  : (illustration?renderImage(illustration,p.title,'',true):'');
  const digital=p.type==='digital';
- return '<article class="card '+(smart?'smart-card ':'')+(digital?'digital-card':'')+'"><div class="media '+mediaClass+'">'+smartMedia+'</div><div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(digital?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="/'+encodeURIComponent(p.slug)+'">Vitrine</a>':'')+'</div></div></article>';
+ const mediaHtml=smartMedia
+  ? '<div class="media '+mediaClass+'">'+smartMedia+'</div>'
+  : '<div class="media '+mediaClass+' no-image" role="img" aria-label="Aucun visuel fourni pour '+esc(p.title)+'"><span>Visuel non fourni</span></div>';
+ return '<article class="card '+(smart?'smart-card ':'')+(digital?'digital-card':'')+'">'+mediaHtml+'<div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(digital?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="/'+encodeURIComponent(p.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function serviceCard(s){
  const vitrine=norm(s.title).includes('vitrine');
@@ -344,14 +345,22 @@ async function load(){
   businesses.forEach(x=>{if(x.owner_id&&!byOwner.has(x.owner_id))byOwner.set(x.owner_id,x)});
   // Smart Links remain discoverable even if optional business enrichment fails.
   const publicSmart=allSmart;
-  const slugByBiz=new Map(publicSmart.map(x=>[x.business_id,x.slug]));
+  // A business may own several Smart Links (for example, a storefront and individual product links).
+  // The Market must show one canonical storefront per business, preferring the business's own slug.
   const smartByBiz=new Map();
-  publicSmart.forEach(x=>{if(x.business_id&&!smartByBiz.has(x.business_id))smartByBiz.set(x.business_id,x)});
+  publicSmart.forEach(x=>{
+   if(!x.business_id||smartByBiz.has(x.business_id))return;
+   const biz=byId.get(x.business_id)||{},desiredSlug=norm(biz.slug);
+   const canonical=desiredSlug?publicSmart.find(y=>y.business_id===x.business_id&&norm(y.slug)===desiredSlug):null;
+   smartByBiz.set(x.business_id,canonical||x);
+  });
+  const slugByBiz=new Map([...smartByBiz].map(([businessId,link])=>[businessId,link.slug]));
   const offersByBiz=new Map();
   products.forEach(x=>{
    if(x.business_id){
     const arr=offersByBiz.get(x.business_id)||[];
-    if(!norm(x.title).includes('vitrine')&&!norm(x.title).includes('smart link')&&!norm(x.title).includes('profil professionnel'))arr.push(x.title);
+    const titleKey=norm(x.title);
+    if(titleKey&&!titleKey.includes('vitrine')&&!titleKey.includes('smart link')&&!titleKey.includes('profil professionnel')&&!arr.some(title=>norm(title)===titleKey))arr.push(x.title);
     offersByBiz.set(x.business_id,arr);
    }
   });
@@ -359,7 +368,7 @@ async function load(){
   // A public Smart Link is itself a discoverable storefront. Business enrichment is optional.
   // This guarantees URLs such as /wassa-8bbaa0f3a738 appear even when profile metadata is sparse.
   // Vitrines = backend truth only. No bootstrap cards, no generic plaquettes.
-  DATA.vitrines=uniqueByKey(allSmart.map(x=>{
+  DATA.vitrines=uniqueByKey([...smartByBiz.values()].map(x=>{
    const biz=byId.get(x.business_id)||{};
    return {
     id:biz.id||x.business_id,
