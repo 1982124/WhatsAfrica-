@@ -7,8 +7,9 @@
       $('gate').innerHTML='<b>Connexion requise.</b><p class="muted">Connectez-vous pour créer et publier une offre.</p><a class="btn primary" href="/auth?next='+encodeURIComponent(location.pathname+location.search)+'">Se connecter</a>';
       return;
     }
-    let r=await withTimeout(db.from('businesses').select('id,name,slug,owner_id').eq('owner_id',user.id).maybeSingle(),'Le chargement de votre activité',8000);
+    let r=await withTimeout(db.from('businesses').select('id,name,slug,owner_id').eq('owner_id',user.id).limit(1),'Le chargement de votre activité',8000);
     if(r.error) throw r.error;
+    r={...r,data:Array.isArray(r.data)?r.data[0]||null:r.data};
     if(!r.data){
       const base=slug(user.user_metadata?.full_name||user.email?.split('@')[0]||'activite');
       r=await withTimeout(db.from('businesses').insert({owner_id:user.id,name:user.user_metadata?.full_name||'Mon activité WASSAFRICA',slug:base,smartlink_tier:'free',is_personal:true,business_type:'business',activity:'Activité'}).select('id,name,slug,owner_id').single(),'La création de votre espace commercial',8000);
