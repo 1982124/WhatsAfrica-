@@ -15,11 +15,15 @@
       if(r.error) throw r.error;
     }
     biz=r.data;
-    let l=await withTimeout(db.from('smart_links').select('id,slug').eq('business_id',biz.id).eq('is_public',true).maybeSingle(),'Le chargement de votre vitrine',8000);
+    let l=await withTimeout(db.from('smart_links').select('id,slug').eq('business_id',biz.id).eq('is_public',true).order('created_at',{ascending:true}).limit(1),'Le chargement de votre vitrine',8000);
     if(l.error) throw l.error;
-    if(!l.data){
+    if(!Array.isArray(l.data)||l.data.length===0){
       const q=await withTimeout(db.from('smart_links').insert({business_id:biz.id,owner_id:user.id,slug:biz.slug,title:biz.name,is_public:true}).select('id,slug').single(),'La préparation de votre vitrine',8000);
-      if(q.error) throw q.error;
+      if(q.error) {
+        // A concurrent request may have created the same public Smart Link.
+        const existing=await withTimeout(db.from('smart_links').select('id,slug').eq('business_id',biz.id).eq('is_public',true).order('created_at',{ascending:true}).limit(1),'La vérification de votre vitrine',8000);
+        if(existing.error||!Array.isArray(existing.data)||existing.data.length===0) throw q.error;
+      }
     }
     if(collectionId){
       const cr=await withTimeout(db.from('product_collections').select('id,name,business_id,is_published').eq('id',collectionId).eq('business_id',biz.id).maybeSingle(),'Le chargement de la collection',8000);
