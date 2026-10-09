@@ -171,7 +171,7 @@ async function marketData(req,res){
       if(!filename||!bytes)return true;
       const signature=[
         String(product.business_id||''),
-        String(product.title||'').trim().toLowerCase().replace(/\\s+/g,' '),
+        String(product.title||'').trim().toLowerCase().replace(/\s+/g,' '),
         String(Number(product.price||0)),
         String(product.currency||'').trim().toUpperCase(),
         filename,
