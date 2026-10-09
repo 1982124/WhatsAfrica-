@@ -29,7 +29,7 @@ function contact(owner){
 }
 function productCard(p){
   const rawImage=slug==='wassafrica'?(p.title==='Smart Link WASSAFRICA'?'/assets/product-smartlink.jpg':p.title==='Présence commerciale WASSAFRICA'?'/assets/product-presence.jpg':p.title==='Vitrine WASSAFRICA'?'/assets/product-vitrine.jpg':safe(p._cover_url||p.image_url)):safe(p._cover_url||p.image_url);const image=WAMedia.resolve(rawImage,p.title==='Vitrine WASSAFRICA'?'vitrine':p.title==='Smart Link WASSAFRICA'?'smartlink':'product');
-  return '<article class="card">'+(image?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(p.title)+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback(p.title==='Vitrine WASSAFRICA'?'vitrine':p.title==='Smart Link WASSAFRICA'?'smartlink':'product')+'\';"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">🛍️</div>')+'<div class="body"><span class="tag">'+(p.product_type==='digital'?'PRODUIT DIGITAL':'PRODUIT')+'</span><h3>'+esc(p.title)+'</h3><p class="muted">'+esc(p.description||'')+'</p>'+(p.price!=null?'<div class="price">'+money(p.price,p.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" data-wa-smart-event="smart_link_offer_clicked" data-smart-link-id="'+esc(smartLinkId)+'" data-product-id="'+esc(p.id)+'" href="/product/'+encodeURIComponent(p.id)+'?smart_link_id='+encodeURIComponent(smartLinkId)+'">Voir la page</a></div></div></article>';
+  return '<article class="card">'+(image?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(p.title)+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback(p.title==='Vitrine WASSAFRICA'?'vitrine':p.title==='Smart Link WASSAFRICA'?'smartlink':'product')+'\';"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">🛍️</div>')+'<div class="body"><span class="tag">'+(p.product_type==='digital'?'PRODUIT DIGITAL':'PRODUIT')+'</span><h3>'+esc(p.title)+'</h3><p class="muted">'+esc(p.description||'')+'</p>'+(p.price!=null?'<div class="price">'+money(p.price,p.currency)+'</div>':'')+(p._gallery?.length>1?'<div class="product-gallery" style="display:flex;gap:6px;overflow-x:auto;padding:8px 0">'+p._gallery.slice(1,8).map((u,i)=>'<img loading="lazy" src="'+esc(u)+'" alt="'+esc(p.title)+' — photo '+(i+2)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:0 0 auto">').join('')+'</div>':'')+(p._videos?.length?'<div class="product-videos" style="display:grid;gap:8px;margin-top:8px">'+p._videos.slice(0,3).map(u=>'<video controls playsinline preload="metadata" src="'+esc(u)+'" style="width:100%;max-height:260px;border-radius:10px"></video>').join('')+'</div>':'')+'<div class="actions"><a class="btn primary" data-wa-smart-event="smart_link_offer_clicked" data-smart-link-id="'+esc(smartLinkId)+'" data-product-id="'+esc(p.id)+'" href="/product/'+encodeURIComponent(p.id)+'?smart_link_id='+encodeURIComponent(smartLinkId)+'">Voir la page</a><button class="btn" type="button" data-product-share="'+esc(p.id)+'">↗ Partager</button></div></div></article>';
 }
 function serviceCard(s){
   const sm=WAMedia.serviceImage(s.metadata,s.title);const image=sm.url||WAMedia.fallback(sm.kind);
@@ -53,16 +53,14 @@ async function load(){
   const productIds=(products||[]).map(x=>x.id).filter(Boolean);
   if(productIds.length){
     const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+productIds.join(',')+')',order:'sort_order.asc'});
-    const byProduct=new Map();
+    const byProduct=new Map(),galleryByProduct=new Map(),videosByProduct=new Map();
     for(const m of (pm||[])){
-      if(m.media_type!=='cover') continue;
-      if(!byProduct.has(m.product_id)){
-        const bucket=m.storage_bucket||'public-media';
-        const path=m.storage_path;
-        if(path) byProduct.set(m.product_id,dbPublicUrl(bucket,path));
-      }
+      const bucket=m.storage_bucket||'public-media',path=m.storage_path;if(!path)continue;const url=dbPublicUrl(bucket,path);
+      if(m.media_type==='cover'&&!byProduct.has(m.product_id))byProduct.set(m.product_id,url);
+      if(['cover','image'].includes(m.media_type)){if(!galleryByProduct.has(m.product_id))galleryByProduct.set(m.product_id,[]);galleryByProduct.get(m.product_id).push(url)}
+      if(m.media_type==='video'){if(!videosByProduct.has(m.product_id))videosByProduct.set(m.product_id,[]);videosByProduct.get(m.product_id).push(url)}
     }
-    for(const p of (products||[])) p._cover_url=byProduct.get(p.id)||null;
+    for(const p of (products||[])){p._cover_url=byProduct.get(p.id)||null;p._gallery=galleryByProduct.get(p.id)||[];p._videos=videosByProduct.get(p.id)||[];}
   }
   const cover=safe(b.cover_image_url)||WAMedia.fallback('vitrine');
   const gallery=(media||[]).filter(x=>x.kind==='gallery'||x.kind==='image').map(x=>safe(x.public_url)).filter(Boolean).slice(0,6);
@@ -78,7 +76,7 @@ async function load(){
     '<section class="contact"><article class="contactBox"><div class="ey">CONTACT DIRECT</div><h2>Parler avec '+esc(b.name||'cette activité')+'</h2><p class="muted">La conversation s’ouvre directement dans WASSAFRICA.</p><button id="wa-contact-bottom" class="btn primary">💬 Ouvrir la messagerie</button></article><article class="share"><div class="ey" style="color:#f7d98c">POUR LES ACTIVITÉS</div><h2>Votre activité mérite son propre lien.</h2><p>Identité, contenu, produits, services et conversation au même endroit.</p><a class="btn" href="/smartlink">Créer ma vitrine</a></article></section>';
   $('wa-contact')?.addEventListener('click',()=>contact(b.owner_id));
   $('wa-contact-bottom')?.addEventListener('click',()=>contact(b.owner_id));
-  $('wa-share')?.addEventListener('click',()=>{track('smart_link_share_clicked');if(navigator.share)navigator.share({title:document.title,url:location.href}).catch(()=>{});else navigator.clipboard?.writeText(location.href)});
+  $('wa-share')?.addEventListener('click',()=>{track('smart_link_share_clicked');if(navigator.share)navigator.share({title:document.title,url:location.href}).catch(()=>{});else navigator.clipboard?.writeText(location.href)});document.querySelectorAll('[data-product-share]').forEach(btn=>btn.addEventListener('click',async()=>{const product=(products||[]).find(x=>x.id===btn.dataset.productShare),url=location.origin+'/product/'+encodeURIComponent(btn.dataset.productShare)+'?smart_link_id='+encodeURIComponent(smartLinkId||'');try{if(navigator.share)await navigator.share({title:product?.title||'Produit WASSAFRICA',text:'Découvrez ce produit',url});else{await navigator.clipboard.writeText(url);btn.textContent='Lien copié ✓';}}catch(e){if(e?.name!=='AbortError')window.prompt('Copiez le lien du produit :',url)}}));
   track('smart_link_viewed');
 }
 load().catch(e=>{$('app').innerHTML='<div class="empty"><b>Cette vitrine n’est pas disponible pour le moment.</b><div style="margin-top:8px">Le contenu public n’a pas pu être chargé. Réessayez dans un instant.</div><div style="margin-top:14px"><a class="btn primary" href="/">Retour à WASSAFRICA</a></div></div>';console.error('[WassAfrica] public Smart Link',e)});
