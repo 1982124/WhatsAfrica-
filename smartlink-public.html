@@ -100,7 +100,18 @@ async function load(){
     query('marketplace_services',{seller_id:'eq.'+b.owner_id,status:'eq.published'})
   ]);
   const media=settled[0].status==='fulfilled'?settled[0].value:[];
-  const products=settled[1].status==='fulfilled'?settled[1].value:[];
+  const productsRaw=settled[1].status==='fulfilled'?settled[1].value:[];
+  // Hide duplicate digital listings from the public catalogue without deleting source records.
+  // A match requires the same business, normalized title, description, price and currency.
+  const normalizeDuplicateValue=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+  const seenDigitalListings=new Set();
+  const products=productsRaw.filter(p=>{
+    if(p.product_type!=='digital')return true;
+    const key=[p.business_id,normalizeDuplicateValue(p.title),normalizeDuplicateValue(p.description),String(p.price??''),normalizeDuplicateValue(p.currency||'XOF')].join('|');
+    if(seenDigitalListings.has(key))return false;
+    seenDigitalListings.add(key);
+    return true;
+  });
   const services=settled[2].status==='fulfilled'?settled[2].value:[];
   productMediaById={};
   if(products.length){try{const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+products.map(p=>p.id).filter(Boolean).join(',')+')',order:'sort_order.asc',limit:'300'});for(const m of pm){(productMediaById[m.product_id]||(productMediaById[m.product_id]=[])).push(m)}}catch{productMediaById={}}}
