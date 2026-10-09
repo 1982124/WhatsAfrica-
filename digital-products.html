@@ -55,13 +55,13 @@ if(f){
  const name=f.name.toLowerCase(),type=f.type||'';
  if(type==='application/pdf'||name.endsWith('.pdf')){
   const ab=await f.arrayBuffer(),pdf=await pdfjsLib.getDocument({data:ab}).promise;pdfPages=pdf.numPages;text='';
-  for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i),tc=await page.getTextContent();text+=tc.items.map(x=>x.str).join(' ')+'\\n';if(text.length>90000)break;$('aiBar').style.width=Math.min(45,8+(i/pdf.numPages)*37)+'%'}
+  for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i),tc=await page.getTextContent();text+=tc.items.map(x=>x.str).join(' ')+'\n';if(text.length>90000)break;$('aiBar').style.width=Math.min(45,8+(i/pdf.numPages)*37)+'%'}
  }else if(name.endsWith('.docx')||type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document'){
   if(!window.mammoth)throw Error('Le lecteur DOCX n’a pas chargé. Réessayez ou collez le texte dans le champ de description.');
   const ab=await f.arrayBuffer(),result=await mammoth.extractRawText({arrayBuffer:ab});text=result.value||'';
  }else if(name.endsWith('.txt')||name.endsWith('.md')||type==='text/plain'||type==='text/markdown'){text=await f.text()}
  else throw Error('Format non pris en charge pour l’analyse. Utilisez PDF, DOCX, TXT ou Markdown, ou décrivez le contenu ci-dessous.');
- if(brief)text+='\\n\\nComplément fourni par le vendeur :\\n'+brief;
+ if(brief)text+='\n\nComplément fourni par le vendeur :\n'+brief;
 }
 text=String(text||'').trim();
 if(text.length<100)throw Error('Pas assez de texte exploitable. Pour un PDF scanné, un audio, une vidéo ou un ZIP, décrivez le contenu dans le champ prévu.');
