@@ -218,7 +218,7 @@ const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug
 let libraryCategory='all';
 let libraryKind=new URLSearchParams(location.search).get('library_kind')||'all';
 const LIBRARY_CATEGORIES=['Romans & fiction','Histoire & patrimoine africain','Éducation & jeunesse','Business & entrepreneuriat','Développement personnel','Santé & bien-être','Religion & spiritualité','Cuisine & nutrition','Guides pratiques','Technologie & numérique','Arts & culture','Marketing & vente','Formations & apprentissage','Création & design','Packs & bundles','Livres & ebooks','Autre'];
-function isBookProduct(p){const t=norm([p.title,p.description,p.category].filter(Boolean).join(' '));return /\\b(ebook|e-book|livre|roman|fiction|conte|recueil|biographie|autobiographie|histoire vraie|guide pratique|pdf)\\b/.test(t)||LIBRARY_CATEGORIES.slice(0,12).some(c=>norm(c)===norm(p.category||''));}
+function isBookProduct(p){const t=norm([p.title,p.description,p.category].filter(Boolean).join(' '));return /\b(ebook|e-book|livre|roman|fiction|conte|recueil|biographie|autobiographie|histoire vraie|guide pratique|pdf)\b/.test(t)||LIBRARY_CATEGORIES.slice(0,12).some(c=>norm(c)===norm(p.category||''));}
 let physicalCategory=new URLSearchParams(location.search).get('category')||'all';
 const PHYSICAL_CATEGORIES=[
  {key:'pharmacie',label:'Pharmacie & bien-être',terms:['pharmacie','pharmaceutique','medicament','medicaments','sante','bien-etre','complement','supplement','vitamine']},
@@ -354,7 +354,9 @@ function render(){
 }
 function setView(next){
  view=['all','library','physical','digital','books','services','vitrines'].includes(next)?next:'all';
- if(view==='all'){physicalCategory='all';libraryCategory='all';digitalKind='all';}
+ if(view==='all'){physicalCategory='all';libraryCategory='all';libraryKind='all';digitalKind='all';}
+ else if(view==='books'){libraryKind='book';}
+ else if(view==='library'){libraryKind='all';}
  else if(view!=='physical'){physicalCategory='all';}
  const url=new URL(location.href);if(view==='all')url.searchParams.delete('type');else url.searchParams.set('type',view);
  if(view!=='physical'||physicalCategory==='all')url.searchParams.delete('category');
