@@ -29,7 +29,7 @@
     },
     {
       "source": "/digital-market",
-      "destination": "/marche",
+      "destination": "/marche/digital",
       "permanent": false
     },
     {
@@ -270,12 +270,24 @@
       "destination": "/marche.html"
     },
     {
+      "source": "/marche/physique",
+      "destination": "/marche.html?type=physical"
+    },
+    {
+      "source": "/marche/digital",
+      "destination": "/marche.html?type=digital"
+    },
+    {
+      "source": "/marche/collections",
+      "destination": "/marche.html?type=library"
+    },
+    {
       "source": "/marche/produits",
-      "destination": "/marche.html"
+      "destination": "/marche.html?type=physical"
     },
     {
       "source": "/marche/services",
-      "destination": "/marche.html"
+      "destination": "/marche.html?type=services"
     },
     {
       "source": "/marche/boutiques",
