@@ -73,6 +73,7 @@
 <section class="section" id="productsSection" data-commercial>
 <div class="market-intro"><div><h2>Produits du Marché</h2><p class="muted">Produits physiques réellement publiés sur WASSAFRICA.</p></div><div id="productCount" class="market-count"></div></div>
 <div class="toolbar"><div class="truth-note">Les visuels et les informations produits viennent des données publiées. Un produit sans visuel exploitable n’est pas remplacé par une image générique.</div></div>
+<nav id="physicalCategories" class="digital-categories physical-categories" aria-label="Filtrer les produits physiques par catégorie"></nav>
 <div id="products" class="grid"><div class="empty">Chargement des produits publiés…</div></div>
 </section>
 
@@ -215,6 +216,18 @@ function serviceCard(s){
 function libraryCard(c){const cover=imageUrl(c.image);const media=cover?'<div class="media real product-photo">'+renderImage(cover,c.name,'',true)+'</div>':'<div class="media no-image" aria-label="Couverture non fournie">Couverture non fournie</div>';return '<article class="card">'+media+'<div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'COLLECTION')+'</span><h3>'+esc(c.name||'Collection sans titre')+'</h3>'+(c.category?'<div class="muted">'+esc(c.category)+'</div>':'')+'<p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
 let libraryCategory='all';
+let physicalCategory=new URLSearchParams(location.search).get('category')||'all';
+const PHYSICAL_CATEGORIES=[
+ {key:'pharmacie',label:'Pharmacie & bien-être',terms:['pharmacie','pharmaceutique','medicament','medicaments','sante','bien-etre','complement','supplement','vitamine']},
+ {key:'tissus',label:'Tissus & mode',terms:['tissu','textile','mode','vetement','couture','habillement']},
+ {key:'condiments',label:'Condiments & alimentation',terms:['condiment','aliment','epice','cereale','huile alimentaire','nourriture','boisson']},
+ {key:'voitures',label:'Voitures',terms:['voiture','automobile','vehicule','carrosserie']},
+ {key:'motos',label:'Motos',terms:['moto','motocyclette','scooter']},
+ {key:'agriculture',label:'Agriculture',terms:['agriculture','agricole','environnement']},
+ {key:'nettoyage',label:'Nettoyage & entretien',terms:['nettoyage','netoyage','cleaner','entretien','detergent','savon','menage']},
+ {key:'maison',label:'Maison & équipement',terms:['maison','meuble','mobilier','equipement','decoration','cuisine']},
+ {key:'electronique',label:'Électronique',terms:['electronique','telephone','ordinateur','informatique','accessoire','electromenager']}
+];
 let DATA={vitrines:[],products:[],services:[],library:[]},view=(['all','physical','digital','library','books','services','vitrines'].includes(new URLSearchParams(location.search).get('type'))?new URLSearchParams(location.search).get('type'):'all'),digitalKind='all',marketState='loading';
 function vitrineCard(v){
  const cover=v.coverImage||'',logo=v.logoImage||'';
@@ -235,6 +248,14 @@ function normalizeProductType(x){
  if(['digital','ebook','e-book','digital_product'].includes(raw))return 'digital';
  if(['book','books','livre','livres'].includes(raw))return 'book';
  return 'physical';
+}
+function fold(v){return norm(v).normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]','g'),'')}
+function physicalCategoryMatches(p,key=physicalCategory){
+ if(key==='all')return true;
+ const text=fold([p.title,p.category].filter(Boolean).join(' '));
+ if(key==='uncategorized')return !String(p.category||'').trim()&&!PHYSICAL_CATEGORIES.some(c=>c.terms.some(t=>text.includes(fold(t))));
+ const category=PHYSICAL_CATEGORIES.find(c=>c.key===key);
+ return Boolean(category&&category.terms.some(t=>text.includes(fold(t))));
 }
 function matches(x){
  const q=norm($('q').value);
@@ -291,7 +312,15 @@ function render(){
  $('productsSection').hidden=!showProducts;
  $('digitalSection').hidden=!showDigital;
  $('librarySection').hidden=!showLibrary;$('servicesSection').hidden=!showServices;
- const shownProducts=view==='physical'?physical:physical;
+ const shownProducts=physical.filter(x=>physicalCategoryMatches(x));
+ const physicalNav=$('physicalCategories');
+ if(physicalNav){
+  const categories=[{key:'all',label:'Tous les produits'},...PHYSICAL_CATEGORIES,{key:'uncategorized',label:'Non classés'}];
+  physicalNav.innerHTML=categories.map(c=>{
+   const count=c.key==='all'?physical.length:physical.filter(p=>physicalCategoryMatches(p,c.key)).length;
+   return '<button class="digital-chip '+(physicalCategory===c.key?'active':'')+'" type="button" data-physical-category="'+c.key+'" aria-pressed="'+(physicalCategory===c.key)+'">'+esc(c.label)+' <span class="category-count">'+count+'</span></button>';
+  }).join('');
+ }
  const libraryCategories=[...new Set(DATA.library.map(x=>String(x.category||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
  const categoryNav=$('libraryCategories');
  if(categoryNav){
@@ -460,6 +489,7 @@ $('searchBtn').addEventListener('click',()=>{clearTimeout(marketSearchTimer);loa
 $('q').addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(marketSearchTimer);load()}});
 document.querySelectorAll('[data-digital-kind]').forEach(b=>b.addEventListener('click',()=>{digitalKind=b.dataset.digitalKind||'all';render()}));
 document.addEventListener('click',e=>{const button=e.target?.closest?.('[data-library-category]');if(!button)return;libraryCategory=button.dataset.libraryCategory||'all';render();const section=$('librarySection');if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});});
+document.addEventListener('click',e=>{const button=e.target?.closest?.('[data-physical-category]');if(!button)return;physicalCategory=button.dataset.physicalCategory||'all';view='physical';const url=new URL(location.href);url.searchParams.set('type','physical');if(physicalCategory==='all')url.searchParams.delete('category');else url.searchParams.set('category',physicalCategory);history.replaceState({},'',url);render();const section=$('productsSection');if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});});
 document.addEventListener('click',e=>{if(e.target?.id==='marketRetry')load()});
 load();
 </script>
