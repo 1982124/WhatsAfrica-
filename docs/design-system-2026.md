@@ -63,3 +63,16 @@ Before production promotion:
 3. Exercise loading, empty, error, and success states for forms and product lists.
 4. Verify product photos/videos and existing create/share flows still work.
 5. Confirm preview and production deployments separately; never treat a successful preview build as a production release.
+
+
+## Contrast notes for implementation
+
+Calculated WCAG contrast ratios for the core tokens:
+- White on forest: 12.06:1 (passes WCAG AA and AAA for normal text).
+- Savanna gold on forest: 5.79:1 (passes WCAG AA for normal text).
+- Ink on cream: 15.14:1 (passes WCAG AA and AAA for normal text).
+- Muted moss on cream: 4.71:1 (passes WCAG AA for normal text, with limited margin).
+- Muted moss on white: 5.03:1 (passes WCAG AA for normal text).
+- White on terracotta: 4.23:1 (does not meet 4.5:1 for normal text). Do not use white normal-sized text on terracotta; use ink text on terracotta or reserve terracotta for non-text accents until a darker accessible variant is selected.
+
+These token-level calculations do not certify every component or theme combination. Audit the actual foreground/background pair used by every interactive state before release.
