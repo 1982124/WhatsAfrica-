@@ -65,7 +65,7 @@
 <div class="ey">EXEMPLE — PAS UNE OFFRE DU MARCHÉ</div>
 <h3>KÔRÔ Créations</h3>
 <p>Exemple de présentation d’une marque de mode et d’artisanat : identité, univers, réalisations, offres et contact direct.</p>
-<div class="actions"><a class="btn primary" href="/wassa-8bbaa0f3a738">Voir la démo</a></div>
+<div class="actions"><a class="btn primary" href="/demo">Voir la démo</a></div>
 </div>
 </article>
 </section>
@@ -214,7 +214,8 @@ function serviceCard(s){
 }
 function libraryCard(c){const cover=imageUrl(c.image);const media=cover?'<div class="media real product-photo">'+renderImage(cover,c.name,'',true)+'</div>':'<div class="media no-image" aria-label="Couverture non fournie">Couverture non fournie</div>';return '<article class="card">'+media+'<div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'COLLECTION')+'</span><h3>'+esc(c.name||'Collection sans titre')+'</h3>'+(c.category?'<div class="muted">'+esc(c.category)+'</div>':'')+'<p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
-let libraryCategory='all';\nlet DATA={vitrines:[],products:[],services:[],library:[]},view=(['all','physical','digital','library','books','services','vitrines'].includes(new URLSearchParams(location.search).get('type'))?new URLSearchParams(location.search).get('type'):'all'),digitalKind='all',marketState='loading';
+let libraryCategory='all';
+let DATA={vitrines:[],products:[],services:[],library:[]},view=(['all','physical','digital','library','books','services','vitrines'].includes(new URLSearchParams(location.search).get('type'))?new URLSearchParams(location.search).get('type'):'all'),digitalKind='all',marketState='loading';
 function vitrineCard(v){
  const cover=v.coverImage||'',logo=v.logoImage||'';
  const initial=esc((v.name||'W').trim().charAt(0).toUpperCase());
