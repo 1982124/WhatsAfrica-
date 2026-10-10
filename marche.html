@@ -283,6 +283,8 @@ function render(){
  const showDigital=view==='all'||view==='digital';
  const showLibrary=view==='all'||view==='library'||view==='books';
  const showServices=view==='all'||view==='services';
+ // A filtered route should show its requested results, not the editorial demo first.
+ $('demoSection').hidden=view!=='all';
  $('vitrinesSection').hidden=!showVitrines;
  $('productsSection').hidden=!showProducts;
  $('digitalSection').hidden=!showDigital;
@@ -311,6 +313,9 @@ function setView(next){
  const url=new URL(location.href);if(view==='all')url.searchParams.delete('type');else url.searchParams.set('type',view);history.replaceState({},'',url);
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
  render();
+ // On tap, move the visitor to the section that the filter actually reveals.
+ const target={physical:'productsSection',digital:'digitalSection',library:'librarySection',books:'librarySection',services:'servicesSection',vitrines:'vitrinesSection'}[view];
+ if(target){const section=$(target);if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});}
 }
 async function load(){
  marketState='loading';
