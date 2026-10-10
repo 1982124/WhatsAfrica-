@@ -158,7 +158,7 @@ async function marketData(req,res){
       read('smart_links',{select:'business_id,slug,title,description',is_public:'eq.true',order:'created_at.desc',limit:'1000'}),
       read('products',productParams),
       read('marketplace_services',{select:'id,title,description,category,price,currency,seller_id,status,metadata,created_at',status:'eq.published',order:'created_at.desc',limit:'1000'}),
-      read('product_collections',{select:'id,name,description,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
+      read('product_collections',{select:'id,name,subtitle,description,category,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
     ]);
     const smart_links=sl.data;
     // Hide only exact duplicate digital listings in the public catalog. Keep every database row intact.
