@@ -209,7 +209,7 @@ async function discoverGet(path,params){
 }
 async function discoverRpc(args){
   const base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co';
-  const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
   if(!key)throw new Error('DISCOVER_SUPABASE_KEY_MISSING');
   const r=await fetch(base+'/rest/v1/rpc/discover_public_businesses',{
     method:'POST',
