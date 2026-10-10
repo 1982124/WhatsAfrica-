@@ -199,7 +199,7 @@ async function marketData(req,res){
 
 async function discoverGet(path,params){
   const base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co';
-  const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
   if(!key)throw new Error('DISCOVER_SUPABASE_KEY_MISSING');
   const u=new URL(base+'/rest/v1/'+path);
   Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
