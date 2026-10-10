@@ -213,9 +213,12 @@ function serviceCard(s){
  const detailUrl=s.source==='product'?'/product.html?id='+encodeURIComponent(s.id):'/service-detail-v1.html?id='+encodeURIComponent(s.id);
  return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="'+detailUrl+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
-function libraryCard(c){const cover=imageUrl(c.image);const media=cover?'<div class="media real product-photo">'+renderImage(cover,c.name,'',true)+'</div>':'<div class="media no-image" aria-label="Couverture non fournie">Couverture non fournie</div>';return '<article class="card">'+media+'<div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'COLLECTION')+'</span><h3>'+esc(c.name||'Collection sans titre')+'</h3>'+(c.category?'<div class="muted">'+esc(c.category)+'</div>':'')+'<p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
+function libraryCard(c){const cover=imageUrl(c.image);const media=cover?'<div class="media real product-photo">'+renderImage(cover,c.name,'',true)+'</div>':'<div class="media no-image" aria-label="Couverture non fournie">Couverture non fournie</div>';const target=c.kind==='book'?'/product.html?id='+encodeURIComponent(c.id):'/collection.html?id='+encodeURIComponent(c.id);return '<article class="card">'+media+'<div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE NUMÉRIQUE':'COLLECTION')+'</span><h3>'+esc(c.name||'Collection sans titre')+'</h3>'+(c.category?'<div class="muted">'+esc(c.category)+'</div>':'')+'<p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" href="'+target+'">'+(c.kind==='book'?'Voir le livre':'Voir la collection')+'</a></div></div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
 let libraryCategory='all';
+let libraryKind=new URLSearchParams(location.search).get('library_kind')||'all';
+const LIBRARY_CATEGORIES=['Romans & fiction','Histoire & patrimoine africain','Éducation & jeunesse','Business & entrepreneuriat','Développement personnel','Santé & bien-être','Religion & spiritualité','Cuisine & nutrition','Guides pratiques','Technologie & numérique','Arts & culture','Marketing & vente','Formations & apprentissage','Création & design','Packs & bundles','Livres & ebooks','Autre'];
+function isBookProduct(p){const t=norm([p.title,p.description,p.category].filter(Boolean).join(' '));return /\\b(ebook|e-book|livre|roman|fiction|conte|recueil|biographie|autobiographie|histoire vraie|guide pratique|pdf)\\b/.test(t)||LIBRARY_CATEGORIES.slice(0,12).some(c=>norm(c)===norm(p.category||''));}
 let physicalCategory=new URLSearchParams(location.search).get('category')||'all';
 const PHYSICAL_CATEGORIES=[
  {key:'pharmacie',label:'Pharmacie & bien-être',terms:['pharmacie','pharmaceutique','medicament','medicaments','sante','bien-etre','complement','supplement','vitamine']},
@@ -321,14 +324,15 @@ function render(){
    return '<button class="digital-chip '+(physicalCategory===c.key?'active':'')+'" type="button" data-physical-category="'+c.key+'" aria-pressed="'+(physicalCategory===c.key)+'">'+esc(c.label)+' <span class="category-count">'+count+'</span></button>';
   }).join('');
  }
- const libraryCategories=[...new Set(DATA.library.map(x=>String(x.category||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+ const libraryCategories=[...new Set([...LIBRARY_CATEGORIES,...DATA.library.map(x=>String(x.category||'').trim()).filter(Boolean)])].sort((a,b)=>a.localeCompare(b,'fr'));
  const categoryNav=$('libraryCategories');
  if(categoryNav){
-  const options=['<button class="digital-chip '+(libraryCategory==='all'?'active':'')+'" type="button" data-library-category="all">Toutes les catégories</button>',...libraryCategories.map(c=>'<button class="digital-chip '+(libraryCategory===c?'active':'')+'" type="button" data-library-category="'+esc(c)+'">'+esc(c)+'</button>')];
-  categoryNav.innerHTML=options.join('');
+  const typeOptions=[['all','Tout'],['book','Livres'],['collection','Collections']].map(([key,label])=>'<button class="digital-chip '+(libraryKind===key?'active':'')+'" type="button" data-library-kind="'+key+'">'+label+'</button>');
+  const categoryOptions=['<button class="digital-chip '+(libraryCategory==='all'?'active':'')+'" type="button" data-library-category="all">Toutes les catégories</button>',...libraryCategories.map(c=>'<button class="digital-chip '+(libraryCategory===c?'active':'')+'" type="button" data-library-category="'+esc(c)+'">'+esc(c)+' <span class="category-count">'+books.filter(x=>String(x.category||'').trim()===c).length+'</span></button>')];
+  categoryNav.innerHTML='<div class="digital-categories" aria-label="Type de contenu">'+typeOptions.join('')+'</div><div class="digital-categories" aria-label="Catégorie de livre ou collection">'+categoryOptions.join('')+'</div>';
  }
- const categoryBooks=books.filter(x=>libraryCategory==='all'||String(x.category||'').trim()===libraryCategory);
- const shownLibrary=(view==='books'?categoryBooks.filter(x=>x.kind==='book'):categoryBooks);
+ const categoryBooks=books.filter(x=>(libraryCategory==='all'||norm(x.category||'')===norm(libraryCategory))&&(libraryKind==='all'||x.kind===libraryKind));
+ const shownLibrary=categoryBooks;
  const vh=showVitrines?safeCards(vitrines,vitrineCard):'';
  const ph=safeCards(shownProducts,productCard);
  const lh=safeCards(shownLibrary,libraryCard);
@@ -371,7 +375,7 @@ async function load(){
    restSelect('smart_links',{select:'business_id,slug,title,description',is_public:'eq.true',order:'created_at.desc',limit:'1000'}),
    restSelect('products',{select:'id,title,description,price,currency,image_url,category,product_type,business_id,is_published,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'}),
    restSelect('marketplace_services',{select:'id,title,description,category,price,currency,seller_id,status,metadata,created_at',status:'eq.published',order:'created_at.desc',limit:'1000'}),
-   restSelect('product_collections',{select:'id,name,description,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
+   restSelect('product_collections',{select:'id,name,subtitle,description,category,cover_url,is_published,price,currency,created_at',is_published:'eq.true',order:'created_at.desc',limit:'1000'})
   ]);
   const smartRes=smartSettled.status==='fulfilled'?{data:smartSettled.value,error:null}:{data:[],error:smartSettled.reason};
   const pr=prSettled.status==='fulfilled'?{data:prSettled.value,error:null}:{data:[],error:prSettled.reason};
@@ -460,7 +464,9 @@ async function load(){
   // INVARIANT MARKETPLACE: every published row received from the API is displayable.
   DATA.products=productRows.map(x=>({...x,source:'product'}));
   DATA.services=uniqueByKey(serviceRows.filter(x=>!isLegacyNativeMirror(x)));
-  DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,name:x.name||x.title||'Collection',image:x.cover_url||x.image_url||x.image,category:x.category||x.category_name||x.metadata?.category||'',kind:'collection'}));
+  const collectionRows=cr.error?[]:(cr.data||[]).map(x=>({...x,name:x.name||x.title||'Collection',image:x.cover_url||x.image_url||x.image,category:x.category||x.category_name||x.metadata?.category||'',kind:'collection'}));
+  const bookRows=products.filter(x=>String(x.product_type||'').toLowerCase()==='digital'&&isBookProduct(x)).map(x=>({...x,name:x.title||'Livre numérique',image:x.image_url||'',kind:'book'}));
+  DATA.library=uniqueByKey([...bookRows,...collectionRows]);
   // Hard invariant: partial API failure must never hide already-published Marketplace content.
   marketState='ready';
   // The live API is the sole source of truth for published Marketplace content.
@@ -494,7 +500,7 @@ $('q').addEventListener('input',()=>{
 $('searchBtn').addEventListener('click',()=>{clearTimeout(marketSearchTimer);load()});
 $('q').addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(marketSearchTimer);load()}});
 document.querySelectorAll('[data-digital-kind]').forEach(b=>b.addEventListener('click',()=>{digitalKind=b.dataset.digitalKind||'all';render()}));
-document.addEventListener('click',e=>{const button=e.target?.closest?.('[data-library-category]');if(!button)return;libraryCategory=button.dataset.libraryCategory||'all';render();const section=$('librarySection');if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});});
+document.addEventListener('click',e=>{const kindButton=e.target?.closest?.('[data-library-kind]');if(kindButton){libraryKind=kindButton.dataset.libraryKind||'all';const url=new URL(location.href);if(libraryKind==='all')url.searchParams.delete('library_kind');else url.searchParams.set('library_kind',libraryKind);history.replaceState({},'',url);render();return;}const button=e.target?.closest?.('[data-library-category]');if(!button)return;libraryCategory=button.dataset.libraryCategory||'all';render();const section=$('librarySection');if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});});
 document.addEventListener('click',e=>{const button=e.target?.closest?.('[data-physical-category]');if(!button)return;physicalCategory=button.dataset.physicalCategory||'all';view='physical';const url=new URL(location.href);url.searchParams.set('type','physical');if(physicalCategory==='all')url.searchParams.delete('category');else url.searchParams.set('category',physicalCategory);history.replaceState({},'',url);render();const section=$('productsSection');if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});});
 document.addEventListener('click',e=>{if(e.target?.id==='marketRetry')load()});
 load();
