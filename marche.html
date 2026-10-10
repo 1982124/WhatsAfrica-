@@ -101,6 +101,7 @@
 
 <section class="section" id="librarySection" data-commercial>
 <div class="market-intro"><div><h2>Bibliothèque</h2><p class="muted">Livres et collections réellement publiés.</p></div><div id="libraryCount" class="market-count"></div></div>
+<nav id="libraryCategories" class="digital-categories" aria-label="Filtrer les collections par catégorie"><button class="digital-chip active" type="button" data-library-category="all">Toutes les catégories</button></nav>
 <div id="library" class="grid"><div class="empty">Chargement…</div></div>
 </section>
 
@@ -211,9 +212,9 @@ function serviceCard(s){
  const detailUrl=s.source==='product'?'/product.html?id='+encodeURIComponent(s.id):'/service-detail-v1.html?id='+encodeURIComponent(s.id);
  return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="'+detailUrl+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
-function libraryCard(c){if(!imageUrl(c.image))return '';return '<article class="card"><div class="media real product-photo">'+renderImage(c.image,c.name,'',true)+'</div><div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'BIBLIOTHÈQUE')+'</span><h3>'+esc(c.name)+'</h3><p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
+function libraryCard(c){const cover=imageUrl(c.image);const media=cover?'<div class="media real product-photo">'+renderImage(cover,c.name,'',true)+'</div>':'<div class="media no-image" aria-label="Couverture non fournie">Couverture non fournie</div>';return '<article class="card">'+media+'<div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE':'COLLECTION')+'</span><h3>'+esc(c.name||'Collection sans titre')+'</h3>'+(c.category?'<div class="muted">'+esc(c.category)+'</div>':'')+'<p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'</div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
-let DATA={vitrines:[],products:[],services:[],library:[]},view=(['all','physical','digital','library','books','services','vitrines'].includes(new URLSearchParams(location.search).get('type'))?new URLSearchParams(location.search).get('type'):'all'),digitalKind='all',marketState='loading';
+let libraryCategory='all';\nlet DATA={vitrines:[],products:[],services:[],library:[]},view=(['all','physical','digital','library','books','services','vitrines'].includes(new URLSearchParams(location.search).get('type'))?new URLSearchParams(location.search).get('type'):'all'),digitalKind='all',marketState='loading';
 function vitrineCard(v){
  const cover=v.coverImage||'',logo=v.logoImage||'';
  const initial=esc((v.name||'W').trim().charAt(0).toUpperCase());
@@ -290,7 +291,14 @@ function render(){
  $('digitalSection').hidden=!showDigital;
  $('librarySection').hidden=!showLibrary;$('servicesSection').hidden=!showServices;
  const shownProducts=view==='physical'?physical:physical;
- const shownLibrary=view==='books'?books.filter(x=>x.kind==='book'):books;
+ const libraryCategories=[...new Set(DATA.library.map(x=>String(x.category||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+ const categoryNav=$('libraryCategories');
+ if(categoryNav){
+  const options=['<button class="digital-chip '+(libraryCategory==='all'?'active':'')+'" type="button" data-library-category="all">Toutes les catégories</button>',...libraryCategories.map(c=>'<button class="digital-chip '+(libraryCategory===c?'active':'')+'" type="button" data-library-category="'+esc(c)+'">'+esc(c)+'</button>')];
+  categoryNav.innerHTML=options.join('');
+ }
+ const categoryBooks=books.filter(x=>libraryCategory==='all'||String(x.category||'').trim()===libraryCategory);
+ const shownLibrary=(view==='books'?categoryBooks.filter(x=>x.kind==='book'):categoryBooks);
  const vh=showVitrines?safeCards(vitrines,vitrineCard):'';
  const ph=safeCards(shownProducts,productCard);
  const lh=safeCards(shownLibrary,libraryCard);
@@ -416,7 +424,7 @@ async function load(){
   // INVARIANT MARKETPLACE: every published row received from the API is displayable.
   DATA.products=productRows.map(x=>({...x,source:'product'}));
   DATA.services=uniqueByKey(serviceRows.filter(x=>!isLegacyNativeMirror(x)));
-  DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,image:x.cover_url,kind:'collection'}));
+  DATA.library=cr.error?[]:(cr.data||[]).map(x=>({...x,name:x.name||x.title||'Collection',image:x.cover_url||x.image_url||x.image,category:x.category||x.category_name||x.metadata?.category||'',kind:'collection'}));
   // Hard invariant: partial API failure must never hide already-published Marketplace content.
   marketState='ready';
   // The live API is the sole source of truth for published Marketplace content.
@@ -450,6 +458,7 @@ $('q').addEventListener('input',()=>{
 $('searchBtn').addEventListener('click',()=>{clearTimeout(marketSearchTimer);load()});
 $('q').addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(marketSearchTimer);load()}});
 document.querySelectorAll('[data-digital-kind]').forEach(b=>b.addEventListener('click',()=>{digitalKind=b.dataset.digitalKind||'all';render()}));
+document.addEventListener('click',e=>{const button=e.target?.closest?.('[data-library-category]');if(!button)return;libraryCategory=button.dataset.libraryCategory||'all';render();const section=$('librarySection');if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});});
 document.addEventListener('click',e=>{if(e.target?.id==='marketRetry')load()});
 load();
 </script>
