@@ -474,7 +474,7 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(self), geolocation=(), microphone=(self), payment=(self)"
+          "value": "camera=(self), geolocation=(self), microphone=(self), payment=(self)"
         },
         {
           "key": "X-Frame-Options",
