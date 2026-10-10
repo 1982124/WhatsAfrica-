@@ -213,7 +213,7 @@ async function discoverRpc(args){
   if(!key)throw new Error('DISCOVER_SUPABASE_KEY_MISSING');
   const r=await fetch(base+'/rest/v1/rpc/discover_public_businesses',{
     method:'POST',
-    headers:{apikey:key,'Content-Type':'application/json'},
+    headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},
     body:JSON.stringify(args)
   });
   const body=await r.text();
