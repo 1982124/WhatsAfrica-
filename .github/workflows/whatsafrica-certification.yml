@@ -34,7 +34,7 @@ jobs:
             '/marche/produit/:id':'/product.html?id=:id',
             '/dashboard':'/dashboard.html',
             '/offer-create':'/offer-create.html',
-            '/marche/services':'/marche.html',
+            '/marche/services':'/marche.html?type=services',
             '/marche/boutiques':'/marche.html',
           }
           redirects={x['source']:x['destination'] for x in data.get('redirects',[])}
@@ -43,7 +43,7 @@ jobs:
           aliases={
             '/market':'/marche',
             '/marketplace':'/marche',
-            '/digital-market':'/marche',
+            '/digital-market':'/marche/digital',
             '/commerce':'/marche',
             '/product':'/marche',
           }
