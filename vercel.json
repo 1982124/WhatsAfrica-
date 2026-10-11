@@ -391,7 +391,7 @@
     },
     {
       "source": "/live/:id",
-      "destination": "/live.html"
+      "destination": "/live.html?id=:id"
     },
     {
       "source": "/business-live",
@@ -399,7 +399,7 @@
     },
     {
       "source": "/business-live/:id",
-      "destination": "/live.html"
+      "destination": "/live.html?id=:id"
     },
     {
       "source": "/meeting",
@@ -491,7 +491,7 @@
       ]
     },
     {
-      "source": "/(api|dashboard|studio-visuel-ia|cockpit|admin-commercial-controls|design-settings|smartlink-ai|smartlink-ai-batch|smartlink-pro|smartlink-theme|offer-create|admin|crm|calls|call|appels|inbox|messages|messagerie|messaging|chat|audio-call|video-call|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|auth|forgot-password|reset-password|confirm-email|account-security|message-invite)(.*)",
+      "source": "/(api|dashboard|studio-visuel-ia|cockpit|admin-commercial-controls|design-settings|smartlink-ai|smartlink-ai-batch|smartlink-pro|smartlink-theme|offer-create|admin|radar|crm|calls|call|appels|inbox|messages|messagerie|messaging|chat|audio-call|video-call|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|auth|forgot-password|reset-password|confirm-email|account-security|message-invite)(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",
@@ -518,7 +518,7 @@
       ]
     },
     {
-      "source": "/(dashboard|studio-visuel-ia|cockpit|admin-commercial-controls|design-settings|smartlink-ai|smartlink-ai-batch|smartlink-pro|smartlink-theme|offer-create|admin|crm|calls|call|appels|inbox|messages|messagerie|messaging|chat|audio-call|video-call|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security|message-invite)(.*)",
+      "source": "/(dashboard|studio-visuel-ia|cockpit|admin-commercial-controls|design-settings|smartlink-ai|smartlink-ai-batch|smartlink-pro|smartlink-theme|offer-create|admin|radar|crm|calls|call|appels|inbox|messages|messagerie|messaging|chat|audio-call|video-call|share|analytics|assistant-settings|broadcast-admin|payment-links|payments|finance|group-manager|group-admin|market-pricing|auth|forgot-password|reset-password|confirm-email|account-security|message-invite)(.*)",
       "headers": [
         {
           "key": "Cache-Control",
