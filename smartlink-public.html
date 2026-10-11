@@ -17,11 +17,18 @@ const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 async function query(table,params){
   const u=new URL(SB+'/rest/v1/'+table);
   Object.entries(params||{}).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,String(v))});
-  const r=await fetch(u.toString(),{cache:'no-store',headers:{apikey:KEY,Accept:'application/json'}});
-  if(!r.ok)throw Error('PUBLIC_SUPABASE_'+r.status);
-  const rows=await r.json();
-  if(!Array.isArray(rows))throw Error('PUBLIC_SUPABASE_INVALID');
-  return rows;
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),8000);
+  try{
+    const r=await fetch(u.toString(),{cache:'no-store',headers:{apikey:KEY,Accept:'application/json'},signal:controller.signal});
+    if(!r.ok)throw Error('PUBLIC_SUPABASE_'+r.status);
+    const rows=await r.json();
+    if(!Array.isArray(rows))throw Error('PUBLIC_SUPABASE_INVALID');
+    return rows;
+  }catch(e){
+    if(e?.name==='AbortError')throw Error('PUBLIC_SUPABASE_TIMEOUT_'+table);
+    throw e;
+  }finally{clearTimeout(timer)}
 }
 function track(event,extra={}){
   try{window.WA_SMART_LINK?.track(event,{smart_link_id:smartLinkId,...extra})}catch{}
