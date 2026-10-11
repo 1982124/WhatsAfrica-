@@ -62,22 +62,44 @@ async function load(reset=true){
  $('count').textContent='Recherche…';$('status').textContent='';
  const params=new URLSearchParams({__route:'discover',limit:userLocation?'60':'24',offset:String(offset)});
  for(const id of ['q','country','city','kind']){const value=$(id).value.trim();if(value)params.set(id,value)}
+ const noFilters=!userLocation&&!$('q').value.trim()&&!$('country').value.trim()&&!$('city').value.trim()&&!$('kind').value;
+ const readResponse=async response=>{
+  let data=null;
+  try{data=await response.json()}catch{}
+  if(!response.ok||!data?.ok)throw new Error(data?.error||'DISCOVER_UNAVAILABLE');
+  return data;
+ };
  try{
-  let r=await fetch('/api/smartlink-import?'+params.toString(),{cache:'no-store'}),j=await r.json();
-  if(!r.ok||!j.ok)throw new Error(j?.error||'DISCOVER_UNAVAILABLE');
-  // Recover from a transient empty response on the unfiltered directory without
-  // changing filters or exposing any additional location data.
-  const noFilters=!userLocation&&!$('q').value.trim()&&!$('country').value.trim()&&!$('city').value.trim()&&!$('kind').value;
-  if(reset&&noFilters&&Array.isArray(j.results)&&j.results.length===0&&Number(j.count||0)===0){
-   const retryUrl='/api/smartlink-import?__route=discover&limit=24&offset=0&refresh='+Date.now();
-   const retry=await fetch(retryUrl,{cache:'no-store'}),retryJson=await retry.json();
-   if(retry.ok&&retryJson.ok&&Array.isArray(retryJson.results)&&retryJson.results.length){r=retry;j=retryJson}
+  let j=await readResponse(await fetch('/api/smartlink-import?'+params.toString(),{cache:'no-store'}));
+  let results=Array.isArray(j.results)?j.results:[];
+  let count=Math.max(0,Number(j.count)||0);
+  // Empty public-directory responses are recoverable: retry uncached, then use
+  // the explicit "all" kind as a compatibility path for the unfiltered view.
+  // This fallback is never used when the visitor has entered search filters.
+  if(reset&&noFilters&&(!results.length||count===0)){
+   const fallbacks=[
+    '/api/smartlink-import?__route=discover&limit=24&offset=0&refresh='+Date.now(),
+    '/api/smartlink-import?__route=discover&kind=all&limit=24&offset=0&refresh='+Date.now()
+   ];
+   for(const url of fallbacks){
+    try{
+     const candidate=await readResponse(await fetch(url,{cache:'no-store'}));
+     const candidateResults=Array.isArray(candidate.results)?candidate.results:[];
+     const candidateCount=Math.max(0,Number(candidate.count)||0);
+     if(candidateResults.length>results.length||candidateCount>count){
+      j=candidate;results=candidateResults;count=candidateCount;
+     }
+     if(results.length&&count>0)break;
+    }catch(fallbackError){/* Keep the best valid response already received. */}
+   }
   }
-  if(reset){accumulated=j.results||[];const view=nearbyList(accumulated);setView(view,userLocation?view.length:(j.count??accumulated.length),userLocation?false:j.has_more,true)}
-  else {accumulated=accumulated.concat(j.results||[]);const view=nearbyList(accumulated);setView(view,userLocation?view.length:(j.count??accumulated.length),userLocation?false:j.has_more,true)}
+  count=Math.max(count,results.length);
+  if(reset){accumulated=results;const view=nearbyList(accumulated);setView(view,userLocation?view.length:count,userLocation?false:j.has_more,true)}
+  else {accumulated=accumulated.concat(results);const view=nearbyList(accumulated);setView(view,userLocation?view.length:Math.max(count,accumulated.length),userLocation?false:j.has_more,true)}
   if(j.partial)$('status').textContent='Certaines données sont momentanément indisponibles ; les résultats disponibles restent affichés.';
+  if(noFilters&&!results.length&&count===0)$('status').textContent='Le répertoire a répondu, mais aucune fiche publique n’a été renvoyée. Une nouvelle tentative a été effectuée.';
  }catch(e){
-  $('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les activités publiques.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';
+  $('results').innerHTML='<div class="empty"><b>Recherche indisponible.</b><br>Impossible de charger les activités publiques.<br><button class="btn primary retry" data-retry="1">Réessayer</button></div>';$('count').textContent='Indisponible';$('status').textContent='La connexion au répertoire a échoué ; réessayez sans perdre vos filtres.';
  }finally{loading=false}
 }
 const businessInviteText='Et si votre prochain client, fournisseur ou partenaire vous cherchait déjà… sans savoir où vous trouver ? 👀\n\nWASSAFRICA permet de découvrir les entreprises inscrites, leurs offres et leurs vitrines. Entrepreneurs, commerçants, vendeurs, producteurs, artisans, prestataires, promoteurs et porteurs de projets : présentez votre activité et partagez votre Smart Link.\n\nDécouvrez qui fait quoi, où. Invitez un acteur utile et faites circuler les opportunités. 🌍';
