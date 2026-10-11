@@ -69,7 +69,7 @@ $('create').onclick=async()=>{
    const imageUrl=firstImage?db.storage.from(firstImage.storage_bucket||'public-media').getPublicUrl(firstImage.storage_path).data.publicUrl:(editMediaRows.length===0?legacy?.image_url||null:null);
    const videoUrl=firstVideo?db.storage.from(firstVideo.storage_bucket||'public-media').getPublicUrl(firstVideo.storage_path).data.publicUrl:(editMediaRows.length===0?legacy?.video_url||null:null);
    const upd=await db.from('products').update({...payload,image_url:imageUrl,video_url:videoUrl}).eq('id',productId).eq('business_id',biz.id);if(upd.error)throw upd.error;pointersUpdated=true;
-   const removeRows=await db.from('product_media').delete().in('id',editMediaRows.map(m=>m.id)).eq('product_id',productId).eq('owner_id',user.id);if(removeRows.error)throw removeRows.error;
+   if(editMediaRows.length){const removeRows=await db.from('product_media').delete().in('id',editMediaRows.map(m=>m.id)).eq('product_id',productId).eq('owner_id',user.id);if(removeRows.error)throw removeRows.error;}
    mediaCommitDone=true;
    for(const m of del){if(m.storage_path&&m.storage_path.startsWith(user.id+'/')){try{const rm=await db.storage.from(m.storage_bucket||'public-media').remove([m.storage_path]);if(rm.error)console.warn('[WASSAFRICA] ancien média non nettoyé',rm.error.message)}catch(err){console.warn('[WASSAFRICA] ancien média non nettoyé',err)}}}
    status('msg','Produit modifié. Les liens du produit sont conservés.',true);
