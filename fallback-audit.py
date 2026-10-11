@@ -30,7 +30,6 @@ v=ROOT/'vercel.json'
 if v.exists():
     data=json.loads(v.read_text(encoding='utf-8'))
     allowed_redirects={
-        '/wassafrica':'/',
         '/smartlink/:slug':'/:slug',
         '/marche/boutique/:slug':'/:slug',
         '/market':'/marche',
