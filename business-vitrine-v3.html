@@ -31,7 +31,7 @@ $('products').addEventListener('click',async e=>{const b=e.target.closest('[data
 });
 $('existingMedia').addEventListener('click',e=>{const b=e.target.closest('[data-move-media]');if(!b)return;const row=b.closest('[data-media-row]'),direction=Number(b.dataset.moveMedia),target=direction<0?row.previousElementSibling:row.nextElementSibling;if(target){if(direction<0)row.parentNode.insertBefore(row,target);else row.parentNode.insertBefore(target,row)}});
 $('create').onclick=async()=>{
- const isEdit=Boolean(editingProductId);let productId=editingProductId,uploadedPaths=[];
+ const isEdit=Boolean(editingProductId);let productId=editingProductId,uploadedPaths=[],insertedMediaIds=[],mediaCommitDone=false,pointersUpdated=false;
  try{
   $('create').disabled=true;
   const title=$('ptitle').value.trim(),images=Array.from($('pimages').files||[]),videos=Array.from($('pvideos').files||[]);
@@ -59,18 +59,19 @@ $('create').onclick=async()=>{
    const del=editMediaRows.filter(m=>!kept.some(k=>k.id===m.id));
    const reordered=kept.map((m,i)=>({product_id:productId,owner_id:user.id,media_type:m.media_type,storage_bucket:m.storage_bucket||'public-media',storage_path:m.storage_path,mime_type:m.mime_type||null,byte_size:m.byte_size??null,sort_order:i}));
    let savedKept=[];
-   if(reordered.length){const ins=await db.from('product_media').insert(reordered).select('id,product_id,owner_id,media_type,storage_bucket,storage_path,mime_type,byte_size,sort_order');if(ins.error)throw ins.error;savedKept=ins.data||[]}
-   if(editMediaRows.length){const ids=editMediaRows.map(m=>m.id);const removeRows=await db.from('product_media').delete().in('id',ids).eq('product_id',productId).eq('owner_id',user.id);if(removeRows.error)throw removeRows.error}
-   for(const m of del){if(m.storage_path&&m.storage_path.startsWith(user.id+'/')){const rm=await db.storage.from(m.storage_bucket||'public-media').remove([m.storage_path]);if(rm.error)throw rm.error}}
+   if(reordered.length){const ins=await db.from('product_media').insert(reordered).select('id,product_id,owner_id,media_type,storage_bucket,storage_path,mime_type,byte_size,sort_order');if(ins.error)throw ins.error;savedKept=ins.data||[];insertedMediaIds.push(...savedKept.map(m=>m.id))}
    kept=savedKept;
    const additions=[...imageUrls.map((x,i)=>({product_id:productId,owner_id:user.id,media_type:kept.filter(m=>m.media_type!=='video').length===0&&i===0?'cover':'image',storage_bucket:'public-media',storage_path:x.path,mime_type:x.file.type,byte_size:x.file.size,sort_order:kept.length+i})),...videoUrls.map((x,i)=>({product_id:productId,owner_id:user.id,media_type:'video',storage_bucket:'public-media',storage_path:x.path,mime_type:x.file.type,byte_size:x.file.size,sort_order:kept.length+imageUrls.length+i}))];
    let savedAdditions=[];
-   if(additions.length){const ins=await db.from('product_media').insert(additions).select('id,product_id,owner_id,media_type,storage_bucket,storage_path,mime_type,byte_size,sort_order');if(ins.error)throw ins.error;savedAdditions=ins.data||[]}
+   if(additions.length){const ins=await db.from('product_media').insert(additions).select('id,product_id,owner_id,media_type,storage_bucket,storage_path,mime_type,byte_size,sort_order');if(ins.error)throw ins.error;savedAdditions=ins.data||[];insertedMediaIds.push(...savedAdditions.map(m=>m.id))}
    const allRows=[...kept,...savedAdditions].sort((x,y)=>x.sort_order-y.sort_order);
    const firstImage=allRows.find(m=>m.media_type!=='video'),firstVideo=allRows.find(m=>m.media_type==='video'),legacy=products.find(p=>p.id===productId);
    const imageUrl=firstImage?db.storage.from(firstImage.storage_bucket||'public-media').getPublicUrl(firstImage.storage_path).data.publicUrl:(editMediaRows.length===0?legacy?.image_url||null:null);
    const videoUrl=firstVideo?db.storage.from(firstVideo.storage_bucket||'public-media').getPublicUrl(firstVideo.storage_path).data.publicUrl:(editMediaRows.length===0?legacy?.video_url||null:null);
-   const upd=await db.from('products').update({...payload,image_url:imageUrl,video_url:videoUrl}).eq('id',productId).eq('business_id',biz.id);if(upd.error)throw upd.error;
+   const upd=await db.from('products').update({...payload,image_url:imageUrl,video_url:videoUrl}).eq('id',productId).eq('business_id',biz.id);if(upd.error)throw upd.error;pointersUpdated=true;
+   const removeRows=await db.from('product_media').delete().in('id',editMediaRows.map(m=>m.id)).eq('product_id',productId).eq('owner_id',user.id);if(removeRows.error)throw removeRows.error;
+   mediaCommitDone=true;
+   for(const m of del){if(m.storage_path&&m.storage_path.startsWith(user.id+'/')){try{const rm=await db.storage.from(m.storage_bucket||'public-media').remove([m.storage_path]);if(rm.error)console.warn('[WASSAFRICA] ancien média non nettoyé',rm.error.message)}catch(err){console.warn('[WASSAFRICA] ancien média non nettoyé',err)}}}
    status('msg','Produit modifié. Les liens du produit sont conservés.',true);
   } else {
    const ins=await db.from('products').insert({...payload,business_id:biz.id,image_url:imageUrls[0]?.url||null,video_url:videoUrls[0]?.url||null,is_published:false}).select('id').single();if(ins.error)throw ins.error;productId=ins.data.id;
@@ -81,6 +82,10 @@ $('create').onclick=async()=>{
   }
   $('modal').hidden=true;$('existingMedia').style.display='none';$('create').textContent='Publier';editingProductId=null;editMediaRows=[];$('ptitle').value='';$('pdesc').value='';$('pprice').value='';$('pimages').value='';$('pvideos').value='';await load();
  }catch(err){
+  if(isEdit&&!mediaCommitDone){
+   if(pointersUpdated){const previous=products.find(p=>p.id===productId);try{await db.from('products').update({image_url:previous?.image_url||null,video_url:previous?.video_url||null}).eq('id',productId).eq('business_id',biz.id)}catch{}}
+   if(insertedMediaIds.length){try{await db.from('product_media').delete().in('id',insertedMediaIds).eq('product_id',productId).eq('owner_id',user.id)}catch{}}
+  }
   if(uploadedPaths.length){try{await db.storage.from('public-media').remove(uploadedPaths)}catch{}}
   status('pmsg',err.message||'Enregistrement impossible.');
  }finally{$('create').disabled=false}
