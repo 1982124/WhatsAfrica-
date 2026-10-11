@@ -8,7 +8,8 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
 const safe=v=>WAMedia.safe(v);
 const money=(v,c)=>v==null?'Prix sur demande':new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v||0))+' '+(c||'XOF');
-const _parts=location.pathname.split('/').filter(Boolean).map(decodeURIComponent);\nconst slug=(_parts[0]==='marche'&&_parts[1]==='boutique')?_parts[2]:(_parts[0]==='smartlink'?_parts[1]:_parts[0]);
+const _parts=location.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+const slug=(_parts[0]==='marche'&&_parts[1]==='boutique')?_parts[2]:(_parts[0]==='smartlink'?_parts[1]:_parts[0]);
 let smartLinkId=null;
 async function query(table,params){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
