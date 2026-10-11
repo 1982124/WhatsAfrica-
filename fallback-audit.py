@@ -35,7 +35,7 @@ if v.exists():
         '/marche/boutique/:slug':'/:slug',
         '/market':'/marche',
         '/marketplace':'/marche',
-        '/digital-market':'/marche',
+        '/digital-market':'/marche/digital',
         '/commerce':'/marche',
         '/product':'/marche',
             }
