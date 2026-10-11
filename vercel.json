@@ -41,11 +41,6 @@
       "source": "/product",
       "destination": "/marche",
       "permanent": false
-    },
-    {
-      "source": "/wassafrica",
-      "destination": "/",
-      "permanent": false
     }
   ],
   "rewrites": [
