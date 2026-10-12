@@ -202,6 +202,28 @@
     },
     {
       "source": "/collection/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
+        }
+      ],
+      "destination": "/api/smartlink-import?__route=share-preview&kind=collection&id=:id"
+    },
+    {
+      "source": "/product/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
+        }
+      ],
+      "destination": "/api/smartlink-import?__route=share-preview&kind=product&id=:id"
+    },
+    {
+      "source": "/collection/:id",
       "destination": "/collection.html?id=:id"
     },
     {
@@ -435,6 +457,17 @@
     {
       "source": "/radar",
       "destination": "/admin-global-command.html"
+    },
+    {
+      "source": "/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
+        }
+      ],
+      "destination": "/api/smartlink-import?__route=share-preview&kind=business&slug=:slug"
     },
     {
       "source": "/:slug",
