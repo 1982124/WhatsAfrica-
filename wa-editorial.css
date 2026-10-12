@@ -1,0 +1,94 @@
+/* WASSAFRICA Editorial System — shared reading rhythm and accessible text hierarchy */
+:root {
+  --wa-text-reading: 1.72;
+  --wa-text-measure: 72ch;
+  --wa-heading-ink: var(--ink, #20242b);
+}
+body {
+  font-size: 16px;
+  line-height: 1.62;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, h5, h6 {
+  color: var(--wa-heading-ink);
+  line-height: 1.2;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+h1 { line-height: 1.12; }
+h2 { line-height: 1.24; }
+p, li, blockquote, dd {
+  line-height: var(--wa-text-reading);
+  overflow-wrap: anywhere;
+}
+p { text-wrap: pretty; }
+p + p { margin-top: 0.65em; }
+small, .muted, .help, .hint, .caption, .subtitle {
+  line-height: 1.6;
+}
+label, legend, .label, .field-label {
+  line-height: 1.45;
+  font-weight: 650;
+}
+input, select, textarea {
+  font: inherit;
+}
+input, select, textarea {
+  line-height: 1.45;
+}
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #d99a20;
+  outline-offset: 3px;
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) {
+  max-width: var(--wa-text-measure);
+  font-size: 1rem;
+  line-height: var(--wa-text-reading);
+  overflow-wrap: anywhere;
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) p {
+  margin: 0 0 1em;
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) p:last-child {
+  margin-bottom: 0;
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) h2,
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) h3 {
+  margin: 1.45em 0 0.55em;
+  text-wrap: balance;
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) h2 {
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--line, #e5ddd1);
+  font-size: clamp(1.25rem, 2.7vw, 1.65rem);
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) h3 {
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) ul,
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) ol {
+  padding-inline-start: 1.5em;
+  margin: 0.5em 0 1.1em;
+}
+:where(.description, .prose, .rich-text, .product-description, .collection-description,
+  .long-description, .content-text, [data-rich-text], .editorial-content) li + li {
+  margin-top: 0.35em;
+}
+@media (max-width: 640px) {
+  body { line-height: 1.58; }
+  p, li, blockquote, dd { line-height: 1.68; }
+  input, select, textarea { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}
