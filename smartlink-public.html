@@ -116,7 +116,7 @@ async function load(){
   document.documentElement.style.setProperty('--accent',accent);
   const publicBrand=document.getElementById('wa-public-brand');
   const logo=safe(b.logo_url);
-  if(publicBrand){ publicBrand.innerHTML=logo?'<img src="'+esc(logo)+'" alt="'+esc(b.name||'WASSAFRICA')+'" style="height:34px;max-width:180px;object-fit:contain;vertical-align:middle">':esc(b.name||'WASSAFRICA'); publicBrand.setAttribute('aria-label',b.name||'WASSAFRICA'); }
+  if(publicBrand){ publicBrand.innerHTML=logo?'<img src="'+esc(logo)+'" alt="'+esc(b.name||'WASSAFRICA')+'" style="height:34px;max-width:180px;object-fit:contain;vertical-align:middle" onerror="this.onerror=null;this.src=\'/icon-512.svg\';">':esc(b.name||'WASSAFRICA'); publicBrand.setAttribute('aria-label',b.name||'WASSAFRICA'); }
   stage='optional_data';
   // Public SmartLink media must be loaded from smart_link_media.
   // The previous direct-Supabase fix resolved the SmartLink itself but accidentally
@@ -153,17 +153,17 @@ async function load(){
   const isWassAfrica=normalizedSlug==='wassafrica'||normalizedSlug==='wassa-8bbaa0f3a738'||businessSlug==='wassafrica';
   const cover=safe(b.cover_image_url)|| (isWassAfrica?'/assets/wassafrica-hero-showcase.svg':WAMedia.fallback('vitrine'));
   let gallery=(media||[]).filter(x=>x.kind==='gallery'||x.kind==='image').map(x=>safe(x.public_url)).filter(Boolean).slice(0,6);
-  if(isWassAfrica && !gallery.length) gallery=[
+  if(isWassAfrica && !gallery.length) gallery=[...new Set([cover,
     '/assets/product-smartlink.jpg',
     '/assets/product-presence.jpg',
     '/assets/product-vitrine.jpg',
     '/assets/wassafrica-network-hero.webp'
-  ];
+  ].filter(Boolean))].slice(0,6);
   const videos=(media||[]).filter(x=>x.kind==='video').map(x=>safe(x.public_url)).filter(Boolean).slice(0,3);
   document.title=(b.name||link.title||'Activité')+' — WASSAFRICA'; const canonicalSlug=String(slug||'').trim(); const canonicalUrl=location.origin+'/'+encodeURIComponent(canonicalSlug); document.querySelector('link[rel="canonical"]')?.setAttribute('href',canonicalUrl); document.querySelector('meta[property="og:url"]')?.setAttribute('content',canonicalUrl);
   $('app').innerHTML=
     '<section class="hero"><div class="cover"><img loading="eager" decoding="async" src="'+esc(cover)+'" alt="'+esc(b.name||link.title||'Vitrine WASSAFRICA')+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback('vitrine')+'\';">'+'</div><div class="heroBody"><div class="ey">'+'WASSAFRICA · '+esc([b.city,b.country].filter(Boolean).join(' · ')||'AFRIQUE')+'</div><h1>'+esc(b.name||link.title||'Activité WASSAFRICA')+'</h1><p>'+esc(b.presentation||b.description||link.description||b.tagline||'Découvrez cette activité, ses offres et son univers.')+'</p><div class="actions"><button id="wa-contact" class="btn primary">💬 Parler directement</button>'+(b.phone?'<a class="btn" href="tel:'+encodeURIComponent(b.phone)+'">📞 Appeler</a>':'')+'<button id="wa-share" class="btn">↗ Partager</button></div></div></section>'+
-    (gallery.length?'<section class="section"><h2>Notre activité</h2><p class="muted">Des images réelles de l’activité.</p><div class="grid">'+gallery.map(x=>'<article class="card"><div class="media"><img loading="lazy" src="'+esc(x)+'" alt="Visuel WASSAFRICA"></div></article>').join('')+'</div></section>':'')+
+    (gallery.length?'<section class="section"><h2>Notre activité</h2><p class="muted">Des images réelles de l’activité.</p><div class="grid">'+gallery.map(x=>'<article class="card"><div class="media"><img loading="lazy" decoding="async" src="'+esc(x)+'" alt="Visuel WASSAFRICA" onerror="this.onerror=null;this.src=\'/assets/wassafrica-vitrine-realistic.svg\';"></div></article>').join('')+'</div></section>':'')+
     (videos.length?'<section class="section"><h2>En vidéo</h2><p class="muted">Une vidéo fournie par l’activité.</p><div class="grid">'+videos.map(x=>'<article class="card"><div class="media"><video controls playsinline preload="metadata" src="'+esc(x)+'"></video></div></article>').join('')+'</div></section>':'')+
     (collections.length?'<section class="section"><h2>Collections</h2><p class="muted">Des sélections d’offres réunies dans une même page.</p><div class="grid">'+collections.map(c=>'<article class="card">'+(c.cover_url?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(c.cover_url)+'" alt="'+esc(c.name||'Collection WASSAFRICA')+'"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">📚</div>')+'<div class="body"><span class="tag">COLLECTION</span><h3>'+esc(c.name||'Collection')+'</h3>'+(c.subtitle?'<p class="muted">'+esc(c.subtitle)+'</p>':'')+'<p class="muted">'+esc(c.description||'Découvrez cette sélection.')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" href="/collection/'+encodeURIComponent(c.id)+'">Voir la collection</a></div></div></article>').join('')+'</div></section>':'')+
     '<section class="section"><h2>Produits</h2><p class="muted">Découvrez les offres publiées sur WASSAFRICA.</p>'+(products?.length?'<div class="grid">'+products.map(productCard).join('')+'</div>':(isWassAfrica?'<div class="grid">'+[
