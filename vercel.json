@@ -8,6 +8,11 @@
   ],
   "redirects": [
     {
+      "source": "/wassafrica",
+      "destination": "/wassa-8bbaa0f3a738",
+      "permanent": false
+    },
+    {
       "source": "/smartlink/:slug",
       "destination": "/:slug",
       "permanent": false
