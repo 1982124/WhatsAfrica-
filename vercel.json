@@ -209,7 +209,7 @@
           "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
         }
       ],
-      "destination": "/api/share-preview?kind=collection&id=:id"
+      "destination": "/api/smartlink-import?__route=share-preview&kind=collection&id=:id"
     },
     {
       "source": "/product/:id",
@@ -220,7 +220,7 @@
           "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
         }
       ],
-      "destination": "/api/share-preview?kind=product&id=:id"
+      "destination": "/api/smartlink-import?__route=share-preview&kind=product&id=:id"
     },
     {
       "source": "/collection/:id",
@@ -467,7 +467,7 @@
           "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
         }
       ],
-      "destination": "/api/share-preview?kind=business&slug=:slug"
+      "destination": "/api/smartlink-import?__route=share-preview&kind=business&slug=:slug"
     },
     {
       "source": "/:slug",
