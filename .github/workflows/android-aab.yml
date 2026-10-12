@@ -37,7 +37,13 @@ jobs:
           set -euo pipefail
           sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -n 1)"
           test -x "$sdkmanager"
+          # sdkmanager exits before `yes` finishes; disable pipefail only for this license pipe,
+          # while still propagating sdkmanager’s exit status (the last pipeline command).
+          set +o pipefail
           yes | "$sdkmanager" --sdk_root="$ANDROID_HOME" --licenses >/dev/null
+          sdk_status=$?
+          set -o pipefail
+          test "$sdk_status" -eq 0
           "$sdkmanager" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
