@@ -31,7 +31,7 @@ label, legend, .label, .field-label {
   line-height: 1.45;
   font-weight: 650;
 }
-input, select, textarea, button {
+input, select, textarea {
   font: inherit;
 }
 input, select, textarea {
