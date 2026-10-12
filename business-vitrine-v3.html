@@ -32,11 +32,14 @@ $('products').addEventListener('click',async e=>{const b=e.target.closest('[data
 });
 $('existingMedia').addEventListener('click',e=>{const b=e.target.closest('[data-move-media]');if(!b)return;const row=b.closest('[data-media-row]'),direction=Number(b.dataset.moveMedia),target=direction<0?row.previousElementSibling:row.nextElementSibling;if(target){if(direction<0)row.parentNode.insertBefore(row,target);else row.parentNode.insertBefore(target,row)}});
 $('create').onclick=async()=>{
- const isEdit=Boolean(editingProductId);let productId=editingProductId,uploadedPaths=[],insertedMediaIds=[],mediaCommitDone=false,pointersUpdated=false;
+ const isEdit=Boolean(editingProductId);let productId=editingProductId,uploadedPaths=[],insertedMediaIds=[],mediaCommitDone=false,pointersUpdated=false,creationCommitted=false;
  try{
   $('create').disabled=true;
   const title=$('ptitle').value.trim(),images=Array.from($('pimages').files||[]),videos=Array.from($('pvideos').files||[]);
   if(!title)throw Error('Nom du produit obligatoire.');
+  const priceInput=$('pprice').value.trim(),stockInput=$('pstock').value.trim();
+  if(priceInput!==''&&(!Number.isFinite(Number(priceInput))||Number(priceInput)<0))throw Error('Le prix doit être un nombre positif ou nul.');
+  if(stockInput!==''&&(!Number.isInteger(Number(stockInput))||Number(stockInput)<0))throw Error('Le stock doit être un nombre entier positif ou nul.');
   if(images.length>8)throw Error('Choisissez 8 photos maximum par enregistrement.');
   if(videos.length>3)throw Error('Choisissez 3 vidéos maximum par enregistrement.');
   for(const f of images)if(!/^image\/(jpeg|png|webp)$/.test(f.type)||f.size>8*1024*1024)throw Error('Chaque photo doit être JPEG, PNG ou WebP et peser 8 Mo maximum : '+f.name);
@@ -78,16 +81,17 @@ $('create').onclick=async()=>{
    const ins=await db.from('products').insert({...payload,business_id:biz.id,image_url:imageUrls[0]?.url||null,video_url:externalVideoUrl||(videoUrls[0]?.url||null),is_published:false}).select('id').single();if(ins.error)throw ins.error;productId=ins.data.id;
    const mediaRows=[...imageUrls.map((x,i)=>({product_id:productId,owner_id:user.id,media_type:i===0?'cover':'gallery',storage_bucket:x.bucket,storage_path:x.path,mime_type:x.file.type,byte_size:x.file.size,sort_order:i})),...videoUrls.map((x,i)=>({product_id:productId,owner_id:user.id,media_type:'presentation_video',storage_bucket:x.bucket,storage_path:x.path,mime_type:x.file.type,byte_size:x.file.size,sort_order:images.length+i}))];
    if(mediaRows.length){const mr=await db.from('product_media').insert(mediaRows);if(mr.error)throw mr.error}
-   const pub=await db.from('products').update({is_published:true}).eq('id',productId).eq('business_id',biz.id);if(pub.error)throw pub.error;
+   const pub=await db.from('products').update({is_published:true}).eq('id',productId).eq('business_id',biz.id);if(pub.error)throw pub.error;creationCommitted=true;
    status('msg','Produit publié avec ses médias.',true);
   }
   $('modal').hidden=true;$('existingMedia').style.display='none';$('create').textContent='Publier';editingProductId=null;editMediaRows=[];$('ptitle').value='';$('pdesc').value='';$('pprice').value='';$('pimages').value='';$('pvideos').value='';$('pvideoUrl').value='';$('pofferQty').value='';$('pofferPrice').value='';await load();
  }catch(err){
+  if(!isEdit&&productId&&!creationCommitted){try{const cleanupMedia=await db.from('product_media').delete().eq('product_id',productId).eq('owner_id',user.id);if(cleanupMedia.error)console.warn('[WASSAFRICA] médias du produit incomplet non nettoyés',cleanupMedia.error.message)}catch(cleanupError){console.warn('[WASSAFRICA] médias du produit incomplet non nettoyés',cleanupError)}try{const cleanupProduct=await db.from('products').delete().eq('id',productId).eq('business_id',biz.id);if(cleanupProduct.error)console.warn('[WASSAFRICA] brouillon incomplet non nettoyé',cleanupProduct.error.message)}catch(cleanupError){console.warn('[WASSAFRICA] brouillon incomplet non nettoyé',cleanupError)}}
   if(isEdit&&!mediaCommitDone){
    if(pointersUpdated){const previous=products.find(p=>p.id===productId);try{await db.from('products').update({image_url:previous?.image_url||null,video_url:previous?.video_url||null}).eq('id',productId).eq('business_id',biz.id)}catch{}}
    if(insertedMediaIds.length){try{await db.from('product_media').delete().in('id',insertedMediaIds).eq('product_id',productId).eq('owner_id',user.id)}catch{}}
   }
-  if(uploadedPaths.length){for(const bucket of [...new Set(uploadedPaths.map(x=>x.bucket))]){const paths=uploadedPaths.filter(x=>x.bucket===bucket).map(x=>x.path);try{await db.storage.from(bucket).remove(paths)}catch{}}}
+  if(uploadedPaths.length&&!mediaCommitDone&&!creationCommitted){for(const bucket of [...new Set(uploadedPaths.map(x=>x.bucket))]){const paths=uploadedPaths.filter(x=>x.bucket===bucket).map(x=>x.path);try{const cleanup=await db.storage.from(bucket).remove(paths);if(cleanup.error)console.warn('[WASSAFRICA] fichiers temporaires non nettoyés',cleanup.error.message)}catch(cleanupError){console.warn('[WASSAFRICA] fichiers temporaires non nettoyés',cleanupError)}}}
   status('pmsg',err.message||'Enregistrement impossible.');
  }finally{$('create').disabled=false}
 };
