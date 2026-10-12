@@ -2,6 +2,9 @@ name: WASSAFRICA Android AAB
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -12,6 +15,9 @@ permissions:
 jobs:
   build-aab:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,13 +28,23 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # The hosted Ubuntu runner already contains Android command-line tools.
+      # Avoid setup-android's deprecated "tools" package request, which currently
+      # fails before the actual SDK packages can be installed.
       - name: Install Android API 36
+        shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          set -euo pipefail
+          sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort | tail -n 1)"
+          test -x "$sdkmanager"
+          # sdkmanager exits before `yes` finishes; disable pipefail only for this license pipe,
+          # while still propagating sdkmanager’s exit status (the last pipeline command).
+          set +o pipefail
+          yes | "$sdkmanager" --sdk_root="$ANDROID_HOME" --licenses >/dev/null
+          sdk_status=$?
+          set -o pipefail
+          test "$sdk_status" -eq 0
+          "$sdkmanager" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
