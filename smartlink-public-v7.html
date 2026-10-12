@@ -37,15 +37,9 @@ function serviceCard(s){
   return '<article class="card">'+(image?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(s.title)+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback(sm.kind)+'\';"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">🧰</div>')+'<div class="body"><span class="tag">SERVICE</span><h3>'+esc(s.title)+'</h3><p class="muted">'+esc(s.description||'')+'</p>'+(s.price!=null?'<div class="price">'+money(s.price,s.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" data-wa-smart-event="smart_link_service_clicked" data-smart-link-id="'+esc(smartLinkId)+'" href="/service/'+encodeURIComponent(s.id)+'?smart_link_id='+encodeURIComponent(smartLinkId)+'">Voir le service</a></div></div></article>';
 }
 async function load(){
-  const links=await query('smart_links',{select:'id,business_id,title,description,link_type,source_metadata',slug:'eq.'+encodeURIComponent(slug),is_public:'eq.true',limit:'1'});
+  const links=await query('smart_links',{select:'id,business_id,title,description',slug:'eq.'+encodeURIComponent(slug),is_public:'eq.true',limit:'1'});
   const link=Array.isArray(links)?links[0]:null;
   if(!link)throw Error('NOT_FOUND');
-  if(link.link_type==='product'){
-    const productId=link.source_metadata?.product_id;
-    if(!productId)throw Error('PRODUCT_LINK_MISSING_TARGET');
-    location.replace('/product/'+encodeURIComponent(productId));
-    return;
-  }
   smartLinkId=link.id;
   const businesses=await query('businesses',{select:'id,owner_id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,phone,accent_color',id:'eq.'+link.business_id,limit:'1'});
   const b=Array.isArray(businesses)?businesses[0]:null;
