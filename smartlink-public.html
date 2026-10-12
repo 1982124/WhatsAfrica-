@@ -142,8 +142,8 @@ async function load(){
     seenDigitalListings.add(key);
     return true;
   });
-  const collections=settled[3].status==='fulfilled'?settled[3].value:[];
-  const services=settled[4].status==='fulfilled'?settled[4].value:[];
+  const collections=settled[2].status==='fulfilled'?settled[2].value:[];
+  const services=settled[3].status==='fulfilled'?settled[3].value:[];
   productMediaById={};
   if(products.length){try{const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+products.map(p=>p.id).filter(Boolean).join(',')+')',order:'sort_order.asc',limit:'300'});for(const m of pm){(productMediaById[m.product_id]||(productMediaById[m.product_id]=[])).push(m)}}catch{productMediaById={}}}
 
