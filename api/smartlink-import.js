@@ -253,8 +253,17 @@ function sharePriceLabel(price,currency){
 function shareProductTeaser(description,title,price,currency){
   const priceLabel=sharePriceLabel(price,currency);
   const fallback='Découvrez '+String(title||'cette offre')+' sur WASSAFRICA.';
-  const base=shareClean(description||fallback,priceLabel?170:240);
-  return shareClean(priceLabel?(base?base+' · '+priceLabel:priceLabel):base,240);
+  const raw=shareClean(description||fallback,2000);
+  if(!priceLabel)return shareClean(raw,240);
+  const budget=Math.max(40,240-priceLabel.length-3);
+  let base=raw;
+  if(base.length>budget){
+    let excerpt=base.slice(0,budget-1);
+    const lastSpace=excerpt.lastIndexOf(' ');
+    if(lastSpace>Math.min(35,budget*0.55))excerpt=excerpt.slice(0,lastSpace);
+    base=excerpt.trimEnd()+'…';
+  }
+  return shareClean(base?base+' · '+priceLabel:priceLabel,240);
 }
 function shareImage(v){if(!v)return SHARE_PREVIEW_FALLBACK;try{const u=new URL(v,SHARE_PREVIEW_SITE);return ['http:','https:'].includes(u.protocol)?u.href:SHARE_PREVIEW_FALLBACK}catch{return SHARE_PREVIEW_FALLBACK}}
 async function shareFirst(table,params){const rows=await marketGet(table,params);return Array.isArray(rows)?rows[0]||null:null;}
