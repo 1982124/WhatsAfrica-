@@ -245,16 +245,27 @@ const SHARE_PREVIEW_SITE='https://wassafrica.vercel.app';
 const SHARE_PREVIEW_FALLBACK=SHARE_PREVIEW_SITE+'/icon-512.svg';
 function shareEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function shareClean(v,max=240){return String(v??'').replace(/\\s+/g,' ').trim().slice(0,max);}
+function sharePriceLabel(price,currency){
+  if(price===null||price===undefined||price===''||!Number.isFinite(Number(price))||Number(price)<0)return '';
+  const value=Number(price)===0?'Gratuit':new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(price))+' '+String(currency||'XOF').trim().toUpperCase();
+  return 'Prix : '+value+'.';
+}
+function shareProductTeaser(description,title,price,currency){
+  const priceLabel=sharePriceLabel(price,currency);
+  const fallback='Découvrez '+String(title||'cette offre')+' sur WASSAFRICA.';
+  const base=shareClean(description||fallback,priceLabel?170:240);
+  return shareClean(priceLabel?(base?base+' · '+priceLabel:priceLabel):base,240);
+}
 function shareImage(v){if(!v)return SHARE_PREVIEW_FALLBACK;try{const u=new URL(v,SHARE_PREVIEW_SITE);return ['http:','https:'].includes(u.protocol)?u.href:SHARE_PREVIEW_FALLBACK}catch{return SHARE_PREVIEW_FALLBACK}}
 async function shareFirst(table,params){const rows=await marketGet(table,params);return Array.isArray(rows)?rows[0]||null:null;}
 async function sharePreviewData(kind,id,slug){
   let m={title:'WASSAFRICA — Connecter l’Afrique, ouvrir le monde',description:'Découvrez des produits, services et offres africaines sur WASSAFRICA.',image:SHARE_PREVIEW_FALLBACK,url:SHARE_PREVIEW_SITE+(slug?'/'+encodeURIComponent(slug):'/'),type:'website',price:null,currency:'XOF'};
   if(kind==='product'){
     const p=await shareFirst('products',{id:'eq.'+id,is_published:'eq.true',select:'id,title,description,price,currency,image_url,business_id,product_type'});
-    if(p)m={title:shareClean(p.title,120)+' — WASSAFRICA',description:shareClean(p.description||('Découvrez '+p.title+' sur WASSAFRICA.'),240),image:shareImage(p.image_url),url:SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(p.id),type:'product',price:p.price,currency:p.currency||'XOF'};
+    if(p)m={title:shareClean(p.title,120)+' — WASSAFRICA',description:shareProductTeaser(p.description,p.title,p.price,p.currency),image:shareImage(p.image_url),url:SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(p.id),type:'product',price:p.price,currency:p.currency||'XOF'};
   }else if(kind==='collection'){
     const c=await shareFirst('product_collections',{id:'eq.'+id,is_published:'eq.true',select:'id,name,subtitle,description,cover_url,price,currency,business_id'});
-    if(c)m={title:shareClean(c.name,120)+' — Collection WASSAFRICA',description:shareClean(c.subtitle||c.description||('Découvrez la collection '+c.name+' sur WASSAFRICA.'),240),image:shareImage(c.cover_url),url:SHARE_PREVIEW_SITE+'/collection/'+encodeURIComponent(c.id),type:'product.group',price:c.price,currency:c.currency||'XOF'};
+    if(c)m={title:shareClean(c.name,120)+' — Collection WASSAFRICA',description:shareProductTeaser(c.subtitle||c.description,c.name,c.price,c.currency),image:shareImage(c.cover_url),url:SHARE_PREVIEW_SITE+'/collection/'+encodeURIComponent(c.id),type:'product.group',price:c.price,currency:c.currency||'XOF'};
   }else{
     const l=await shareFirst('smart_links',{slug:'eq.'+slug,is_public:'eq.true',select:'id,business_id,title,description,slug,link_type,source_metadata'});
     if(l){
@@ -263,7 +274,7 @@ async function sharePreviewData(kind,id,slug){
         m={...m,title:shareClean(b.name||l.title||'WASSAFRICA',120)+' — WASSAFRICA',description:shareClean(b.presentation||b.description||b.tagline||l.description||('Découvrez '+(b.name||'cette activité')+' sur WASSAFRICA.'),240),image:shareImage(b.cover_image_url||b.logo_url),url:SHARE_PREVIEW_SITE+'/'+encodeURIComponent(slug)};
         if(l.link_type==='product'&&l.source_metadata?.product_id){
           const p=await shareFirst('products',{id:'eq.'+l.source_metadata.product_id,business_id:'eq.'+b.id,is_published:'eq.true',select:'id,title,description,price,currency,image_url'});
-          if(p)m={...m,title:shareClean(p.title,120)+' — '+shareClean(b.name||'WASSAFRICA',80),description:shareClean(p.description||('Découvrez '+p.title+' sur WASSAFRICA.'),240),image:shareImage(p.image_url||b.cover_image_url||b.logo_url),type:'product',price:p.price,currency:p.currency||'XOF'};
+          if(p)m={...m,title:shareClean(p.title,120)+' — '+shareClean(b.name||'WASSAFRICA',80),description:shareProductTeaser(p.description,p.title,p.price,p.currency),image:shareImage(p.image_url||b.cover_image_url||b.logo_url),type:'product',price:p.price,currency:p.currency||'XOF'};
         }
       }
     }
