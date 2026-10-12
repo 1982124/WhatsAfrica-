@@ -33,11 +33,6 @@
       "permanent": false
     },
     {
-      "source": "/commerce",
-      "destination": "/marche",
-      "permanent": false
-    },
-    {
       "source": "/product",
       "destination": "/marche",
       "permanent": false
@@ -259,6 +254,10 @@
     {
       "source": "/orders",
       "destination": "/orders.html"
+    },
+    {
+      "source": "/commerce",
+      "destination": "/commerce.html"
     },
     {
       "source": "/marche",
