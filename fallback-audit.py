@@ -37,6 +37,7 @@ if v.exists():
         '/digital-market':'/marche/digital',
         '/commerce':'/marche',
         '/product':'/marche',
+        '/wassafrica':'/wassa-8bbaa0f3a738',
             }
     for r in data.get('redirects',[]):
         src,dst=r.get('source'),r.get('destination')
