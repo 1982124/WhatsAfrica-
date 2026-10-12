@@ -240,8 +240,52 @@ async function discoverData(req,res){
   }
 }
 
+
+const SHARE_PREVIEW_SITE='https://wassafrica.vercel.app';
+const SHARE_PREVIEW_FALLBACK=SHARE_PREVIEW_SITE+'/icon-512.svg';
+function shareEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function shareClean(v,max=240){return String(v??'').replace(/\\s+/g,' ').trim().slice(0,max);}
+function shareImage(v){if(!v)return SHARE_PREVIEW_FALLBACK;try{const u=new URL(v,SHARE_PREVIEW_SITE);return ['http:','https:'].includes(u.protocol)?u.href:SHARE_PREVIEW_FALLBACK}catch{return SHARE_PREVIEW_FALLBACK}}
+async function shareFirst(table,params){const rows=await marketGet(table,params);return Array.isArray(rows)?rows[0]||null:null;}
+async function sharePreviewData(kind,id,slug){
+  let m={title:'WASSAFRICA — Connecter l’Afrique, ouvrir le monde',description:'Découvrez des produits, services et offres africaines sur WASSAFRICA.',image:SHARE_PREVIEW_FALLBACK,url:SHARE_PREVIEW_SITE+(slug?'/'+encodeURIComponent(slug):'/'),type:'website',price:null,currency:'XOF'};
+  if(kind==='product'){
+    const p=await shareFirst('products',{id:'eq.'+id,is_published:'eq.true',select:'id,title,description,price,currency,image_url,business_id,product_type'});
+    if(p)m={title:shareClean(p.title,120)+' — WASSAFRICA',description:shareClean(p.description||('Découvrez '+p.title+' sur WASSAFRICA.'),240),image:shareImage(p.image_url),url:SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(p.id),type:'product',price:p.price,currency:p.currency||'XOF'};
+  }else if(kind==='collection'){
+    const c=await shareFirst('product_collections',{id:'eq.'+id,is_published:'eq.true',select:'id,name,subtitle,description,cover_url,price,currency,business_id'});
+    if(c)m={title:shareClean(c.name,120)+' — Collection WASSAFRICA',description:shareClean(c.subtitle||c.description||('Découvrez la collection '+c.name+' sur WASSAFRICA.'),240),image:shareImage(c.cover_url),url:SHARE_PREVIEW_SITE+'/collection/'+encodeURIComponent(c.id),type:'product.group',price:c.price,currency:c.currency||'XOF'};
+  }else{
+    const l=await shareFirst('smart_links',{slug:'eq.'+slug,is_public:'eq.true',select:'id,business_id,title,description,slug,link_type,source_metadata'});
+    if(l){
+      const b=await shareFirst('businesses',{id:'eq.'+l.business_id,select:'id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,slug,phone'});
+      if(b){
+        m={...m,title:shareClean(b.name||l.title||'WASSAFRICA',120)+' — WASSAFRICA',description:shareClean(b.presentation||b.description||b.tagline||l.description||('Découvrez '+(b.name||'cette activité')+' sur WASSAFRICA.'),240),image:shareImage(b.cover_image_url||b.logo_url),url:SHARE_PREVIEW_SITE+'/'+encodeURIComponent(slug)};
+        if(l.link_type==='product'&&l.source_metadata?.product_id){
+          const p=await shareFirst('products',{id:'eq.'+l.source_metadata.product_id,business_id:'eq.'+b.id,is_published:'eq.true',select:'id,title,description,price,currency,image_url'});
+          if(p)m={...m,title:shareClean(p.title,120)+' — '+shareClean(b.name||'WASSAFRICA',80),description:shareClean(p.description||('Découvrez '+p.title+' sur WASSAFRICA.'),240),image:shareImage(p.image_url||b.cover_image_url||b.logo_url),type:'product',price:p.price,currency:p.currency||'XOF'};
+        }
+      }
+    }
+  }
+  return m;
+}
+function sharePreviewHtml(m){
+  const tags=['<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1>','<meta name="description" content="'+shareEsc(m.description)+'">','<meta property="og:site_name" content="WASSAFRICA"><meta property="og:locale" content="fr_FR">','<meta property="og:type" content="'+shareEsc(m.type)+'"><meta property="og:title" content="'+shareEsc(m.title)+'">','<meta property="og:description" content="'+shareEsc(m.description)+'"><meta property="og:url" content="'+shareEsc(m.url)+'">','<meta property="og:image" content="'+shareEsc(m.image)+'"><meta property="og:image:secure_url" content="'+shareEsc(m.image)+'"><meta property="og:image:alt" content="'+shareEsc(m.title)+'"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">','<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="'+shareEsc(m.title)+'"><meta name="twitter:description" content="'+shareEsc(m.description)+'"><meta name="twitter:image" content="'+shareEsc(m.image)+'">',m.price!=null?'<meta property="product:price:amount" content="'+shareEsc(m.price)+'"><meta property="product:price:currency" content="'+shareEsc(m.currency||'XOF')+'">':'','<link rel="canonical" href="'+shareEsc(m.url)+'"><title>'+shareEsc(m.title)+'</title>'].join('');
+  return '<!doctype html><html lang="fr"><head>'+tags+'</head><body><main><h1>'+shareEsc(m.title)+'</h1><p>'+shareEsc(m.description)+'</p><p><a href="'+shareEsc(m.url)+'">Voir sur WASSAFRICA</a></p><img src="'+shareEsc(m.image)+'" alt="'+shareEsc(m.title)+'" style="max-width:100%;height:auto"></main></body></html>';
+}
+async function sharePreview(req,res){
+  if(req.method!=='GET')return res.status(405).send('Method Not Allowed');
+  const kind=String(req.query?.kind||'business'),id=String(req.query?.id||'').trim(),slug=String(req.query?.slug||'').trim();
+  const fallback={title:'WASSAFRICA — Connecter l’Afrique, ouvrir le monde',description:'Découvrez des produits, services et offres africaines sur WASSAFRICA.',image:SHARE_PREVIEW_FALLBACK,url:SHARE_PREVIEW_SITE+'/',type:'website'};
+  res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','public, s-maxage=300, stale-while-revalidate=86400');res.setHeader('X-Content-Type-Options','nosniff');
+  if(!['business','product','collection'].includes(kind)||((kind==='product'||kind==='collection')&&!/^[a-zA-Z0-9-]{1,128}$/.test(id))||(kind==='business'&&!/^[a-zA-Z0-9-]{1,160}$/.test(slug)))return res.status(200).send(sharePreviewHtml(fallback));
+  try{return res.status(200).send(sharePreviewHtml(await sharePreviewData(kind,id,slug)))}catch(e){console.warn('[SHARE_PREVIEW]',kind,e?.message||e);return res.status(200).send(sharePreviewHtml({...fallback,url:kind==='product'?SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(id):kind==='collection'?SHARE_PREVIEW_SITE+'/collection/'+encodeURIComponent(id):SHARE_PREVIEW_SITE+'/'+encodeURIComponent(slug)}))}
+}
+
 async function handler(req,res){
   const route=String(req.query?.__route||'');
+  if(route==='share-preview')return sharePreview(req,res);
   if(route==='market')return marketData(req,res);
   if(route==='discover')return discoverData(req,res);
   if(route==='payment')return paymentStart(req,res);
