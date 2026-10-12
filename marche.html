@@ -60,7 +60,7 @@
 <section class="section" id="demoSection" aria-labelledby="demoTitle">
 <div class="market-intro"><div><h2 id="demoTitle">Voir comment fonctionne une vitrine</h2><p class="muted">Un exemple visuel pour comprendre ce qu’une entreprise peut construire sur WASSAFRICA. Cet exemple n’est pas présenté comme une activité ou un produit publié.</p></div></div>
 <article class="market-demo" aria-label="Exemple de vitrine WASSAFRICA — KÔRÔ Créations">
-<div class="visual"><img src="https://images.pexels.com/photos/20068076/pexels-photo-20068076.jpeg?auto=compress&cs=tinysrgb&w=1800" alt="Exemple visuel de vitrine WASSAFRICA pour KÔRÔ Créations"></div>
+<div class="visual"><img src="https://images.pexels.com/photos/20068076/pexels-photo-20068076.jpeg?auto=compress&cs=tinysrgb&w=1800" alt="Exemple visuel de vitrine WASSAFRICA pour KÔRÔ Créations" onerror="this.onerror=null;this.src='/assets/wassafrica-vitrine-realistic.svg'"></div>
 <div class="copy">
 <div class="ey">EXEMPLE — PAS UNE OFFRE DU MARCHÉ</div>
 <h3>KÔRÔ Créations</h3>
@@ -168,7 +168,7 @@ function imageUrl(url){try{const u=new URL(String(url||''),location.origin);retu
 function renderImage(url,alt,fallback='',real=false){
  const original=imageUrl(url);
  if(!original)return '';
- return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(original)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'">';
+ return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(original)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'" onerror="this.onerror=null;this.src=\'/assets/illustration-smartlink-produit.svg\'">';
 }
 function money(v,c){if(v===null||v===undefined||v==='')return 'Prix sur demande';const n=Number(v);if(!Number.isFinite(n))return 'Prix sur demande';if(n===0)return 'Gratuit';return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(n)+' '+(c||'XOF')}
 function digitalKindOf(p){
