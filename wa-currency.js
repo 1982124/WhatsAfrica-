@@ -100,6 +100,8 @@
     updateNote();
   }
   window.WACurrency = { init, refresh, convert, get currency(){return target;} };
+  const observePrices = () => { if (!document.body || window.__waCurrencyObserver) return; window.__waCurrencyObserver = new MutationObserver(records => { const addedPrice = records.some(record => [...record.addedNodes].some(node => node.nodeType === 1 && (node.matches?.('[data-wa-price][data-wa-currency]') || node.querySelector?.('[data-wa-price][data-wa-currency]')))); if (addedPrice) refresh(); }); window.__waCurrencyObserver.observe(document.body, { childList:true, subtree:true }); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observePrices, {once:true}); else observePrices();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
   else init();
 })();
