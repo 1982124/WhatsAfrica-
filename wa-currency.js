@@ -82,7 +82,7 @@
   async function init() {
     ensureWidget();
     let detected = null;
-    try { const r = await fetch('/api/currency?action=detect', { headers:{Accept:'application/json'}, cache:'no-store' }); if (r.ok) detected = await r.json(); } catch {}
+    try { const r = await fetch('/api/smartlink-import?__route=currency&action=detect', { headers:{Accept:'application/json'}, cache:'no-store' }); if (r.ok) detected = await r.json(); } catch {}
     let saved = null;
     try { saved = localStorage.getItem(KEY); } catch {}
     target = (saved && /^[A-Z]{3}$/.test(saved)) ? saved : (detected?.currency || 'XOF');
@@ -93,7 +93,7 @@
       select.value = target;
     }
     try {
-      const r = await fetch('/api/currency?action=rates', { headers:{Accept:'application/json'}, cache:'force-cache' });
+      const r = await fetch('/api/smartlink-import?__route=currency&action=rates', { headers:{Accept:'application/json'}, cache:'force-cache' });
       if (r.ok) { const data = await r.json(); if (data.ok && data.rates) rates = data.rates; }
     } catch {}
     refresh();
