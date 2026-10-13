@@ -30,7 +30,7 @@ begin
     raise exception 'invalid_account_type' using errcode = '22023';
   end if;
   if length(v_secret) < 12 or length(v_secret) > 2048
-     or v_secret !~* '^https://([a-z0-9-]+\\.)*moneyfusion\\.net(:[0-9]{1,5})?([/?#][^[:space:]]*)?$' then
+     or v_secret !~* '^https://([a-z0-9-]+\.)*moneyfusion\.net(:[0-9]{1,5})?([/?#][^[:space:]]*)?$' then
     raise exception 'invalid_provider_api_url' using errcode = '22023';
   end if;
 
