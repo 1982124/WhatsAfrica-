@@ -65,37 +65,44 @@ async function paymentAuthUser(auth){
   const r=await fetch((process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co')+'/auth/v1/user',{headers:{apikey:key,Authorization:'Bearer '+token}});
   return r.ok?await r.json().catch(()=>null):null;
 }
+function paymentServerKey(){return process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SECRET||''}
+function paymentServerHeaders(key){const h={apikey:key};if(!String(key||'').startsWith('sb_secret_'))h.Authorization='Bearer '+key;return h}
 async function paymentRpc(name,body,key,bearer){
   const base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co';
-  const r=await fetch(base+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+(bearer||key),'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const headers={apikey:key,'Content-Type':'application/json'};
+  if(bearer)headers.Authorization='Bearer '+bearer;
+  else if(!String(key||'').startsWith('sb_secret_'))headers.Authorization='Bearer '+key;
+  const r=await fetch(base+'/rest/v1/rpc/'+name,{method:'POST',headers,body:JSON.stringify(body)});
   const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||d?.hint||d?.details||'rpc_failed');return d;
 }
 async function paymentServicePatch(table,query,patch){
-  const key=process.env.SUPABASE_SERVICE_ROLE_KEY,base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co',u=new URL(base+'/rest/v1/'+table);
+  const key=paymentServerKey(),base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co',u=new URL(base+'/rest/v1/'+table);
   for(const [k,v] of Object.entries(query))u.searchParams.set(k,v);
-  const r=await fetch(u,{method:'PATCH',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(patch)});
+  const r=await fetch(u,{method:'PATCH',headers:{...paymentServerHeaders(key),'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(patch)});
   if(!r.ok)throw new Error('service_patch_'+r.status);return r.json().catch(()=>[]);
 }
 async function paymentServiceGet(path,params){
-  const key=process.env.SUPABASE_SERVICE_ROLE_KEY,base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co',u=new URL(base+'/rest/v1/'+path);
+  const key=paymentServerKey(),base=process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co',u=new URL(base+'/rest/v1/'+path);
   Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r=await fetch(u,{headers:{apikey:key,Authorization:'Bearer '+key}});if(!r.ok)throw new Error('service_get_'+r.status);return r.json();
+  const r=await fetch(u,{headers:paymentServerHeaders(key)});if(!r.ok)throw new Error('service_get_'+r.status);return r.json();
 }
 function paymentUrlSafe(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password&&u.hostname&&!['localhost','127.0.0.1','::1'].includes(u.hostname.toLowerCase())}catch{return false}}
 async function paymentStart(req,res){
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});
-  const sk=process.env.SUPABASE_SERVICE_ROLE_KEY,pk=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const sk=paymentServerKey(),pk=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
   if(!sk||!pk)return res.status(503).json({ok:false,error:'supabase_payment_env_missing'});
   const user=await paymentAuthUser(req.headers.authorization);if(!user?.id)return res.status(401).json({ok:false,error:'authentication_required'});
   const b=typeof req.body==='string'?JSON.parse(req.body):req.body||{},orderId=String(b.order_id||'').trim(),method=String(b.method||'mobile_money').trim(),idem=String(b.idempotency_key||'').trim();
   if(!orderId||idem.length<16)return res.status(400).json({ok:false,error:'invalid_payment_request'});
   const bearer=req.headers.authorization.slice(7).trim();
   const intent=await paymentRpc('create_order_payment_intent',{p_order_id:orderId,p_provider:'moneyfusion',p_method:method,p_idempotency_key:idem},pk,bearer);
-  const creds=await paymentRpc('get_payment_connection_secret_for_service',{p_user_id:user.id},sk,sk);const connection=Array.isArray(creds)?creds[0]:creds;
-  const apiUrl=String(connection?.secret||process.env.MONEYFUSION_API_URL||'').trim(),apiKey=String(process.env.MONEYFUSION_API_KEY||'').trim();
-  if(!apiUrl||!/^https?:\/\//i.test(apiUrl))return res.status(503).json({ok:false,error:'moneyfusion_not_configured',message:'Connectez Money Fusion ou configurez MONEYFUSION_API_URL.'});
-  if(!paymentUrlSafe(apiUrl))return res.status(400).json({ok:false,error:'moneyfusion_api_url_invalid'});
-  const orders=await paymentServiceGet('orders',{id:'eq.'+orderId,select:'id,buyer_name,buyer_phone,total,currency,tracking_token'});if(!orders[0])return res.status(404).json({ok:false,error:'order_not_found'});const order=orders[0];
+  const orders=await paymentServiceGet('orders',{id:'eq.'+orderId,select:'id,business_id,buyer_name,buyer_phone,total,currency,tracking_token'});if(!orders[0])return res.status(404).json({ok:false,error:'order_not_found'});const order=orders[0];
+  const sellers=await paymentServiceGet('businesses',{id:'eq.'+order.business_id,select:'owner_id'});const sellerId=sellers[0]?.owner_id;
+  if(!sellerId)return res.status(409).json({ok:false,error:'seller_account_missing',message:'Le compte vendeur n’est pas correctement configuré.'});
+  const creds=await paymentRpc('get_payment_connection_secret_for_service',{p_user_id:sellerId},sk);const connection=Array.isArray(creds)?creds[0]:creds;
+  const apiUrl=String(connection?.secret||'').trim(),apiKey=String(process.env.MONEYFUSION_API_KEY||'').trim();
+  if(!apiUrl)return res.status(503).json({ok:false,error:'moneyfusion_not_configured',message:'Le vendeur doit connecter Money Fusion depuis son cockpit.'});
+  if(!/^https:\/\//i.test(apiUrl)||!paymentUrlSafe(apiUrl))return res.status(400).json({ok:false,error:'moneyfusion_api_url_invalid'});
   const items=await paymentServiceGet('order_items',{order_id:'eq.'+orderId,select:'title_snapshot,unit_price,quantity'});
   const base=process.env.PUBLIC_APP_URL||'https://wassafrica.vercel.app';
   const payload={totalPrice:Number(order.total),article:items.map(i=>({name:String(i.title_snapshot||'Article').slice(0,120),price:Number(i.unit_price||0),quantity:Number(i.quantity||1)})),numeroSend:String(order.buyer_phone||''),nomclient:String(order.buyer_name||'Client'),personal_Info:[{userId:user.id,orderId:order.id}],return_url:base+'/commande/'+encodeURIComponent(b.tracking_token||order.tracking_token||'')+'?order_id='+encodeURIComponent(order.id),webhook_url:base+'/api/payment-moneyfusion-webhook'};
@@ -120,7 +127,7 @@ async function verifyMoneyFusionPayment(token){
 }
 async function paymentWebhook(req,res){
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});
-  const sk=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const sk=paymentServerKey();
   if(!sk)return res.status(503).json({ok:false,error:'supabase_env_missing'});
   let p;
   try{p=typeof req.body==='string'?JSON.parse(req.body):req.body||{}}
@@ -148,7 +155,7 @@ async function paymentWebhook(req,res){
   const amount=Number(verified.Montant??verified.montant),fees=Number(verified.frais??0),expectedAmount=Number(intent.amount);
   if(Number.isFinite(amount)&&Number.isFinite(expectedAmount)&&Math.abs(amount+(Number.isFinite(fees)?fees:0)-expectedAmount)>0.01&&Math.abs(amount-expectedAmount)>0.01)return res.status(409).json({ok:false,error:'amount_mismatch'});
   const transaction=String(verified.numeroTransaction||verified._id||token).trim();
-  const result=await paymentRpc('apply_payment_webhook_event_for_service',{p_order_id:intent.order_id,p_provider:'moneyfusion',p_provider_event_id:token+':'+event,p_event_type:event,p_transaction_id:transaction,p_status:eventStatus,p_payload_hash:null},sk,sk);
+  const result=await paymentRpc('apply_payment_webhook_event_for_service',{p_order_id:intent.order_id,p_provider:'moneyfusion',p_provider_event_id:token+':'+event,p_event_type:event,p_transaction_id:transaction,p_status:eventStatus,p_payload_hash:null},sk);
   return res.status(200).json({ok:true,event,status:eventStatus,result});
 }
 async function marketGet(path,params){
