@@ -335,7 +335,7 @@ async function sharePreviewData(kind,id,slug){
     if(l){
       const b=await shareFirst('businesses',{id:'eq.'+l.business_id,select:'id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,slug,phone'});
       if(b){
-        m={...m,title:shareClean(b.name||l.title||'WASSAFRICA',120)+' — WASSAFRICA',description:shareClean(b.presentation||b.description||b.tagline||l.description||('Découvrez '+(b.name||'cette activité')+' sur WASSAFRICA.'),240),image:shareImage(b.cover_image_url||b.logo_url),url:SHARE_PREVIEW_SITE+'/'+encodeURIComponent(slug)};
+        m={...m,title:shareClean(b.name||l.title||'WASSAFRICA',120)+' — WASSAFRICA',description:shareClean(b.description||b.tagline||b.presentation||l.description||('Découvrez '+(b.name||'cette activité')+' sur WASSAFRICA.'),240),image:shareImage(b.cover_image_url||b.logo_url),url:SHARE_PREVIEW_SITE+'/'+encodeURIComponent(slug)};
         if(l.link_type==='product'&&l.source_metadata?.product_id){
           const p=await shareFirst('products',{id:'eq.'+l.source_metadata.product_id,business_id:'eq.'+b.id,is_published:'eq.true',select:'id,title,description,price,currency,image_url'});
           if(p)m={...m,title:shareClean(p.title,120)+' — '+shareClean(b.name||'WASSAFRICA',80),description:shareProductTeaser(p.description,p.title,p.price,p.currency),image:shareImage(p.image_url||b.cover_image_url||b.logo_url),type:'product',price:p.price,currency:p.currency||'XOF'};
