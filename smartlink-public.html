@@ -48,6 +48,13 @@ async function query(table,params){
   }
   throw lastError||Error('PUBLIC_SUPABASE_UNAVAILABLE_'+table);
 }
+async function optionalQuery(table,params,timeoutMs=6000){
+  // Les données secondaires ne doivent jamais laisser la vitrine bloquée sur son écran de chargement.
+  return Promise.race([
+    query(table,params).catch(()=>[]),
+    new Promise(resolve=>setTimeout(()=>resolve([]),timeoutMs))
+  ]);
+}
 function track(event,extra={}){
   try{window.WA_SMART_LINK?.track(event,{smart_link_id:smartLinkId,...extra})}catch{}
   try{window.WA_COMMERCE?.track(event,{entity_type:extra.entity_type||'smart_link',entity_id:extra.entity_id||smartLinkId,business_id:extra.business_id||null,metadata:{smart_link_id:smartLinkId,...extra}})}catch{}
@@ -142,10 +149,10 @@ async function load(){
   // Optional media/catalog data must NEVER make the public vitrine fail.
   // A missing/blocked gallery row is degraded gracefully to local WASSAFRICA assets.
   const settled=await Promise.allSettled([
-    query('smart_link_media',{smart_link_id:'eq.'+link.id,select:'id,kind,public_url,alt_text,sort_order',order:'sort_order.asc'}),
-    query('products',{select:'id,title,description,price,currency,image_url,video_url,product_type,category,stock,variants,business_id,is_published',business_id:'eq.'+b.id,is_published:'eq.true',limit:'60'}),
-    query('product_collections',{select:'id,name,subtitle,description,cover_url,price,currency,teaser_video_url',business_id:'eq.'+b.id,is_published:'eq.true',order:'sort_order.asc',limit:'30'}),
-    query('marketplace_services',{seller_id:'eq.'+b.owner_id,status:'eq.published'})
+    optionalQuery('smart_link_media',{smart_link_id:'eq.'+link.id,select:'id,kind,public_url,alt_text,sort_order',order:'sort_order.asc'}),
+    optionalQuery('products',{select:'id,title,description,price,currency,image_url,video_url,product_type,category,stock,variants,business_id,is_published',business_id:'eq.'+b.id,is_published:'eq.true',limit:'60'}),
+    optionalQuery('product_collections',{select:'id,name,subtitle,description,cover_url,price,currency,teaser_video_url',business_id:'eq.'+b.id,is_published:'eq.true',order:'sort_order.asc',limit:'30'}),
+    optionalQuery('marketplace_services',{seller_id:'eq.'+b.owner_id,status:'eq.published'})
   ]);
   const media=settled[0].status==='fulfilled'?settled[0].value:[];
   const productsRaw=settled[1].status==='fulfilled'?settled[1].value:[];
@@ -163,7 +170,7 @@ async function load(){
   const collections=settled[2].status==='fulfilled'?settled[2].value:[];
   const services=settled[3].status==='fulfilled'?settled[3].value:[];
   productMediaById={};
-  if(products.length){try{const pm=await query('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+products.map(p=>p.id).filter(Boolean).join(',')+')',order:'sort_order.asc',limit:'300'});for(const m of pm){(productMediaById[m.product_id]||(productMediaById[m.product_id]=[])).push(m)}}catch{productMediaById={}}}
+  if(products.length){try{const pm=await optionalQuery('product_media',{select:'product_id,media_type,storage_bucket,storage_path,sort_order',product_id:'in.('+products.map(p=>p.id).filter(Boolean).join(',')+')',order:'sort_order.asc',limit:'300'},4000);for(const m of pm){(productMediaById[m.product_id]||(productMediaById[m.product_id]=[])).push(m)}}catch{productMediaById={}}}
 
   stage='render';
   const normalizedSlug=String(slug||'').toLowerCase();
