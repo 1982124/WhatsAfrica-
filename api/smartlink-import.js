@@ -363,7 +363,7 @@ async function sharePreviewImage(req,res){
       const bucket=String(mediaCover.storage_bucket).trim();
       const path=String(mediaCover.storage_path).split('/').filter(Boolean).map(part=>encodeURIComponent(part)).join('/');
       if(/^[a-zA-Z0-9._-]{1,100}$/.test(bucket)&&path&&!path.split('/').some(part=>part==='.'||part==='..')){
-        imageUrl=(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').replace(/\\/+$/,'')+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
+        imageUrl=new URL(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').origin+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
       }
     }
     const base=new URL(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co');
@@ -375,7 +375,7 @@ async function sharePreviewImage(req,res){
     if(upstream.status>=300&&upstream.status<400)return res.status(404).send('Image not found');
     if(!upstream.ok)return res.status(502).send('Image unavailable');
     const type=(upstream.headers.get('content-type')||'').split(';')[0].toLowerCase();
-    if(!/^image\\/(jpeg|png|webp|gif|avif)$/.test(type))return res.status(415).send('Unsupported image type');
+    if(!['image/jpeg','image/png','image/webp','image/gif','image/avif'].includes(type))return res.status(415).send('Unsupported image type');
     const declared=Number(upstream.headers.get('content-length')||0);
     if(declared>5*1024*1024)return res.status(413).send('Image too large');
     const bytes=Buffer.from(await upstream.arrayBuffer());
