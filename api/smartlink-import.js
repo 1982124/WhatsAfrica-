@@ -323,7 +323,7 @@ async function sharePreviewData(kind,id,slug){
           mediaUrl=(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').replace(/\/+$/,'')+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
         }
       }
-      const image=SHARE_PREVIEW_SITE+'/api/smartlink-import?__route=share-image&id='+encodeURIComponent(p.id);
+      const image=mediaUrl||shareImage(p.image_url)||SHARE_PREVIEW_FALLBACK;
       const title=shareClean(p.title,120)||'Offre WASSAFRICA';
       m={title:title+' — WASSAFRICA',description:shareProductTeaser(p.description,p.title,p.price,p.currency),image,url:SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(p.id),type:'product',price:p.price,currency:p.currency||'XOF'};
     }
