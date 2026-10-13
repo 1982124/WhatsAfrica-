@@ -323,7 +323,7 @@ async function sharePreviewData(kind,id,slug){
           mediaUrl=(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').replace(/\/+$/,'')+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
         }
       }
-      const image=shareImage(mediaUrl||p.image_url);
+      const image=SHARE_PREVIEW_SITE+'/api/smartlink-import?__route=share-image&id='+encodeURIComponent(p.id);
       const title=shareClean(p.title,120)||'Offre WASSAFRICA';
       m={title:title+' — WASSAFRICA',description:shareProductTeaser(p.description,p.title,p.price,p.currency),image,url:SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(p.id),type:'product',price:p.price,currency:p.currency||'XOF'};
     }
@@ -345,6 +345,47 @@ async function sharePreviewData(kind,id,slug){
   }
   return m;
 }
+async function sharePreviewImage(req,res){
+  if(req.method!=='GET')return res.status(405).send('Method Not Allowed');
+  const id=String(req.query?.id||'').trim();
+  if(!/^[a-zA-Z0-9-]{1,128}$/.test(id))return res.status(400).send('Invalid image request');
+  try{
+    const p=await shareFirst('products',{id:'eq.'+id,is_published:'eq.true',select:'id,image_url'});
+    if(!p)return res.status(404).send('Image not found');
+    let mediaCover=null;
+    try{
+      const media=await marketGet('product_media',{product_id:'eq.'+id,select:'media_type,storage_bucket,storage_path,sort_order',order:'sort_order.asc'});
+      const items=Array.isArray(media)?media:[];
+      mediaCover=items.find(x=>x.media_type==='cover')||items.find(x=>['gallery','image'].includes(x.media_type))||null;
+    }catch(e){console.warn('[SHARE_IMAGE_MEDIA]',id,e?.message||e)}
+    let imageUrl=String(p.image_url||'').trim();
+    if(mediaCover?.storage_bucket&&mediaCover?.storage_path){
+      const bucket=String(mediaCover.storage_bucket).trim();
+      const path=String(mediaCover.storage_path).split('/').filter(Boolean).map(part=>encodeURIComponent(part)).join('/');
+      if(/^[a-zA-Z0-9._-]{1,100}$/.test(bucket)&&path&&!path.split('/').some(part=>part==='.'||part==='..')){
+        imageUrl=(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').replace(/\\/+$/,'')+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
+      }
+    }
+    const base=new URL(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co');
+    const image=new URL(imageUrl);
+    if(image.origin!==base.origin||!image.pathname.startsWith('/storage/v1/object/public/'))return res.status(404).send('Image not found');
+    const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),7000);let upstream;
+    try{upstream=await fetch(image.href,{redirect:'manual',signal:ac.signal,headers:{'Accept':'image/jpeg,image/png,image/webp,image/gif,image/avif'}})}
+    finally{clearTimeout(timer)}
+    if(upstream.status>=300&&upstream.status<400)return res.status(404).send('Image not found');
+    if(!upstream.ok)return res.status(502).send('Image unavailable');
+    const type=(upstream.headers.get('content-type')||'').split(';')[0].toLowerCase();
+    if(!/^image\\/(jpeg|png|webp|gif|avif)$/.test(type))return res.status(415).send('Unsupported image type');
+    const declared=Number(upstream.headers.get('content-length')||0);
+    if(declared>5*1024*1024)return res.status(413).send('Image too large');
+    const bytes=Buffer.from(await upstream.arrayBuffer());
+    if(!bytes.length||bytes.length>5*1024*1024)return res.status(413).send('Image too large');
+    res.setHeader('Content-Type',type);res.setHeader('Content-Length',String(bytes.length));
+    res.setHeader('Cache-Control','public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('X-Content-Type-Options','nosniff');
+    return res.status(200).send(bytes);
+  }catch(e){console.warn('[SHARE_IMAGE]',id,e?.message||e);return res.status(502).send('Image unavailable')}
+}
 function sharePreviewHtml(m){
   const tags=['<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="description" content="'+shareEsc(m.description)+'">','<meta property="og:site_name" content="WASSAFRICA"><meta property="og:locale" content="fr_FR">','<meta property="og:type" content="'+shareEsc(m.type)+'"><meta property="og:title" content="'+shareEsc(m.title)+'">','<meta property="og:description" content="'+shareEsc(m.description)+'"><meta property="og:url" content="'+shareEsc(m.url)+'">','<meta property="og:image" content="'+shareEsc(m.image)+'"><meta property="og:image:secure_url" content="'+shareEsc(m.image)+'"><meta property="og:image:alt" content="'+shareEsc(m.title)+'"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">','<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="'+shareEsc(m.title)+'"><meta name="twitter:description" content="'+shareEsc(m.description)+'"><meta name="twitter:image" content="'+shareEsc(m.image)+'">',m.price!=null?'<meta property="product:price:amount" content="'+shareEsc(m.price)+'"><meta property="product:price:currency" content="'+shareEsc(m.currency||'XOF')+'">':'','<link rel="canonical" href="'+shareEsc(m.url)+'"><title>'+shareEsc(m.title)+'</title>'].join('');
   return '<!doctype html><html lang="fr"><head>'+tags+'</head><body><main><h1>'+shareEsc(m.title)+'</h1><p>'+shareEsc(m.description)+'</p><p><a href="'+shareEsc(m.url)+'">Voir sur WASSAFRICA</a></p><img src="'+shareEsc(m.image)+'" alt="'+shareEsc(m.title)+'" style="max-width:100%;height:auto"></main></body></html>';
@@ -361,6 +402,7 @@ async function sharePreview(req,res){
 async function handler(req,res){
   const route=String(req.query?.__route||'');
   if(route==='share-preview')return sharePreview(req,res);
+  if(route==='share-image')return sharePreviewImage(req,res);
   if(route==='market')return marketData(req,res);
   if(route==='discover')return discoverData(req,res);
   if(route==='payment')return paymentStart(req,res);
