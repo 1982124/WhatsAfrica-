@@ -331,7 +331,15 @@ async function sharePreviewData(kind,id,slug){
     const c=await shareFirst('product_collections',{id:'eq.'+id,is_published:'eq.true',select:'id,name,subtitle,description,cover_url,price,currency,business_id'});
     if(c)m={title:shareClean(c.name,120)+' — Collection WASSAFRICA',description:shareProductTeaser(c.subtitle||c.description,c.name,c.price,c.currency),image:shareImage(c.cover_url),url:SHARE_PREVIEW_SITE+'/collection/'+encodeURIComponent(c.id),type:'product.group',price:c.price,currency:c.currency||'XOF'};
   }else{
-    const l=await shareFirst('smart_links',{slug:'eq.'+slug,is_public:'eq.true',select:'id,business_id,title,description,slug,link_type,source_metadata'});
+    let l=await shareFirst('smart_links',{slug:'eq.'+slug,is_public:'eq.true',select:'id,business_id,title,description,slug,link_type,source_metadata'});
+    // Legacy shared URLs sometimes use businesses.slug rather than smart_links.slug.
+    // Resolve through that business, but preserve the public-only boundary.
+    if(!l){
+      const legacyBusiness=await shareFirst('businesses',{slug:'eq.'+slug,select:'id,slug'});
+      if(legacyBusiness?.id){
+        l=await shareFirst('smart_links',{business_id:'eq.'+legacyBusiness.id,is_public:'eq.true',select:'id,business_id,title,description,slug,link_type,source_metadata',order:'created_at.desc'});
+      }
+    }
     if(l){
       const b=await shareFirst('businesses',{id:'eq.'+l.business_id,select:'id,name,description,presentation,tagline,city,country,logo_url,cover_image_url,slug,phone'});
       if(b){
