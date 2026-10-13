@@ -15,9 +15,10 @@ const COUNTRY_CURRENCY = {
 };
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
   const action = String(req.query?.action || 'detect').toLowerCase();
   if (action === 'detect') {
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+    res.setHeader('Vary', 'Accept-Language, x-vercel-ip-country');
     const country = String(req.headers['x-vercel-ip-country'] || '').toUpperCase();
     const lang = String(req.headers['accept-language'] || '');
     const localeCountry = (lang.match(/(?:^|[,;\s])[^,;\s-]+-([A-Za-z]{2})(?:[,;\s]|$)/) || [])[1];
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
     });
   }
   if (action === 'rates') {
+    res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
     try {
       const upstream = await fetch('https://open.er-api.com/v6/latest/USD', { headers: { Accept: 'application/json' } });
       if (!upstream.ok) throw new Error('fx_upstream_' + upstream.status);
