@@ -59,7 +59,7 @@ async function load(){
 $('mfSave').onclick=async()=>{
  try{
   const secret=$('mfSecret').value.trim(),country=$('mfCountry').value.trim().toLowerCase();
-  if(!/^https?:\/\//i.test(secret))throw Error('L’URL API Money Fusion doit commencer par http:// ou https://.');
+  if(!/^https:\/\//i.test(secret))throw Error('L’URL API Money Fusion doit commencer par https://.');
   const r=await db.rpc('connect_payment_provider',{p_provider:'moneyfusion',p_country_code:country,p_account_type:$('mfType').value,p_secret:secret});
   if(r.error)throw r.error;
   $('mfMsg').innerHTML='<span class="ok">Money Fusion est connecté. Le paiement automatique peut maintenant être initié.</span>'; $('mfSecret').value='';
