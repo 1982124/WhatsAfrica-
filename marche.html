@@ -182,7 +182,10 @@ function digitalKindOf(p){
 }
 function productCard(p){
  const smart=norm(p.title).includes('smart link'),vitrine=norm(p.title).includes('vitrine');
- const target=vitrine&&p.slug?publicVitrineUrl(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:'/product.html?id='+encodeURIComponent(p.id));
+ const productUrl='/product.html?id='+encodeURIComponent(p.id);
+ const target=vitrine&&p.slug?publicVitrineUrl(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:productUrl);
+ // A product card must never send its product-specific action to the seller's unrelated storefront.
+ const productActionUrl=digital?productUrl:(p.slug?publicVitrineUrl(p.slug):productUrl);
  if(vitrine){
   const cover=p.coverImage||p.image,logo=p.logoImage||'',initial=esc((p.name||'W').trim().charAt(0).toUpperCase());
   const media=cover?'<div class="vitrine-preview">'+renderImage(cover,p.name||p.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,p.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'<div class="shade"></div></div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
@@ -198,7 +201,7 @@ function productCard(p){
  const mediaHtml=smartMedia
   ? '<div class="media '+mediaClass+'">'+smartMedia+'</div>'
   : '<div class="media '+mediaClass+' no-image" role="img" aria-label="Aucun visuel fourni pour '+esc(p.title)+'"><span>Visuel non fourni</span></div>';
- return '<article class="card '+(smart?'smart-card ':'')+(digital?'digital-card':'')+'">'+mediaHtml+'<div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(digital?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="'+publicVitrineUrl(p.slug)+'">Vitrine</a>':'')+'</div></div></article>';
+ return '<article class="card '+(smart?'smart-card ':'')+(digital?'digital-card':'')+'">'+mediaHtml+'<div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(digital?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(!smart?'<a class="btn" href="'+productActionUrl+'">'+(digital?'Voir le livre':'Vitrine')+'</a>':'')+'</div></div></article>';
 }
 function serviceCard(s){
  const vitrine=norm(s.title).includes('vitrine');
