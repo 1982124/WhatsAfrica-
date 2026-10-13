@@ -62,7 +62,20 @@ $('mfSave').onclick=async()=>{
   if(!/^https:\/\//i.test(secret))throw Error('L’URL API Money Fusion doit commencer par https://.');
   const r=await db.rpc('connect_payment_provider',{p_provider:'moneyfusion',p_country_code:country,p_account_type:$('mfType').value,p_secret:secret});
   if(r.error)throw r.error;
-  $('mfMsg').innerHTML='<span class="ok">Money Fusion est connecté. Le paiement automatique peut maintenant être initié.</span>'; $('mfSecret').value='';
+  const br=await db.from('businesses').select('id,payment_methods').eq('owner_id',user.id);
+  if(br.error)throw br.error;
+  let checkoutReady=true;
+  for(const b of (br.data||[])){
+    const methods=Array.isArray(b.payment_methods)?b.payment_methods:['cash_on_delivery'];
+    if(!methods.includes('online')){
+      const u=await db.from('businesses').update({payment_methods:[...methods,'online']}).eq('id',b.id).eq('owner_id',user.id);
+      if(u.error)checkoutReady=false;
+    }
+  }
+  $('mfMsg').innerHTML=checkoutReady
+    ?'<span class="ok">Money Fusion est connecté. Le paiement en ligne est activé sur vos activités.</span>'
+    :'<span class="err">Money Fusion est connecté, mais certaines activités n’ont pas pu activer le paiement en ligne. Vérifiez les droits de modification de votre activité.</span>';
+  $('mfSecret').value='';
  }catch(e){$('mfMsg').innerHTML='<span class="err">'+esc(e?.message||'Connexion Money Fusion impossible.')+'</span>'}
 };
 $('save').onclick=async()=>{
