@@ -8,7 +8,7 @@
     ['RWF','Franc rwandais'],['ETB','Birr éthiopien'],['EGP','Livre égyptienne'],['MAD','Dirham marocain'],
     ['DZD','Dinar algérien'],['TND','Dinar tunisien'],['ZMW','Kwacha zambien'],['MWK','Kwacha malawien'],
     ['BWP','Pula botswanais'],['NAD','Dollar namibien'],['MZN','Metical mozambicain'],['AOA','Kwanza angolais'],
-    ['SLE','Leone sierra-léonais'],['GMD','Dalasi gambien'],['CVE','Escudo cap-verdien'],['MRU','Ouguiya mauritanien'],
+    ['SLE','Leone sierra-léonais'],['LSL','Loti lésothan'],['SZL','Lilangeni swazi'],['LRD','Dollar libérien'],['GMD','Dalasi gambien'],['CVE','Escudo cap-verdien'],['MRU','Ouguiya mauritanien'],
     ['MUR','Roupie mauricienne'],['CDF','Franc congolais'],['BIF','Franc burundais'],['SOS','Shilling somalien'],
     ['USD','Dollar américain'],['EUR','Euro'],['GBP','Livre sterling'],['CAD','Dollar canadien'],
     ['AUD','Dollar australien'],['CHF','Franc suisse'],['CNY','Yuan chinois'],['INR','Roupie indienne'],
