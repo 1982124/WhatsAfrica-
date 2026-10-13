@@ -48,6 +48,13 @@ begin
   )
   returning id into v_connection_id;
 
+  update public.businesses
+  set payment_methods = case
+    when coalesce(payment_methods, '[]'::jsonb) ? 'online' then coalesce(payment_methods, '[]'::jsonb)
+    else coalesce(payment_methods, '["cash_on_delivery"]'::jsonb) || '["online"]'::jsonb
+  end
+  where owner_id = v_uid;
+
   return jsonb_build_object(
     'ok', true,
     'provider', 'moneyfusion',
