@@ -181,7 +181,7 @@ function digitalKindOf(p){
  return 'other';
 }
 function productCard(p){
- const smart=norm(p.title).includes('smart link'),vitrine=norm(p.title).includes('vitrine');
+ const smart=norm(p.title).includes('smart link'),vitrine=norm(p.title).includes('vitrine'),digital=p.type==='digital';
  const productUrl='/product.html?id='+encodeURIComponent(p.id);
  const target=vitrine&&p.slug?publicVitrineUrl(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:productUrl);
  // A product card must never send its product-specific action to the seller's unrelated storefront.
@@ -197,7 +197,6 @@ function productCard(p){
  const smartMedia=smart
   ? (illustration?'<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(illustration,p.title,'',true)+'</div>':'')
   : (illustration?renderImage(illustration,p.title,'',true):'');
- const digital=p.type==='digital';
  const mediaHtml=smartMedia
   ? '<div class="media '+mediaClass+'">'+smartMedia+'</div>'
   : '<div class="media '+mediaClass+' no-image" role="img" aria-label="Aucun visuel fourni pour '+esc(p.title)+'"><span>Visuel non fourni</span></div>';
