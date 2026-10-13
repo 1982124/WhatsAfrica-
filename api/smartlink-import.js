@@ -320,7 +320,7 @@ async function sharePreviewData(kind,id,slug){
         const bucket=String(mediaCover.storage_bucket).trim();
         const path=String(mediaCover.storage_path).split('/').filter(Boolean).map(part=>encodeURIComponent(part)).join('/');
         if(/^[a-zA-Z0-9._-]{1,100}$/.test(bucket)&&path&&!path.split('/').some(part=>part==='.'||part==='..')){
-          mediaUrl=(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').replace(/\\/$/,'')+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
+          mediaUrl=(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').replace(/\/+$/,'')+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
         }
       }
       const image=shareImage(mediaUrl||p.image_url);
