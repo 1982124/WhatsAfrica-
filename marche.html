@@ -166,6 +166,7 @@ async function restSelect(table,params={}){
 const $=id=>document.getElementById(id);
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function imageUrl(url){try{const u=new URL(String(url||''),location.origin);return /^https?:$/.test(u.protocol)?u.href:''}catch(e){return ''}}
+function publicVitrineUrl(slug){return '/smartlink-public.html?slug='+encodeURIComponent(String(slug||''))}
 function renderImage(url,alt,fallback='',real=false){
  const original=imageUrl(url);
  if(!original)return '';
@@ -181,7 +182,7 @@ function digitalKindOf(p){
 }
 function productCard(p){
  const smart=norm(p.title).includes('smart link'),vitrine=norm(p.title).includes('vitrine');
- const target=vitrine&&p.slug?'/'+encodeURIComponent(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:'/product.html?id='+encodeURIComponent(p.id));
+ const target=vitrine&&p.slug?publicVitrineUrl(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:'/product.html?id='+encodeURIComponent(p.id));
  if(vitrine){
   const cover=p.coverImage||p.image,logo=p.logoImage||'',initial=esc((p.name||'W').trim().charAt(0).toUpperCase());
   const media=cover?'<div class="vitrine-preview">'+renderImage(cover,p.name||p.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,p.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'<div class="shade"></div></div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
@@ -197,12 +198,12 @@ function productCard(p){
  const mediaHtml=smartMedia
   ? '<div class="media '+mediaClass+'">'+smartMedia+'</div>'
   : '<div class="media '+mediaClass+' no-image" role="img" aria-label="Aucun visuel fourni pour '+esc(p.title)+'"><span>Visuel non fourni</span></div>';
- return '<article class="card '+(smart?'smart-card ':'')+(digital?'digital-card':'')+'">'+mediaHtml+'<div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(digital?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="/'+encodeURIComponent(p.slug)+'">Vitrine</a>':'')+'</div></div></article>';
+ return '<article class="card '+(smart?'smart-card ':'')+(digital?'digital-card':'')+'">'+mediaHtml+'<div class="body"><span class="pill">'+(smart?'SMART LINK WASSAFRICA':(digital?'PRODUIT DIGITAL':'PRODUIT PHYSIQUE'))+'</span><h3>'+esc(p.title)+'</h3><div class="muted">'+esc(p.name||'Vendeur WASSAFRICA')+(p.city?' · '+esc(p.city):'')+'</div><div class="price">'+money(p.price,p.currency)+'</div><div class="actions"><a class="btn primary" href="'+target+'">'+(smart?'Ouvrir le Smart Link':'Voir')+'</a>'+(p.slug&&!smart?'<a class="btn" href="'+publicVitrineUrl(p.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function serviceCard(s){
  const vitrine=norm(s.title).includes('vitrine');
  if(vitrine){
-  const target=s.slug?'/'+encodeURIComponent(s.slug):(s.source==='product'?'/product.html?id='+encodeURIComponent(s.id):'/service-detail-v1.html?id='+encodeURIComponent(s.id));
+  const target=s.slug?publicVitrineUrl(s.slug):(s.source==='product'?'/product.html?id='+encodeURIComponent(s.id):'/service-detail-v1.html?id='+encodeURIComponent(s.id));
   const cover=s.coverImage||s.image,logo=s.logoImage||'',initial=esc((s.name||'W').trim().charAt(0).toUpperCase());
   const media=cover?'<div class="vitrine-preview">'+renderImage(cover,s.name||s.title,'',true).replace('<img ','<img class="cover" ')+(logo?renderImage(logo,s.name||'Logo','',true).replace('<img ','<img class="logo" '):'<div class="initial">'+initial+'</div>')+'<div class="shade"></div></div>':'<div class="vitrine-preview"><div class="initial">'+initial+'</div></div>';
   const offers=(s.vitrineOffers||[]).slice(0,3).map(x=>'<span>'+esc(x)+'</span>').join('');
@@ -212,7 +213,7 @@ function serviceCard(s){
  const serviceMedia=serviceSmart?(s.image?'<div class="smart-3d-stage" aria-label="Aperçu du Smart Link WASSAFRICA">'+renderImage(s.image,s.title,'',true)+'</div>':''):(s.isRealImage?renderImage(s.image,s.title,'',true):'');
  if(!serviceMedia)return '';
  const detailUrl=s.source==='product'?'/product.html?id='+encodeURIComponent(s.id):'/service-detail-v1.html?id='+encodeURIComponent(s.id);
- return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="'+detailUrl+'">Voir</a>'+(s.slug?'<a class="btn" href="/'+encodeURIComponent(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
+ return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="'+detailUrl+'">Voir</a>'+(s.slug?'<a class="btn" href="'+publicVitrineUrl(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function libraryCard(c){const cover=imageUrl(c.image);const media=cover?'<div class="media real product-photo">'+renderImage(cover,c.name,'',true)+'</div>':'<div class="media no-image" aria-label="Couverture non fournie">Couverture non fournie</div>';const target=c.kind==='book'?'/product/'+encodeURIComponent(c.id):'/collection/'+encodeURIComponent(c.id);return '<article class="card">'+media+'<div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE NUMÉRIQUE':'COLLECTION')+'</span><h3>'+esc(c.name||'Collection sans titre')+'</h3>'+(c.category?'<div class="muted">'+esc(c.category)+'</div>':'')+'<p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" href="'+target+'">'+(c.kind==='book'?'Voir le livre':'Voir la collection')+'</a></div></div></article>'}
 const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
@@ -243,7 +244,7 @@ function vitrineCard(v){
  const label=isNeo?'SMART LINK · NEOLIFE':'VITRINE D’ACTIVITÉ';
  const title=isNeo?'NeoLife — Smart Link':(v.name||'Activité WASSAFRICA');
  const description=isNeo?'Smart Link NeoLife : découvrez directement les produits NeoLife publiés sur WASSAFRICA.':(v.description||'Découvrez directement cette activité et ses offres.');
- return '<article class="card vitrine-card '+(isNeo?'smart-card':'')+'"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">'+label+'</span><div class="vitrine-content"><h3>'+esc(title)+'</h3><div class="muted">'+(isNeo?esc(v.offers?.length||0)+' produits publiés':(v.city?esc(v.city):'Présence sur WASSAFRICA'))+'</div><div class="description">'+esc(description)+'</div>'+(offerHtml?'<div class="vitrine-offers">'+offerHtml+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="/'+encodeURIComponent(v.slug)+'">Ouvrir le Smart Link</a></div></div></article>';
+ return '<article class="card vitrine-card '+(isNeo?'smart-card':'')+'"><div class="media service-illustration">'+media+'</div><div class="body"><span class="pill">'+label+'</span><div class="vitrine-content"><h3>'+esc(title)+'</h3><div class="muted">'+(isNeo?esc(v.offers?.length||0)+' produits publiés':(v.city?esc(v.city):'Présence sur WASSAFRICA'))+'</div><div class="description">'+esc(description)+'</div>'+(offerHtml?'<div class="vitrine-offers">'+offerHtml+'</div>':'')+'</div><div class="actions"><a class="btn primary" href="'+publicVitrineUrl(v.slug)+'">Ouvrir le Smart Link</a></div></div></article>';
 }
 function norm(v){return String(v??'').trim().toLowerCase()}
 function normalizeProductType(x){
@@ -456,7 +457,7 @@ async function load(){
    const isSmartLinkWassafrica=norm(x.title)==='smart link wassafrica';
    const illustrativeImage=isSmartLinkWassafrica?'https://images.pexels.com/photos/5999793/pexels-photo-5999793.jpeg?auto=compress&cs=tinysrgb&w=1400':'';
    const authoritativeImage=illustrativeImage||x.image_url||'';
-   return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),illustrative:Boolean(illustrativeImage),coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?'/'+encodeURIComponent(sl.slug):null};
+   return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),illustrative:Boolean(illustrativeImage),coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?publicVitrineUrl(sl.slug):null};
   });
   const serviceRows=servicesRaw.map(x=>{
    const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},isVitrine=norm(x.title).includes('vitrine');
