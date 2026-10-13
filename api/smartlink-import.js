@@ -414,10 +414,53 @@ async function sharePreview(req,res){
   try{return res.status(200).send(sharePreviewHtml(await sharePreviewData(kind,id,slug)))}catch(e){console.warn('[SHARE_PREVIEW]',kind,e?.message||e);return res.status(200).send(sharePreviewHtml({...fallback,url:kind==='product'?SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(id):kind==='collection'?SHARE_PREVIEW_SITE+'/collection/'+encodeURIComponent(id):SHARE_PREVIEW_SITE+'/'+encodeURIComponent(slug)}))}
 }
 
+
+const WA_CURRENCY_BY_COUNTRY = {
+  ML:'XOF',SN:'XOF',CI:'XOF',BF:'XOF',BJ:'XOF',TG:'XOF',NE:'XOF',GW:'XOF',
+  CM:'XAF',GA:'XAF',CG:'XAF',TD:'XAF',CF:'XAF',GQ:'XAF',
+  GH:'GHS',NG:'NGN',KE:'KES',UG:'UGX',TZ:'TZS',ZA:'ZAR',RW:'RWF',
+  ET:'ETB',EG:'EGP',MA:'MAD',DZ:'DZD',TN:'TND',ZM:'ZMW',MW:'MWK',
+  BW:'BWP',NA:'NAD',LS:'LSL',SZ:'SZL',MZ:'MZN',AO:'AOA',LR:'LRD',
+  SL:'SLE',GM:'GMD',CV:'CVE',MR:'MRU',MU:'MUR',CD:'CDF',BI:'BIF',
+  SO:'SOS',SD:'SDG',US:'USD',CA:'CAD',GB:'GBP',IE:'EUR',FR:'EUR',
+  DE:'EUR',ES:'EUR',IT:'EUR',PT:'EUR',NL:'EUR',BE:'EUR',AT:'EUR',
+  FI:'EUR',GR:'EUR',LU:'EUR',CY:'EUR',MT:'EUR',SK:'EUR',SI:'EUR',
+  EE:'EUR',LV:'EUR',LT:'EUR',HR:'EUR',JP:'JPY',CN:'CNY',IN:'INR',
+  AU:'AUD',NZ:'NZD',CH:'CHF',AE:'AED',SA:'SAR',QA:'QAR',KW:'KWD',
+  TR:'TRY',BR:'BRL',MX:'MXN',SG:'SGD',HK:'HKD',KR:'KRW',PK:'PKR',
+  ID:'IDR',MY:'MYR',TH:'THB',PH:'PHP',AR:'ARS',CL:'CLP',CO:'COP'
+};
+async function currencyData(req,res){
+  const action=String(req.query?.action||'detect').toLowerCase();
+  if(action==='detect'){
+    res.setHeader('Cache-Control','private, no-store, max-age=0');
+    res.setHeader('Vary','Accept-Language, x-vercel-ip-country');
+    const country=String(req.headers['x-vercel-ip-country']||'').toUpperCase();
+    const lang=String(req.headers['accept-language']||'');
+    const localeCountry=(lang.match(/(?:^|[,;\\s])[^,;\\s-]+-([A-Za-z]{2})(?:[,;\\s]|$)/)||[])[1];
+    const resolvedCountry=/^[A-Z]{2}$/.test(country)?country:String(localeCountry||'ML').toUpperCase();
+    return res.status(200).json({ok:true,country:resolvedCountry,currency:WA_CURRENCY_BY_COUNTRY[resolvedCountry]||'XOF',source:country?'edge-country':(localeCountry?'browser-locale':'default')});
+  }
+  if(action==='rates'){
+    res.setHeader('Cache-Control','public, s-maxage=21600, stale-while-revalidate=86400');
+    try{
+      const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),5000);let upstream;
+      try{upstream=await fetch('https://open.er-api.com/v6/latest/USD',{headers:{Accept:'application/json'},signal:ac.signal})}finally{clearTimeout(timer)}
+      if(!upstream.ok)throw new Error('fx_upstream_'+upstream.status);
+      const data=await upstream.json();
+      if(data.result!=='success'||!data.rates||!Number.isFinite(Number(data.rates.USD)))throw new Error('fx_rates_unavailable');
+      res.setHeader('X-WASSAFRICA-FX-Updated',String(data.time_last_update_utc||'unknown'));
+      return res.status(200).json({ok:true,base:'USD',rates:data.rates,updated_at:data.time_last_update_utc||null,provider:'ExchangeRate-API Open Access'});
+    }catch(error){return res.status(503).json({ok:false,error:'currency_rates_unavailable'})}
+  }
+  return res.status(400).json({ok:false,error:'unsupported_currency_action'});
+}
+
 async function handler(req,res){
   const route=String(req.query?.__route||'');
   if(route==='share-preview')return sharePreview(req,res);
   if(route==='share-image')return sharePreviewImage(req,res);
+  if(route==='currency')return currencyData(req,res);
   if(route==='market')return marketData(req,res);
   if(route==='discover')return discoverData(req,res);
   if(route==='payment')return paymentStart(req,res);
