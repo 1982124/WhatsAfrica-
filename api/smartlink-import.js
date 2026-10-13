@@ -86,7 +86,7 @@ async function paymentServiceGet(path,params){
   Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
   const r=await fetch(u,{headers:paymentServerHeaders(key)});if(!r.ok)throw new Error('service_get_'+r.status);return r.json();
 }
-function paymentUrlSafe(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password&&u.hostname&&!['localhost','127.0.0.1','::1'].includes(u.hostname.toLowerCase())}catch{return false}}
+function paymentUrlSafe(value){try{const u=new URL(value),h=u.hostname.toLowerCase();return u.protocol==='https:'&&!u.username&&!u.password&&(h==='moneyfusion.net'||h.endsWith('.moneyfusion.net'))}catch{return false}}
 async function paymentStart(req,res){
   if(req.method!=='POST')return res.status(405).json({ok:false,error:'method_not_allowed'});
   const sk=paymentServerKey(),pk=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
@@ -145,7 +145,7 @@ async function paymentWebhook(req,res){
   const providerStatus=String(verified.statut||verified.status||'').trim().toLowerCase();
   const allowedStatuses={
     'payin.session.completed':['paid','completed','success','successful'],
-    'payin.session.cancelled':['cancelled','canceled','failed','expired'],
+    'payin.session.cancelled':['cancelled','canceled','failed','failure','expired','no paid','not paid'],
     'payin.session.pending':['pending','processing','initiated','in progress','in_progress']
   };
   if(!allowedStatuses[event].includes(providerStatus))return res.status(409).json({ok:false,error:'provider_status_mismatch'});
