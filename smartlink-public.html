@@ -18,18 +18,35 @@ const KEY='sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 async function query(table,params){
   const u=new URL(SB+'/rest/v1/'+table);
   Object.entries(params||{}).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,String(v))});
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),8000);
-  try{
-    const r=await fetch(u.toString(),{cache:'no-store',headers:{apikey:KEY,Accept:'application/json'},signal:controller.signal});
-    if(!r.ok)throw Error('PUBLIC_SUPABASE_'+r.status);
-    const rows=await r.json();
-    if(!Array.isArray(rows))throw Error('PUBLIC_SUPABASE_INVALID');
-    return rows;
-  }catch(e){
-    if(e?.name==='AbortError')throw Error('PUBLIC_SUPABASE_TIMEOUT_'+table);
-    throw e;
-  }finally{clearTimeout(timer)}
+  let lastError=null;
+  // Public pages should tolerate a brief mobile-network or Supabase gateway stall.
+  for(let attempt=0;attempt<2;attempt++){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),12000);
+    try{
+      const r=await fetch(u.toString(),{cache:'no-store',headers:{apikey:KEY,Accept:'application/json'},signal:controller.signal});
+      if(!r.ok){
+        const error=Error('PUBLIC_SUPABASE_'+r.status);
+        if(attempt===0&&(r.status===429||r.status>=500)){lastError=error;continue}
+        throw error;
+      }
+      const rows=await r.json();
+      if(!Array.isArray(rows))throw Error('PUBLIC_SUPABASE_INVALID');
+      return rows;
+    }catch(e){
+      const timedOut=e?.name==='AbortError';
+      const networkFailure=e instanceof TypeError;
+      const transientServerError=/^PUBLIC_SUPABASE_(429|5\d\d)$/.test(String(e?.message||''));
+      if(attempt===0&&(timedOut||networkFailure||transientServerError)){
+        lastError=timedOut?Error('PUBLIC_SUPABASE_TIMEOUT_'+table):e;
+        await new Promise(resolve=>setTimeout(resolve,350));
+        continue;
+      }
+      if(timedOut)throw Error('PUBLIC_SUPABASE_TIMEOUT_'+table);
+      throw e;
+    }finally{clearTimeout(timer)}
+  }
+  throw lastError||Error('PUBLIC_SUPABASE_UNAVAILABLE_'+table);
 }
 function track(event,extra={}){
   try{window.WA_SMART_LINK?.track(event,{smart_link_id:smartLinkId,...extra})}catch{}
