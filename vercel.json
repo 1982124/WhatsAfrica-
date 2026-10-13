@@ -211,7 +211,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
+          "value": ".*(WhatsApp|whatsapp|WHATSAPP|facebookexternalhit|FacebookExternalHit|FACEBOOKEXTERNALHIT|Facebot|FACEBOT|Twitterbot|TwitterBot|TelegramBot|telegrambot|LinkedInBot|linkedinbot|Slackbot|slackbot|Discordbot|discordbot|Pinterest|pinterest|Googlebot|googlebot).*"
         }
       ],
       "destination": "/api/smartlink-import?__route=share-preview&kind=collection&id=:id"
@@ -222,7 +222,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
+          "value": ".*(WhatsApp|whatsapp|WHATSAPP|facebookexternalhit|FacebookExternalHit|FACEBOOKEXTERNALHIT|Facebot|FACEBOT|Twitterbot|TwitterBot|TelegramBot|telegrambot|LinkedInBot|linkedinbot|Slackbot|slackbot|Discordbot|discordbot|Pinterest|pinterest|Googlebot|googlebot).*"
         }
       ],
       "destination": "/api/smartlink-import?__route=share-preview&kind=product&id=:id"
@@ -465,7 +465,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|Googlebot).*"
+          "value": ".*(WhatsApp|whatsapp|WHATSAPP|facebookexternalhit|FacebookExternalHit|FACEBOOKEXTERNALHIT|Facebot|FACEBOT|Twitterbot|TwitterBot|TelegramBot|telegrambot|LinkedInBot|linkedinbot|Slackbot|slackbot|Discordbot|discordbot|Pinterest|pinterest|Googlebot|googlebot).*"
         }
       ],
       "destination": "/api/smartlink-import?__route=share-preview&kind=business&slug=:slug"
