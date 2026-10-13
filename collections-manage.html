@@ -116,7 +116,7 @@ async function saveBasics(){
   if(up.error)return alert('Upload de la couverture impossible : '+up.error.message);
   coverUrl=db.storage.from('public-media').getPublicUrl(up.data.path).data.publicUrl;
  }
- const payload={name,category,subtitle:$('cs')?.value.trim()||null,description:$('cd').value.trim()||null,audience:$('ca')?.value.trim()||null,cover_url:coverUrl,is_published:false};
+ const payload={name,category,subtitle:$('cs')?.value.trim()||null,description:$('cd').value.trim()||null,audience:$('ca')?.value.trim()||null,cover_url:coverUrl,is_published:current?Boolean(current.is_published):false};
  let r;
  if(current)r=await db.from('product_collections').update(payload).eq('id',current.id).eq('business_id',bid);
  else r=await db.from('product_collections').insert({business_id:bid,...payload}).select('*').single();
