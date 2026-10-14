@@ -59,16 +59,7 @@
 <div id="status" class="status" role="status" aria-live="polite"></div>
 
 <section class="section" id="demoSection" aria-labelledby="demoTitle">
-<div class="market-intro"><div><h2 id="demoTitle">Voir comment fonctionne une vitrine</h2><p class="muted">Un exemple visuel pour comprendre ce qu’une entreprise peut construire sur WASSAFRICA. Cet exemple n’est pas présenté comme une activité ou un produit publié.</p></div></div>
-<article class="market-demo" aria-label="Exemple de vitrine WASSAFRICA — KÔRÔ Créations">
-<div class="visual"><img src="https://images.pexels.com/photos/20068076/pexels-photo-20068076.jpeg?auto=compress&cs=tinysrgb&w=1800" alt="Exemple visuel de vitrine WASSAFRICA pour KÔRÔ Créations" onerror="this.onerror=null;this.src='/assets/wassafrica-vitrine-realistic.svg'"></div>
-<div class="copy">
-<div class="ey">EXEMPLE — PAS UNE OFFRE DU MARCHÉ</div>
-<h3>KÔRÔ Créations</h3>
-<p>Exemple de présentation d’une marque de mode et d’artisanat : identité, univers, réalisations, offres et contact direct.</p>
-<div class="actions"><a class="btn primary" href="/demo">Voir la démo</a></div>
-</div>
-</article>
+<div class="market-intro"><div><h2 id="demoTitle">Une vitrine qui vous ressemble</h2><p class="muted">Découvrez comment présenter votre activité. Les cartes du Marché affichent uniquement des offres réellement publiées avec leurs données et leurs visuels disponibles.</p></div><div class="actions"><a class="btn primary" href="/demo">Voir un exemple complet</a><a class="btn" href="/smartlink">Créer ma présence</a></div></div>
 </section>
 
 <section class="section" id="productsSection" data-commercial>
@@ -170,7 +161,7 @@ function publicVitrineUrl(slug){return '/smartlink-public.html?slug='+encodeURIC
 function renderImage(url,alt,fallback='',real=false){
  const original=imageUrl(url);
  if(!original)return '';
- return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(original)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'" onerror="this.onerror=null;this.src=\'/assets/illustration-smartlink-produit.svg\'">';
+ return '<img class="'+(real?'real-img':'fallback-img')+'" loading="eager" decoding="async" src="'+esc(original)+'" alt="'+esc(alt||'Visuel WASSAFRICA')+'" onerror="this.onerror=null;this.remove()">';
 }
 function money(v,c){if(v===null||v===undefined||v==='')return 'Prix sur demande';const n=Number(v);if(!Number.isFinite(n))return 'Prix sur demande';if(n===0)return 'Gratuit';return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(n)+' '+(c||'XOF')}
 function digitalKindOf(p){
@@ -182,7 +173,7 @@ function digitalKindOf(p){
 }
 function productCard(p){
  const smart=norm(p.title).includes('smart link'),vitrine=norm(p.title).includes('vitrine'),digital=p.type==='digital';
- const productUrl='/product.html?id='+encodeURIComponent(p.id);
+ const productUrl='/product/'+encodeURIComponent(p.id);
  const target=vitrine&&p.slug?publicVitrineUrl(p.slug):(smart&&p.smartLinkUrl?p.smartLinkUrl:productUrl);
  // A product card must never send its product-specific action to the seller's unrelated storefront.
  const productActionUrl=digital?productUrl:(p.slug?publicVitrineUrl(p.slug):productUrl);
@@ -218,7 +209,6 @@ function serviceCard(s){
  return '<article class="card '+(serviceSmart?'smart-card':'')+'"><div class="media real">'+serviceMedia+'</div><div class="body"><span class="pill">'+serviceSourceLabel(s)+'</span><h3>'+esc(s.title)+'</h3><div class="muted">'+esc(s.name||'Professionnel WASSAFRICA')+(s.city?' · '+esc(s.city):'')+'</div><p class="muted">'+esc(s.description||'')+'</p><div class="price">'+money(s.price,s.currency)+'</div><div class="actions"><a class="btn primary" href="'+detailUrl+'">Voir</a>'+(s.slug?'<a class="btn" href="'+publicVitrineUrl(s.slug)+'">Vitrine</a>':'')+'</div></div></article>';
 }
 function libraryCard(c){const cover=imageUrl(c.image);const media=cover?'<div class="media real product-photo">'+renderImage(cover,c.name,'',true)+'</div>':'<div class="media no-image" aria-label="Couverture non fournie">Couverture non fournie</div>';const target=c.kind==='book'?'/product/'+encodeURIComponent(c.id):'/collection/'+encodeURIComponent(c.id);return '<article class="card">'+media+'<div class="body"><span class="pill">'+(c.kind==='book'?'LIVRE NUMÉRIQUE':'COLLECTION')+'</span><h3>'+esc(c.name||'Collection sans titre')+'</h3>'+(c.category?'<div class="muted">'+esc(c.category)+'</div>':'')+'<p class="muted">'+esc(c.description||'')+'</p>'+(c.price!=null?'<div class="price">'+money(c.price,c.currency)+'</div>':'')+'<div class="actions"><a class="btn primary" href="'+target+'">'+(c.kind==='book'?'Voir le livre':'Voir la collection')+'</a></div></div></article>'}
-const MARKET_BOOTSTRAP_VITRINES=[{id:'19b42084-33a6-4ef6-9677-b09782f0f705',slug:'wassa-8bbaa0f3a738',name:'Smart Link WASSAFRICA',description:'Démo officielle de la vitrine WASSAFRICA.',coverImage:'https://dzifpwqrqnvssfhwjccj.supabase.co/storage/v1/object/public/public-media/e9e27fe0-83a6-46cf-ac39-676a30d9eac1/smartlink/gallery/5e9c7f2f-210e-4f74-9659-3b4dc138dcbd.png',logoImage:'https://wassafrica.vercel.app/wassafrica-logo.svg',city:'',country:'',offers:[],isCanonicalDemo:true}];
 let libraryCategory='all';
 let libraryKind=new URLSearchParams(location.search).get('library_kind')||'all';
 const LIBRARY_CATEGORIES=['Romans & fiction','Histoire & patrimoine africain','Éducation & jeunesse','Business & entrepreneuriat','Développement personnel','Santé & bien-être','Religion & spiritualité','Cuisine & nutrition','Guides pratiques','Technologie & numérique','Arts & culture','Marketing & vente','Formations & apprentissage','Création & design','Packs & bundles','Livres & ebooks','Autre'];
@@ -456,16 +446,13 @@ async function load(){
    const isSmartLink=norm(x.title).includes('smart link'),isVitrine=norm(x.title).includes('vitrine'),sl=(isSmartLink||isVitrine)?smartByBiz.get(b.id):null;
    // Product media is authoritative. Never replace a WASSAFRICA product visual with a seller cover/map.
    // Seller cover/logo are used only for an actual marketplace vitrine card.
-   const isSmartLinkWassafrica=norm(x.title)==='smart link wassafrica';
-   const illustrativeImage=isSmartLinkWassafrica?'https://images.pexels.com/photos/5999793/pexels-photo-5999793.jpeg?auto=compress&cs=tinysrgb&w=1400':'';
-   const authoritativeImage=illustrativeImage||x.image_url||'';
-   return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),illustrative:Boolean(illustrativeImage),coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?publicVitrineUrl(sl.slug):null};
+   const authoritativeImage=imageUrl(x.image_url||'');
+   return {...x,type,name:b.name,city:b.city,country:b.country,slug:sl?.slug||slugByBiz.get(b.id),image:authoritativeImage,isRealImage:Boolean(authoritativeImage),illustrative:false,coverImage:null,logoImage:null,businessDescription:null,vitrineOffers:[],smartLinkUrl:isSmartLink&&sl?.slug?publicVitrineUrl(sl.slug):null};
   });
   const serviceRows=servicesRaw.map(x=>{
    const b=byOwner.get(x.seller_id)||{},meta=x.metadata&&typeof x.metadata==='object'?x.metadata:{},isVitrine=norm(x.title).includes('vitrine');
-   const isShareActivity=norm(x.title)==='partager son activité';
-   const serviceImage=isShareActivity?'https://images.pexels.com/photos/20123401/pexels-photo-20123401.jpeg?auto=compress&cs=tinysrgb&w=1400':(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||'');
-   return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:serviceImage,isRealImage:Boolean(serviceImage),illustrative:Boolean(isShareActivity),coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
+   const serviceImage=imageUrl(meta.image_url||meta.imageUrl||meta.cover_url||meta.coverUrl||'');
+   return {...x,type:'service',name:b.name,city:b.city,country:b.country,slug:slugByBiz.get(b.id),image:serviceImage,isRealImage:Boolean(serviceImage),illustrative:false,coverImage:isVitrine?(b.cover_image_url||null):null,logoImage:isVitrine?(b.logo_url||null):null,businessDescription:isVitrine?(b.description||''):null,vitrineOffers:isVitrine?(offersByBiz.get(b.id)||[]):[]};
   });
   // INVARIANT MARKETPLACE: every published row received from the API is displayable.
   DATA.products=productRows.map(x=>({...x,source:'product'}));
