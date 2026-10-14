@@ -436,7 +436,7 @@ async function load(){
     logoImage:imageUrl(biz.logo_url||''),
     offers:offersByBiz.get(biz.id)||[]
    };
-  }).filter(x=>x.slug && x.name).sort((a,b)=>norm(a.slug)==='neolife'?-1:norm(b.slug)==='neolife'?1:0));
+  }).filter(x=>x.slug && x.name && norm(x.slug)!=='wassa-8bbaa0f3a738').sort((a,b)=>norm(a.slug)==='neolife'?-1:norm(b.slug)==='neolife'?1:0));
   // The official WASSAFRICA demo is editorial and rendered separately.
   // It is never counted as marketplace inventory.
   // Products are public offers in their own right: business enrichment is optional.
