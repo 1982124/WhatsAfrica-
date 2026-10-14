@@ -1,5 +1,14 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dzifpwqrqnvssfhwjccj.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SERVER_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+function supabaseServerHeaders(extra = {}) {
+  const headers = { apikey: SUPABASE_SERVER_KEY, ...extra };
+  // Supabase's modern sb_secret_* key is supplied via apikey; it is not a JWT Bearer token.
+  // Keep Bearer auth for legacy service_role JWT keys.
+  if (SUPABASE_SERVER_KEY && !SUPABASE_SERVER_KEY.startsWith('sb_secret_')) {
+    headers.Authorization = `Bearer ${SUPABASE_SERVER_KEY}`;
+  }
+  return headers;
+}
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
 const DEFAULT_RECIPIENT = process.env.DEMAND_REPORT_EMAIL || 'neodigitalstartupacademy@gmail.com';
 
@@ -52,7 +61,7 @@ async function generateForAdmin({ token, hours, countries, zones, products }) {
 }
 
 async function generateForCron({ hours, countries, zones, products }) {
-  if (!SUPABASE_SERVICE_ROLE_KEY) return { ok: false, status: 503, reason: 'supabase_cron_env_missing' };
+  if (!SUPABASE_SERVER_KEY) return { ok: false, status: 503, reason: 'supabase_cron_env_missing' };
   const countryList=Array.isArray(countries)?countries.filter(Boolean):[];
   const zoneList=Array.isArray(zones)?zones.filter(Boolean):[];
   const locations=[];
@@ -332,13 +341,13 @@ async function enrichRadarWithMarketplaceMatching(signals,result,headers){
 }
 
 async function persistRadarReport(result) {
-  if (!SUPABASE_SERVICE_ROLE_KEY || !result?.ok) return { persisted: false, reason: 'service_role_unavailable' };
+  if (!SUPABASE_SERVER_KEY || !result?.ok) return { persisted: false, reason: 'service_role_unavailable' };
   const now = new Date();
   const start = new Date(now.getTime() - Number(result.hours || 6) * 60 * 60 * 1000);
   const zones = Array.isArray(result.zones) ? result.zones : [];
   const fallback = result.fallback === 'internal_memory';
   const sourceType = fallback ? 'internal_memory' : 'web';
-  const headers = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
+  const headers = supabaseServerHeaders({ 'Content-Type': 'application/json' });
 
   // Build one logical signal per product/zone. Evidence URLs are used only to enrich identity;
   // multiple evidence lines from the same source never become multiple demand signals.
@@ -573,7 +582,7 @@ const previousGapMap = new Map();
 }
 
 async function generateInternalGeoDemandRadar({hours,locations,products}) {
-  if (!SUPABASE_SERVICE_ROLE_KEY) return { ok:false, status:503, reason:'internal_memory_unavailable' };
+  if (!SUPABASE_SERVER_KEY) return { ok:false, status:503, reason:'internal_memory_unavailable' };
   const safeLocations=Array.isArray(locations)?locations.filter(x=>x&&x.country&&x.location).slice(0,30):[];
   if(!safeLocations.length)return {ok:false,status:400,reason:'locations_required'};
   const start=new Date(Date.now()-Number(hours||6)*60*60*1000), end=new Date();
@@ -584,7 +593,7 @@ async function generateInternalGeoDemandRadar({hours,locations,products}) {
   url.searchParams.set('status','neq.rejected');
   url.searchParams.set('order','observed_at.desc');
   url.searchParams.set('limit','1000');
-  const r=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_ROLE_KEY},cache:'no-store'});
+  const r=await fetch(url,{headers:supabaseServerHeaders(),cache:'no-store'});
   if(!r.ok)return {ok:false,status:502,reason:'internal_observation_query_failed_'+r.status};
   const observations=await r.json().catch(()=>[]);
   const norm=v=>String(v||'').trim().toLowerCase();
