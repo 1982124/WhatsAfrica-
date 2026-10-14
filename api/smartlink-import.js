@@ -330,7 +330,20 @@ async function sharePreviewData(kind,id,slug){
           mediaUrl=(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co').replace(/\/+$/,'')+'/storage/v1/object/public/'+encodeURIComponent(bucket)+'/'+path;
         }
       }
-      const image=SHARE_PREVIEW_SITE+'/api/smartlink-import?__route=share-image&id='+encodeURIComponent(p.id);
+      // Proxy only covers items stored in our public Supabase Storage. Legacy product records
+      // can keep a public URL in image_url (including local WASSAFRICA assets); preserve it
+      // directly so social crawlers can fetch the original cover instead of a storage-only 404.
+      let useImageProxy=!!mediaUrl;
+      if(!useImageProxy&&p.image_url){
+        try{
+          const candidate=new URL(p.image_url);
+          const storageBase=new URL(process.env.SUPABASE_URL||'https://dzifpwqrqnvssfhwjccj.supabase.co');
+          useImageProxy=candidate.origin===storageBase.origin&&candidate.pathname.startsWith('/storage/v1/object/public/');
+        }catch{}
+      }
+      const image=useImageProxy
+        ? SHARE_PREVIEW_SITE+'/api/smartlink-import?__route=share-image&id='+encodeURIComponent(p.id)
+        : shareImage(p.image_url);
       const title=shareClean(p.title,120)||'Offre WASSAFRICA';
       m={title:title+' — WASSAFRICA',description:shareProductTeaser(p.description,p.title,p.price,p.currency),image,url:SHARE_PREVIEW_SITE+'/product/'+encodeURIComponent(p.id),type:'product',price:p.price,currency:p.currency||'XOF'};
     }
