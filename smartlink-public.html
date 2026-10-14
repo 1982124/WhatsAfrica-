@@ -64,7 +64,7 @@ function contact(owner){
   location.href='/inbox?recipient='+encodeURIComponent(owner);
 }
 let productMediaById={};
-function productMediaUrl(m){if(m.public_url)return WAMedia.resolve(safe(m.public_url),'product');if(!m.storage_bucket||!m.storage_path)return'';return WAMedia.resolve(SB+'/storage/v1/object/public/'+encodeURIComponent(m.storage_bucket)+'/'+String(m.storage_path).split('/').map(encodeURIComponent).join('/'),'product')}
+function productMediaUrl(m){if(m.public_url)return safe(m.public_url);if(!m.storage_bucket||!m.storage_path)return'';return safe(SB+'/storage/v1/object/public/'+encodeURIComponent(m.storage_bucket)+'/'+String(m.storage_path).split('/').map(encodeURIComponent).join('/'))}
 function productVideoMarkup(p){
   const raw=String(p.video_url||'').trim();
   if(!raw)return '';
@@ -89,7 +89,7 @@ function productVideoMarkup(p){
 }
 function productCard(p){
   const media=(productMediaById[p.id]||[]).filter(m=>m.media_type==='cover'||m.media_type==='gallery').sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)).map(productMediaUrl).filter(Boolean);
-  const primary=WAMedia.resolve(safe(p._cover_url||p.image_url||''),'product')||media[0]||WAMedia.fallback('product');
+  const primary=safe(p._cover_url||p.image_url||'')||media[0]||'';
   const images=[primary,...media].filter((u,i,a)=>u&&a.indexOf(u)===i).slice(0,5);
   const typeLabel=p.product_type==='digital'?'PRODUIT DIGITAL':p.product_type==='service'?'SERVICE':p.product_type==='real_estate'?'BIEN IMMOBILIER':'PRODUIT';
   const stock=p.stock==null?'':Number(p.stock)>0?Number(p.stock)+' disponible(s)':'Rupture de stock';
@@ -97,7 +97,7 @@ function productCard(p){
   const gallery=images.length>1?'<div class="productGallery" aria-label="Autres photos de '+esc(p.title||'cette offre')+'">'+images.slice(1).map((u,i)=>'<img loading="lazy" decoding="async" src="'+esc(u)+'" alt="'+esc((p.title||'Offre')+' — photo '+(i+2))+'" onerror="this.style.display=\'none\'">').join('')+'</div>':'';
   const meta=(stock?'<span>'+esc(stock)+'</span>':'')+(variants.length?variants.map(v=>'<span>'+esc(v.label)+(v.price!=null?' · '+esc(money(v.price,v.currency||p.currency)):'')+'</span>').join(''):'');
   const canonical='/product/'+encodeURIComponent(p.id)+'?smart_link_id='+encodeURIComponent(smartLinkId||'');
-  return '<article class="card productCard">'+(primary?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(primary)+'" alt="'+esc(p.title||'Visuel de l’offre')+'" onerror="this.onerror=null;this.src=\''+WAMedia.fallback('product')+'\';"></div>':'<div class="media" style="display:grid;place-items:center;font-size:58px">🛍️</div>')+productVideoMarkup(p)+gallery+'<div class="body"><span class="tag">'+typeLabel+'</span><h3>'+esc(p.title)+'</h3><p class="muted productDescription">'+esc(p.description||'Découvrez cette offre et contactez directement son vendeur.')+'</p>'+(p.price!=null?'<div class="price" data-wa-price="'+esc(p.price)+'" data-wa-currency="'+esc(p.currency||'XOF')+'">'+money(p.price,p.currency)+'</div>':'<div class="price">Prix sur demande</div>')+(meta?'<div class="productMeta">'+meta+'</div>':'')+'<div class="actions productActions"><a class="btn primary" href="'+canonical+'">Voir le produit</a><a class="btn" href="'+canonical+'">Acheter et payer</a><button class="btn" type="button" data-share-product="'+esc(p.id)+'">↗ Partager</button></div></div></article>';
+  return '<article class="card productCard">'+(primary?'<div class="media"><img loading="lazy" decoding="async" src="'+esc(primary)+'" alt="'+esc(p.title||'Visuel de l’offre')+'" onerror="this.onerror=null;this.remove()"></div>':'<div class="media no-image" style="display:grid;place-items:center;color:var(--wa-muted)">Visuel non fourni</div>')+productVideoMarkup(p)+gallery+'<div class="body"><span class="tag">'+typeLabel+'</span><h3>'+esc(p.title)+'</h3><p class="muted productDescription">'+esc(p.description||'Découvrez cette offre et contactez directement son vendeur.')+'</p>'+(p.price!=null?'<div class="price" data-wa-price="'+esc(p.price)+'" data-wa-currency="'+esc(p.currency||'XOF')+'">'+money(p.price,p.currency)+'</div>':'<div class="price">Prix sur demande</div>')+(meta?'<div class="productMeta">'+meta+'</div>':'')+'<div class="actions productActions"><a class="btn primary" href="'+canonical+'">Voir le produit</a><a class="btn" href="'+canonical+'">Acheter et payer</a><button class="btn" type="button" data-share-product="'+esc(p.id)+'">↗ Partager</button></div></div></article>';
 }
 function serviceCard(s){
   const sm=WAMedia.serviceImage(s.metadata,s.title);const image=sm.url||WAMedia.fallback(sm.kind);
