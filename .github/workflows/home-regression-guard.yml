@@ -1,0 +1,41 @@
+name: Home non-regression guard
+
+on:
+  pull_request:
+    paths:
+      - "launch-v2.html"
+      - "vercel.json"
+      - "brand-observer.js"
+      - "wa-showcase-demo.js"
+      - "wa-contact-suite.js"
+      - "tests/check_home_regression.py"
+      - ".github/workflows/home-regression-guard.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "launch-v2.html"
+      - "vercel.json"
+      - "brand-observer.js"
+      - "wa-showcase-demo.js"
+      - "wa-contact-suite.js"
+      - "tests/check_home_regression.py"
+      - ".github/workflows/home-regression-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  homepage-regression:
+    name: Verify homepage baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Check homepage content and routes
+        run: python tests/check_home_regression.py
