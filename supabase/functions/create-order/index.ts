@@ -11,7 +11,7 @@ Deno.serve(async(req)=>{
  try{
   const body=await req.json();
   const items=Array.isArray(body.items)?body.items.slice(0,30).map((x:any)=>({product_id:text(x?.product_id,80),quantity:Math.max(1,Math.min(99,Number(x?.quantity)||1))})).filter(x=>x.product_id):[];
-  if(!body.business_id||!body.smart_link_id||!text(body.buyer_name,120)||text(body.buyer_phone,40).replace(/\D/g,"").length<8||!items.length||!text(body.idempotency_key,120))throw new Error("Données de commande incomplètes.");
+  if(!body.business_id||!text(body.buyer_name,120)||text(body.buyer_phone,40).replace(/\D/g,"").length<8||!items.length||!text(body.idempotency_key,120))throw new Error("Données de commande incomplètes.");
   const supabase=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
   let buyerUserId=null;
   const auth=req.headers.get("Authorization")??"";const token=auth.replace(/^Bearer\s+/i,"");
