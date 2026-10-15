@@ -58,7 +58,7 @@
   const stores=document.getElementById('home-storefronts-grid');
   if(!grid&&!stores)return;
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const safeImage=value=>{const v=String(value||'').trim();return v.startsWith('/')||/^https?:\\/\\//i.test(v)?v:''};
+  const safeImage=value=>{const v=String(value||'').trim();return v.startsWith('/')||v.startsWith('http://')||v.startsWith('https://')?v:''};
   const money=(v,c)=>{const n=Number(v);if(v===null||v===undefined||String(v).trim()===''||!Number.isFinite(n))return '';return new Intl.NumberFormat('fr-FR').format(n)+(c?' '+esc(c):'')};
   try{
     const r=await fetch('/api/smartlink-import?__route=market&_='+Date.now(),{cache:'no-store'});
@@ -84,7 +84,7 @@
         const slug=String(link.slug||business?.slug||'').trim();
         const name=String(business?.name||link.title||'').trim();
         if(!slug||!name)return null;
-        const key=String(link.business_id)+'|'+slug;
+        const key=String(link.business_id);
         if(seen.has(key))return null;
         seen.add(key);
         return {slug,name,city:business?.city,country:business?.country,image:safeImage(business?.cover_image_url||business?.logo_url),description:business?.description||link.description||''};
