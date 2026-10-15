@@ -92,7 +92,30 @@
 
 /* Bloc humain : complète les offres réelles sans remplacer les cartes du Marché. */
 .conversion-people-section{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(22px,4vw,54px);align-items:center;margin:64px 0 20px;padding:20px;border:1px solid var(--cv-line);border-radius:22px;background:#fff}.conversion-people-visual{min-width:0;overflow:hidden;border-radius:16px;background:#eaf1eb}.conversion-people-visual img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}.conversion-people-copy{padding:10px}.conversion-people-copy h2{margin:0;color:var(--cv-ink);font:800 clamp(29px,3.2vw,41px)/1.08 Georgia,'Times New Roman',serif;letter-spacing:-.03em}.conversion-people-copy>p:not(.conversion-kicker){margin:15px 0;color:var(--cv-muted);font-size:15px;line-height:1.7}@media(max-width:650px){.conversion-people-section{grid-template-columns:1fr;gap:17px;margin-top:45px;padding:13px;border-radius:18px}.conversion-people-copy{padding:4px 3px 9px}.conversion-people-copy h2{font-size:31px}.conversion-actions{align-items:stretch;flex-direction:column}.conversion-actions .conversion-text-link{text-align:center;padding:10px}}
-</style></head>
+</style>
+<style>
+/* Visuels humains restaurés dans le Home canonique — sans changer le contenu métier. */
+.conversion-hero-visual{display:grid;align-items:center;min-height:430px;padding:22px;background:radial-gradient(circle at 60% 25%,#397657 0,#24563f 40%,#173d2d 82%)}
+.conversion-hero-visual .hero-portraits{width:min(100%,540px);margin:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:center}
+.conversion-hero-visual .hero-portrait{position:relative;min-width:0;margin:0;aspect-ratio:3/4;overflow:hidden;border:1px solid #ffffff35;border-radius:22px;background:#214b37;box-shadow:0 22px 42px rgba(0,0,0,.24)}
+.conversion-hero-visual .hero-portrait-woman{transform:translateY(-13px)}
+.conversion-hero-visual .hero-portrait-network{transform:translateY(15px)}
+.conversion-hero-visual .hero-portrait img{display:block;width:100%;height:100%;min-height:0;aspect-ratio:auto;object-fit:cover;object-position:center}
+.conversion-hero-visual .hero-portrait figcaption{position:absolute;inset:auto 0 0;padding:34px 13px 14px;background:linear-gradient(transparent,rgba(8,31,22,.92));color:#fff;font-size:13px;font-weight:850;line-height:1.35}
+.conversion-demo-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;overflow:hidden;margin:22px 0 4px;border:1px solid var(--cv-line);border-radius:20px;background:#fff;color:var(--cv-ink);text-decoration:none;box-shadow:0 8px 28px #173d2d0c}
+.conversion-demo-card>img{display:block;width:100%;height:100%;min-height:230px;object-fit:cover;background:#f3eee4}
+.conversion-demo-copy{align-self:center;padding:24px}
+.conversion-demo-label{display:inline-block;margin-bottom:9px;color:#8a5a08;font-size:10px;font-weight:950;letter-spacing:.09em}
+.conversion-demo-copy h3{margin:0 0 8px;font:800 27px/1.08 Georgia,'Times New Roman',serif}
+.conversion-demo-copy p{margin:0 0 14px;color:var(--cv-muted);font-size:14px;line-height:1.6}
+.conversion-demo-copy strong{color:var(--cv-green-2);font-size:14px}
+.conversion-demo-card:focus-visible{outline:3px solid #d89c1b;outline-offset:4px}
+@media(max-width:900px){.conversion-hero-visual{min-height:360px}.conversion-hero-visual .hero-portraits{max-width:460px}}
+@media(max-width:650px){.conversion-hero-visual{min-height:0;padding:18px 14px 24px}.conversion-hero-visual .hero-portraits{gap:10px}.conversion-hero-visual .hero-portrait{border-radius:17px}.conversion-hero-visual .hero-portrait-woman{transform:translateY(-7px)}.conversion-hero-visual .hero-portrait-network{transform:translateY(8px)}.conversion-hero-visual .hero-portrait figcaption{padding:28px 9px 10px;font-size:11px}.conversion-demo-card{grid-template-columns:1fr}.conversion-demo-card>img{height:auto;min-height:0;aspect-ratio:3/2}.conversion-demo-copy{padding:19px}}
+@media(max-width:360px){.conversion-hero-visual .hero-portraits{gap:7px}.conversion-hero-visual .hero-portrait figcaption{font-size:10px;padding-left:7px;padding-right:7px}}
+@media(prefers-reduced-motion:reduce){.conversion-hero-visual .hero-portrait-woman,.conversion-hero-visual .hero-portrait-network{transform:none}}
+</style>
+</head>
 <body>
 <header class="top"><div class="wrap topin"><a class="brand" href="/">WASSAFRICA<span>●</span></a><nav class="nav" aria-label="Navigation principale"><a href="/inbox">💬 Messages</a><a href="/">Accueil</a><a href="/universe">🌍 Explorer</a><a href="/manifesto">📜 Manifeste</a><a href="/groups">👥 Communautés</a><a href="/marche">🛒 Marché</a><a href="/commerce">💼 Commerce</a><a href="/cart">🛒 Panier</a><a href="/dashboard">Ma vitrine</a><a href="/auth">Se connecter</a><a href="/auth">Créer mon compte</a></nav></div></header>
 <main class="wrap conversion-home">
@@ -104,12 +127,13 @@
     <div class="conversion-actions"><a class="conversion-cta" href="/auth">Créer ma vitrine gratuitement <span aria-hidden="true">→</span></a><a class="conversion-text-link" href="/universe">Découvrir WASSAFRICA <span aria-hidden="true">→</span></a></div>
     <p class="conversion-trust"><span aria-hidden="true">✓</span> Gratuit pour commencer <i>•</i> Simple à utiliser <i>•</i> Conçu pour le mobile</p>
   </div>
-  <div class="conversion-hero-visual"><img src="/assets/illustration-smartlink-produit.svg" width="900" height="560" fetchpriority="high" decoding="async" alt="Maquette d’un smartphone affichant une vitrine WASSAFRICA avec identité, produits et contact direct"></div>
+  <div class="conversion-hero-visual" aria-label="Les personnes qui font vivre WASSAFRICA"><div class="hero-portraits" role="group" aria-label="Entrepreneures et communauté WASSAFRICA"><figure class="hero-portrait hero-portrait-woman"><img width="1200" height="900" src="/assets/product-presence.jpg" alt="Une entrepreneure africaine présente son activité" fetchpriority="high" loading="eager" decoding="async"><figcaption>Donnez de la visibilité à votre activité</figcaption></figure><figure class="hero-portrait hero-portrait-network"><img width="640" height="480" src="/assets/wassafrica-network-hero.webp" alt="Des personnes qui entreprennent et échangent" loading="eager" decoding="async"><figcaption>Rencontrez votre communauté</figcaption></figure></div></div>
 </section>
 
 <section class="conversion-section conversion-showcase" aria-labelledby="showcase-title">
   <div class="conversion-section-heading"><p class="conversion-kicker">Le Marché WASSAFRICA</p><h2 id="showcase-title">Découvrez ce qui se crée, se vend et se partage près de vous.</h2><p>Des produits et des offres réellement publiés par des entrepreneurs, des artisans et des commerçants. Explorez les offres et trouvez ce qui correspond à vos besoins.</p></div>
   <div class="conversion-products home-products" id="home-products-grid" aria-live="polite"><p class="market-loading">Chargement des offres publiées…</p></div>
+  <a class="conversion-demo-card" href="/demo" aria-label="Voir la vitrine de démonstration KÔRÔ Créations"><img src="/assets/product-vitrine.jpg" width="960" height="640" loading="lazy" decoding="async" alt="Visuel de la vitrine de démonstration KÔRÔ Créations"><div class="conversion-demo-copy"><span class="conversion-demo-label">EXEMPLE · DÉMONSTRATION</span><h3>KÔRÔ Créations</h3><p>Une vitrine de démonstration pour découvrir comment présenter une activité de mode et d’artisanat, ses réalisations et ses moyens de contact.</p><strong>Voir la démonstration <span aria-hidden="true">→</span></strong></div></a>
   <div class="conversion-section-link"><a href="/marche">Explorer le marché <span aria-hidden="true">→</span></a></div>
 </section>
 
@@ -145,11 +169,11 @@
     if(d.ok===false)throw new Error('market unavailable');
     const products=Array.isArray(d.products)?d.products.filter(x=>x&&x.is_published===true&&x.id&&String(x.title||'').trim()):[];
     if(grid){
-      const top=products.slice(0,3);
+      const top=products.filter(x=>safeImage(x.image_url||x.image)).slice(0,3);
       grid.innerHTML=top.length?top.map(x=>{
         const image=safeImage(x.image_url||x.image);
         const price=money(x.price,x.currency);
-        return '<a class="conversion-product-card" href="/product/'+encodeURIComponent(x.id)+'">'+(image?'<img class="conversion-product-image" width="640" height="480" loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(x.title)+'" onerror="this.onerror=null;this.remove()">':'<div class="conversion-product-image-placeholder">Visuel non fourni</div>')+'<div class="conversion-product-info"><p class="conversion-product-seller">'+esc((Array.isArray(d.businesses)?d.businesses:[]).find(b=>b&&String(b.id)===String(x.business_id))?.name||'Offre publiée sur WASSAFRICA')+'</p><h3 class="conversion-product-title" title="'+esc(x.title)+'">'+esc(x.title)+'</h3>'+(x.product_type?'<span class="conversion-product-type">'+esc(x.product_type)+'</span>':'')+'<div class="conversion-product-bottom">'+(price?'<span class="conversion-product-price">'+price+'</span>':'<span class="conversion-product-price">Voir l’offre</span>')+'<span class="conversion-product-badge">Publié</span></div></div></a>';
+        return '<a class="conversion-product-card" href="/product/'+encodeURIComponent(x.id)+'">'+'<img class="conversion-product-image" width="640" height="480" loading="lazy" decoding="async" src="'+esc(image)+'" alt="'+esc(x.title)+'" onerror="this.onerror=null;this.closest(\'.conversion-product-card\')?.remove()">'+'<div class="conversion-product-info">'+((Array.isArray(d.businesses)?d.businesses:[]).find(b=>b&&String(b.id)===String(x.business_id))?.name?'<p class="conversion-product-seller">'+esc((Array.isArray(d.businesses)?d.businesses:[]).find(b=>b&&String(b.id)===String(x.business_id)).name)+'</p>':'')+'<h3 class="conversion-product-title" title="'+esc(x.title)+'">'+esc(x.title)+'</h3>'+(x.product_type?'<span class="conversion-product-type">'+esc(x.product_type)+'</span>':'')+'<div class="conversion-product-bottom">'+(price?'<span class="conversion-product-price">'+price+'</span>':'<span class="conversion-product-price">Voir l’offre</span>')+'<span class="conversion-product-badge">Publié</span></div></div></a>';
       }).join(''):'<div class="empty">'+(d.partial?'Le catalogue rencontre un problème de chargement. Ouvrez le Marché pour réessayer.':'Aucun produit publié pour le moment. Consultez le Marché pour découvrir les autres offres.')+'</div>';
     }
     if(stores){
