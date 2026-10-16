@@ -13,6 +13,21 @@ This is an audit/checklist only. It does not change application runtime, authent
 - Open risk records include GitHub issues #153, #207, #212, #213 and #216.
 - Deployment READY is not proof of end-to-end product acceptance.
 
+## Country payment readiness — Mali and Benin
+Do not infer payment availability from a user's country, currency, or regional payment-system membership. Keep the payment-method list country-specific and server-authoritative.
+
+| Country | SAMA Money status for WASSAFRICA | Release rule |
+| --- | --- | --- |
+| Mali | Existing product/provider relationship and live eligibility must be confirmed against current merchant/API onboarding records before enabling any new flow. | Keep only the currently approved and tested production flow; use sandbox for new work. |
+| Benin | Local SAMA Money account/agent/merchant availability and WASSAFRICA acceptance are **not verified** in this audit. | Do not advertise or activate SAMA Money for Benin until the provider confirms eligibility, settlement, API/webhook access and merchant approval in writing. |
+
+Before expanding country coverage:
+- [ ] Confirm provider-supported countries, merchant eligibility, currencies, fees, settlement timelines, refunds and dispute handling directly with each provider.
+- [ ] Define a country-to-provider allowlist on the server; never rely only on a client-supplied country or hide/show a button as the security control.
+- [ ] If no approved provider exists for a country, show a clear unavailable/not-yet-supported state rather than a fake or unverified payment option.
+- [ ] Run sandbox tests per country/currency for success, failure, cancellation, timeout, duplicate webhook, refund and reconciliation.
+- [ ] Keep real-payment activation blocked until the provider contract, merchant onboarding, webhook verification, idempotency and reconciliation are signed off.
+
 ## Release-blocking checks — leave unchecked until evidence exists
 - [ ] Confirm public domain serves the expected commit/build and current Home on a clean Android browser session.
 - [ ] Verify canonical Home visuals, official logo, both intended women-focused visuals, KÔRÔ demo placement, no malformed HTML, and no stale service-worker shell.
