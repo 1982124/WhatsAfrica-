@@ -10,6 +10,7 @@ When available in the active environment, apply these skills for engineering cha
 - `dont-it-yourself`: inspect existing project primitives and dependencies before adding tools or code.
 - `host-workspace-operator`: inspect first, use the narrowest safe file operation, and never claim unexecuted checks.
 - Repository-specific workflow: `.claude/skills/wassafrica-safe-change/SKILL.md`.
+- Full-stack quality/security/stabilization gates: `docs/FULL-STACK-BUILDER-STANDARD.md`.
 
 If a skill is unavailable, follow the equivalent rules below; do not claim that a missing skill was activated.
 
