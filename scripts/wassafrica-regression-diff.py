@@ -129,7 +129,9 @@ def main() -> int:
         baseline_count += len(before)
         checked += 1
         for kind, value, line in after:
-            if (kind, value) not in before_signatures:
+            # Homepage image uniqueness is a hard invariant: any duplicate photo
+            # in a changed HTML file fails, even if the same issue existed before.
+            if kind == "duplicate-image-src" or (kind, value) not in before_signatures:
                 regressions.append((relative_path, kind, value, line))
 
     print(f"Changed HTML files checked: {checked}")
