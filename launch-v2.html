@@ -249,7 +249,7 @@
         const image=safeImage(x.image_url||x.image);
         if(!image)return false;
         let key=image;
-        try{const u=new URL(image,location.origin);const p=u.pathname.match(/\\/photos\\/(\\d+)\\/);key=p?'pexels:'+p[1]:u.origin+u.pathname;}catch{key=image.split('?')[0];}
+        try{const u=new URL(image,location.origin);const p=u.pathname.match(/\/photos\/(\d+)\/);key=p?'pexels:'+p[1]:u.origin+u.pathname;}catch{key=image.split('?')[0];}
         if(seenProductImages.has(key))return false;
         seenProductImages.add(key);
         return true;
