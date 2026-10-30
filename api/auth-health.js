@@ -46,7 +46,8 @@ module.exports = async function handler(req, res) {
   const checks = {};
   const started = Date.now();
   try {
-    const r = await timedFetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { Accept: 'application/json' } });
+    const publishable = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
+    const r = await timedFetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { Accept: 'application/json', apikey: publishable } });
     checks.supabase = r.ok ? 'healthy' : 'degraded';
   } catch (_) {
     checks.supabase = 'down';
