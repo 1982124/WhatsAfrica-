@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
       if (!auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required' });
       const token = auth.slice(7);
       const publishable = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_olHxhduENR5AnqUwAh8Qtw_4az5UmRV';
-      const who = await fetch(SUPABASE_URL + '/auth/v1/user', { headers: { apikey: publishable, Authorization: 'Bearer ' + token } });
+      const who = await timedFetch(SUPABASE_URL + '/auth/v1/user', { headers: { apikey: publishable, Authorization: 'Bearer ' + token } }, 4500);
       if (!who.ok) return res.status(401).json({ error: 'Invalid session' });
       const text = String(req.body?.text || '').trim();
       if (text.length < 100 || text.length > 90000) return res.status(400).json({ error: 'Invalid PDF text size' });
@@ -27,13 +27,13 @@ module.exports = async function handler(req, res) {
         pricing_rationale:{type:'string'},excerpt:{type:'string'}
       }, required:['title','description','category','author_name','language','page_count','edition','target_audience','sales_angle','seo_title','seo_description','seo_keywords','suggested_price_xof','pricing_rationale','excerpt'], additionalProperties:false };
       const prompt = 'Tu es l’assistant de montage commercial des produits numériques de WASSAFRICA. À partir du contenu fourni — extrait de document ou description rédigée par le vendeur — prépare une fiche de vente claire, honnête et optimisée pour la recherche, adaptée au format réel (ebook, guide, formation, audio, vidéo, modèle, fichier ZIP ou autre ressource numérique). N’invente jamais auteur, ISBN, nombre de pages, édition, date, certification, résultat garanti ni caractéristique absente. Pour les documents non paginés ou les simples descriptions, laisse page_count à 0. Si une donnée manque, laisse-la vide. Le prix suggéré est indicatif : ne le présente jamais comme une vérité du marché et explique les hypothèses. Réponds uniquement en JSON conforme au schéma.\n\nTEXTE:\n' + text;
-      const ai = await fetch('https://openrouter.ai/api/v1/chat/completions', { method:'POST', headers:{Authorization:'Bearer '+key,'Content-Type':'application/json','HTTP-Referer':PROD_ORIGIN,'X-Title':'WASSAFRICA Ebook Studio'}, body:JSON.stringify({model:'openai/gpt-5-mini',messages:[{role:'system',content:'Tu es un éditeur de produits numériques expert en clarté, SEO et conversion honnête.'},{role:'user',content:prompt}],temperature:0.2,response_format:{type:'json_schema',json_schema:{name:'ebook_sales_metadata',strict:true,schema}}}) });
+      const ai = await timedFetch('https://openrouter.ai/api/v1/chat/completions', { method:'POST', headers:{Authorization:'Bearer '+key,'Content-Type':'application/json','HTTP-Referer':PROD_ORIGIN,'X-Title':'WASSAFRICA Ebook Studio'}, body:JSON.stringify({model:'openai/gpt-5-mini',messages:[{role:'system',content:'Tu es un éditeur de produits numériques expert en clarté, SEO et conversion honnête.'},{role:'user',content:prompt}],temperature:0.2,response_format:{type:'json_schema',json_schema:{name:'ebook_sales_metadata',strict:true,schema}}}) }, 20000);
       const raw=await ai.text();
-      if(!ai.ok) return res.status(502).json({error:'AI provider error',detail:raw.slice(0,500)});
+      if(!ai.ok) return res.status(502).json({error:'AI provider error'});
       const parsed=JSON.parse(raw), content=parsed.choices?.[0]?.message?.content;
       if(!content) return res.status(502).json({error:'AI returned no result'});
       return res.status(200).json(JSON.parse(content));
-    } catch (e) { return res.status(500).json({error:e.message || 'AI analysis failed'}); }
+    } catch (_) { return res.status(500).json({error:'AI analysis failed or timed out'}); }
   }
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   res.setHeader('Cache-Control', 'no-store, max-age=0');
