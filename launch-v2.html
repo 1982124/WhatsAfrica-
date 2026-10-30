@@ -174,7 +174,19 @@
  .conversion-live-heading{align-items:flex-start;flex-direction:column;gap:10px;margin-top:24px;padding-top:20px}
  .conversion-live-heading>a{padding:8px 0}
 }
-</style></head>
+</style>
+<style>
+/* Les trois bénéfices deviennent concrets grâce aux visuels locaux du dépôt. */
+.conversion-pillar-grid-illustrated{align-items:stretch;gap:18px}
+.conversion-pillar-illustrated{min-width:0;padding:14px 14px 18px;border:1px solid var(--cv-line);border-top:3px solid var(--cv-green);border-radius:17px;background:#fff;box-shadow:0 6px 22px rgba(23,61,45,.055)}
+.conversion-pillar-image{display:block;width:100%;aspect-ratio:16/9;height:auto;object-fit:cover;object-position:center;border-radius:11px;background:#edf3ee}
+.conversion-pillar-illustrated .conversion-pillar-mark{margin:14px 0 12px}
+.conversion-pillar-illustrated h3{margin-bottom:8px}
+.conversion-pillar-illustrated p{max-width:none}
+@media(max-width:900px){.conversion-pillar-grid-illustrated{grid-template-columns:1fr;gap:14px}.conversion-pillar-illustrated{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr);grid-template-rows:auto auto auto;column-gap:16px;align-items:start}.conversion-pillar-image{grid-column:1;grid-row:1/4;height:100%;min-height:140px;aspect-ratio:auto}.conversion-pillar-illustrated .conversion-pillar-mark{grid-column:2;grid-row:1;margin:0 0 8px}.conversion-pillar-illustrated h3{grid-column:2;grid-row:2;margin:0 0 6px}.conversion-pillar-illustrated p{grid-column:2;grid-row:3;margin:0}}
+@media(max-width:520px){.conversion-pillar-illustrated{grid-template-columns:1fr;grid-template-rows:auto auto auto auto}.conversion-pillar-image{grid-column:1;grid-row:1;width:100%;height:auto;aspect-ratio:16/9;min-height:0}.conversion-pillar-illustrated .conversion-pillar-mark{grid-column:1;grid-row:2;margin:13px 0 9px}.conversion-pillar-illustrated h3{grid-column:1;grid-row:3;margin-bottom:7px}.conversion-pillar-illustrated p{grid-column:1;grid-row:4}}
+</style>
+</head>
 <body>
 <header class="top"><div class="wrap topin"><a class="brand" href="/" aria-label="WASSAFRICA — accueil"><img src="/wassafrica-logo.svg" width="42" height="42" alt="" decoding="async"><strong>WASSAFRICA</strong><span aria-hidden="true">●</span></a><nav class="nav" aria-label="Navigation principale"><a href="/universe">🌍 Explorer</a><a href="/marche">🛍️ Marché</a><a href="/groups">👥 Communautés</a><a href="/inbox">💬 Messages</a><a href="/dashboard">Ma vitrine</a><details class="nav-more"><summary>Plus <span aria-hidden="true">▾</span></summary><div class="nav-more-menu"><a href="/commerce">💼 Commerce</a><a href="/cart">🛒 Panier</a><a href="/manifesto">📜 Manifeste</a><a href="/">Accueil</a></div></details><a class="nav-cta" href="/auth">Créer un compte</a></nav></div></header>
 <main class="wrap conversion-home">
@@ -202,10 +214,10 @@
 
 <section class="conversion-section conversion-pillars" aria-labelledby="pillars-title">
   <div class="conversion-section-heading"><p class="conversion-kicker">Votre activité, mieux présentée</p><h2 id="pillars-title">Une vitrine à votre image. Un lien à partager partout.</h2><p>Rassemblez votre identité, vos produits, vos services et vos informations essentielles dans un espace professionnel que vos clients peuvent consulter et partager facilement.</p></div>
-  <div class="conversion-pillar-grid">
-    <article class="conversion-pillar"><span class="conversion-pillar-mark" aria-hidden="true">↗</span><h3>Présentez votre activité</h3><p>Une vitrine claire pour montrer ce que vous faites et ce que vous proposez.</p></article>
-    <article class="conversion-pillar"><span class="conversion-pillar-mark" aria-hidden="true">↔</span><h3>Créez des échanges utiles</h3><p>Entrez en contact avec vos clients et vos partenaires potentiels.</p></article>
-    <article class="conversion-pillar"><span class="conversion-pillar-mark" aria-hidden="true">◇</span><h3>Développez vos opportunités</h3><p>Rendez vos offres plus visibles et facilitez la découverte de votre activité.</p></article>
+  <div class="conversion-pillar-grid conversion-pillar-grid-illustrated">
+    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="/assets/product-vitrine.jpg" width="1200" height="900" alt="Aperçu d’une vitrine professionnelle présentant une activité et ses offres" loading="lazy" decoding="async"><span class="conversion-pillar-mark" aria-hidden="true">↗</span><h3>Présentez votre activité</h3><p>Une vitrine claire pour montrer ce que vous faites et ce que vous proposez.</p></article>
+    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="/assets/product-smartlink.jpg" width="1200" height="900" alt="Aperçu des outils WASSAFRICA pour faciliter les échanges et les prises de contact" loading="lazy" decoding="async"><span class="conversion-pillar-mark" aria-hidden="true">↔</span><h3>Créez des échanges utiles</h3><p>Entrez en contact avec vos clients et vos partenaires potentiels.</p></article>
+    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="/assets/product-presence.jpg" width="1200" height="900" alt="Aperçu d’une présence professionnelle WASSAFRICA qui rend une activité plus visible" loading="lazy" decoding="async"><span class="conversion-pillar-mark" aria-hidden="true">◇</span><h3>Développez vos opportunités</h3><p>Rendez vos offres plus visibles et facilitez la découverte de votre activité.</p></article>
   </div>
 </section>
 
