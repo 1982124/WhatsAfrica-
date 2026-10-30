@@ -51,9 +51,19 @@ class IntegrityParser(HTMLParser):
             self.add("img-empty-src", f"image#{len(self.img_sources) + len(self.findings) + 1}")
             return
 
-        self.img_sources[src] += 1
-        if self.img_sources[src] > 1:
-            self.add("duplicate-image-src", f"{src}#{self.img_sources[src]}")
+        # Compare canonical image identity, not just the literal URL: query strings,
+        # width variants, and format parameters must not allow the same photo twice.
+        parsed = urlsplit(src)
+        pexels_match = re.search(r"/photos/(\\d+)(?:/|$)", parsed.path)
+        if pexels_match:
+            image_key = f"pexels:{pexels_match.group(1)}"
+        elif parsed.scheme or parsed.netloc or src.startswith("//"):
+            image_key = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
+        else:
+            image_key = parsed.path
+        self.img_sources[image_key] += 1
+        if self.img_sources[image_key] > 1:
+            self.add("duplicate-image-src", f"{image_key}#{self.img_sources[image_key]}")
 
         if "alt" not in attrs_dict:
             self.add("img-missing-alt", f"{src}#{self.img_sources[src]}")
