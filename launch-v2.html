@@ -215,9 +215,9 @@
 <section class="conversion-section conversion-pillars" aria-labelledby="pillars-title">
   <div class="conversion-section-heading"><p class="conversion-kicker">Votre activité, mieux présentée</p><h2 id="pillars-title">Une vitrine à votre image. Un lien à partager partout.</h2><p>Rassemblez votre identité, vos produits, vos services et vos informations essentielles dans un espace professionnel que vos clients peuvent consulter et partager facilement.</p></div>
   <div class="conversion-pillar-grid conversion-pillar-grid-illustrated">
-    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="https://images.pexels.com/photos/5332457/pexels-photo-5332457.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" width="1200" height="900" alt="Entrepreneure présentant son activité depuis son espace de travail" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="conversion-pillar-mark" aria-hidden="true">↗</span><h3>Présentez votre activité</h3><p>Une vitrine claire pour montrer ce que vous faites et ce que vous proposez.</p></article>
-    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="https://images.pexels.com/photos/6280574/pexels-photo-6280574.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900" width="1200" height="900" alt="Entrepreneure en conversation pour faciliter les échanges professionnels" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="conversion-pillar-mark" aria-hidden="true">↔</span><h3>Créez des échanges utiles</h3><p>Entrez en contact avec vos clients et vos partenaires potentiels.</p></article>
-    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="https://images.pexels.com/photos/20068076/pexels-photo-20068076.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" width="1200" height="900" alt="Commerçante présentant ses produits sur son marché" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="conversion-pillar-mark" aria-hidden="true">◇</span><h3>Développez vos opportunités</h3><p>Rendez vos offres plus visibles et facilitez la découverte de votre activité.</p></article>
+    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="https://images.pexels.com/photos/3865845/pexels-photo-3865845.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" width="1200" height="900" alt="Professionnels collaborant autour d’un ordinateur dans un espace de travail" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="conversion-pillar-mark" aria-hidden="true">↗</span><h3>Présentez votre activité</h3><p>Une vitrine claire pour montrer ce que vous faites et ce que vous proposez.</p></article>
+    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="https://images.pexels.com/photos/30678213/pexels-photo-30678213.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" width="1200" height="900" alt="Deux professionnels collaborant autour d’un ordinateur à Lagos" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="conversion-pillar-mark" aria-hidden="true">↔</span><h3>Créez des échanges utiles</h3><p>Entrez en contact avec vos clients et vos partenaires potentiels.</p></article>
+    <article class="conversion-pillar conversion-pillar-illustrated"><img class="conversion-pillar-image" src="https://images.pexels.com/photos/39059072/pexels-photo-39059072.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" width="1200" height="900" alt="Scène de marché africain avec une vendeuse et des étals" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="conversion-pillar-mark" aria-hidden="true">◇</span><h3>Développez vos opportunités</h3><p>Rendez vos offres plus visibles et facilitez la découverte de votre activité.</p></article>
   </div>
 </section>
 
@@ -244,7 +244,16 @@
     if(d.ok===false)throw new Error('market unavailable');
     const products=Array.isArray(d.products)?d.products.filter(x=>x&&x.is_published===true&&x.id&&String(x.title||'').trim()):[];
     if(grid){
-      const top=products.filter(x=>safeImage(x.image_url||x.image)).slice(0,3);
+      const seenProductImages=new Set();
+      const top=products.filter(x=>{
+        const image=safeImage(x.image_url||x.image);
+        if(!image)return false;
+        let key=image;
+        try{const u=new URL(image,location.origin);const p=u.pathname.match(/\\/photos\\/(\\d+)\\/);key=p?'pexels:'+p[1]:u.origin+u.pathname;}catch{key=image.split('?')[0];}
+        if(seenProductImages.has(key))return false;
+        seenProductImages.add(key);
+        return true;
+      }).slice(0,3);
       grid.innerHTML=top.length?top.map(x=>{
         const image=safeImage(x.image_url||x.image);
         const price=money(x.price,x.currency);
