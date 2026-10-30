@@ -185,6 +185,19 @@
 .conversion-pillar-illustrated p{max-width:none}
 @media(max-width:900px){.conversion-pillar-grid-illustrated{grid-template-columns:1fr;gap:14px}.conversion-pillar-illustrated{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr);grid-template-rows:auto auto auto;column-gap:16px;align-items:start}.conversion-pillar-image{grid-column:1;grid-row:1/4;height:100%;min-height:140px;aspect-ratio:auto}.conversion-pillar-illustrated .conversion-pillar-mark{grid-column:2;grid-row:1;margin:0 0 8px}.conversion-pillar-illustrated h3{grid-column:2;grid-row:2;margin:0 0 6px}.conversion-pillar-illustrated p{grid-column:2;grid-row:3;margin:0}}
 @media(max-width:520px){.conversion-pillar-illustrated{grid-template-columns:1fr;grid-template-rows:auto auto auto auto}.conversion-pillar-image{grid-column:1;grid-row:1;width:100%;height:auto;aspect-ratio:16/9;min-height:0}.conversion-pillar-illustrated .conversion-pillar-mark{grid-column:1;grid-row:2;margin:13px 0 9px}.conversion-pillar-illustrated h3{grid-column:1;grid-row:3;margin-bottom:7px}.conversion-pillar-illustrated p{grid-column:1;grid-row:4}}
+
+<style>
+/* Illustration éditoriale dédiée au marché en direct — image unique, sans toucher au chargement des offres. */
+.conversion-market-feature{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(260px,.95fr);align-items:stretch;min-height:220px;margin:0 0 22px;overflow:hidden;border:1px solid var(--cv-line);border-radius:18px;background:#fff;color:var(--cv-ink);text-decoration:none;box-shadow:0 8px 24px #173d2d0b;transition:transform .18s ease,box-shadow .18s ease}
+.conversion-market-feature:hover{transform:translateY(-2px);box-shadow:0 14px 30px #173d2d14}
+.conversion-market-feature:focus-visible{outline:3px solid #d89c1b;outline-offset:4px}
+.conversion-market-feature>img{display:block;width:100%;height:100%;min-height:220px;object-fit:cover;object-position:center 48%;background:#edf3ee}
+.conversion-market-feature-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:11px;padding:clamp(20px,3vw,34px)}
+.conversion-market-feature-copy strong{max-width:390px;color:var(--cv-ink);font:800 clamp(21px,2.5vw,30px)/1.12 Georgia,'Times New Roman',serif}
+.conversion-market-feature-copy>span{max-width:390px;color:var(--cv-muted);font-size:14px;line-height:1.65}
+.conversion-market-feature-copy b{margin-top:5px;color:var(--cv-green-2);font-size:13px;font-weight:900}
+@media(max-width:650px){.conversion-market-feature{grid-template-columns:1fr;margin-bottom:18px}.conversion-market-feature>img{height:auto;min-height:0;aspect-ratio:16/9}.conversion-market-feature-copy{gap:8px;padding:18px}.conversion-market-feature-copy strong{font-size:23px}}
+</style>
 </style>
 </head>
 <body>
@@ -208,6 +221,10 @@
   <div class="conversion-demo-intro"><span class="conversion-demo-label">POUR LES VENDEURS · EXEMPLE CONCRET</span><h3>Voyez ce qu’une vitrine peut devenir</h3><p>La démonstration KÔRÔ Créations montre comment mettre en valeur une activité, ses réalisations et ses moyens de contact.</p></div>
   <a class="conversion-demo-card" href="/demo" aria-label="Voir la vitrine de démonstration KÔRÔ Créations"><img src="/assets/product-vitrine.jpg" width="960" height="640" loading="lazy" decoding="async" alt="Visuel de la vitrine de démonstration KÔRÔ Créations"><div class="conversion-demo-copy"><span class="conversion-demo-label">VITRINE DE DÉMONSTRATION</span><h3>KÔRÔ Créations</h3><p>Une activité fictive de mode et d’artisanat, présentée comme exemple de vitrine professionnelle.</p><strong>Voir la démonstration <span aria-hidden="true">→</span></strong></div></a>
   <div class="conversion-live-heading"><div><p class="conversion-kicker">Le marché en direct</p><h3>Offres publiées par la communauté</h3><p>Des produits réellement publiés par les vendeurs. Ouvrez une fiche pour consulter son contenu et son prix.</p></div><a href="/marche">Tout le marché <span aria-hidden="true">→</span></a></div>
+  <a class="conversion-market-feature" href="/marche" aria-label="Explorer le marché WASSAFRICA">
+    <img src="https://images.pexels.com/photos/13279766/pexels-photo-13279766.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" width="1200" height="800" alt="Vendeuses et produits frais sur un marché de Dassa, au Bénin" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+    <span class="conversion-market-feature-copy"><strong>Le commerce local, au cœur de nos communautés.</strong><span>Découvrez les produits et les vendeurs qui font vivre nos marchés.</span><b>Explorer les offres <span aria-hidden="true">→</span></b></span>
+  </a>
   <div class="conversion-products home-products" id="home-products-grid" aria-live="polite"><p class="market-loading">Chargement des offres publiées…</p></div>
   <div class="conversion-section-link"><a href="/marche">Explorer le marché <span aria-hidden="true">→</span></a></div>
 </section>
