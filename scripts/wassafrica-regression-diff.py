@@ -54,7 +54,7 @@ class IntegrityParser(HTMLParser):
         # Compare canonical image identity, not just the literal URL: query strings,
         # width variants, and format parameters must not allow the same photo twice.
         parsed = urlsplit(src)
-        pexels_match = re.search(r"/photos/(\\d+)(?:/|$)", parsed.path)
+        pexels_match = re.search(r"/photos/(\d+)(?:/|$)", parsed.path)
         if pexels_match:
             image_key = f"pexels:{pexels_match.group(1)}"
         elif parsed.scheme or parsed.netloc or src.startswith("//"):
