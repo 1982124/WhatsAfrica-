@@ -11,6 +11,10 @@ When available in the active environment, apply these skills for engineering cha
 - `host-workspace-operator`: inspect first, use the narrowest safe file operation, and never claim unexecuted checks.
 - Repository-specific workflow: `.claude/skills/wassafrica-safe-change/SKILL.md`.
 - Full-stack quality/security/stabilization gates: `docs/FULL-STACK-BUILDER-STANDARD.md`.
+- Portable specialist skill router: `.agents/skills/full-stack-builder/SKILL.md`.
+- Security engineering and threat review: `.agents/skills/security-hardening/SKILL.md`.
+- Production diagnosis, repair and anti-regression: `.agents/skills/app-stabilization/SKILL.md`.
+- Payment provider and webhook safety: `.agents/skills/payment-integrations/SKILL.md`.
 
 If a skill is unavailable, follow the equivalent rules below; do not claim that a missing skill was activated.
 
