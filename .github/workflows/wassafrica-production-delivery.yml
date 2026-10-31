@@ -76,6 +76,7 @@ jobs:
           done
 
       - name: Verify canonical production content
+        shell: bash
         run: |
           set -euo pipefail
           curl -L -sS --max-time 30 https://wassafrica.vercel.app/inbox | grep -Fq 'Messages WassAfrica'
