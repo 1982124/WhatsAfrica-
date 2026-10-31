@@ -35,36 +35,32 @@ jobs:
           grep -Fq 'smart_links' smartlink-public.html
           grep -Fq 'Strict-Transport-Security' vercel.json
 
-      - name: Require deployment credentials
+      - name: Require Vercel access token
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
-          test -n "$VERCEL_TOKEN"
-          test -n "$VERCEL_ORG_ID"
-          test -n "$VERCEL_PROJECT_ID"
+          if [[ -z "$VERCEL_TOKEN" ]]; then
+            echo "::error::Missing GitHub Actions secret VERCEL_TOKEN. Add it in Settings > Secrets and variables > Actions. Never commit or paste the token into source code."
+            exit 1
+          fi
 
       - name: Pull production environment
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --scope="team_mx52snHfM2FwA3sXVop7HSNI"
 
       - name: Build exact production artifact
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        run: vercel build --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+        run: vercel build --prod --token="$VERCEL_TOKEN" --scope="team_mx52snHfM2FwA3sXVop7HSNI"
 
       - name: Deploy exact artifact to production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         run: |
           set -euo pipefail
-          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID")"
+          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --scope="team_mx52snHfM2FwA3sXVop7HSNI")"
           echo "DEPLOYMENT_URL=$url" >> "$GITHUB_ENV"
           echo "Production deployment: $url"
 
@@ -80,7 +76,6 @@ jobs:
           done
 
       - name: Verify canonical production content
-        shell: bash
         run: |
           set -euo pipefail
           curl -L -sS --max-time 30 https://wassafrica.vercel.app/inbox | grep -Fq 'Messages WassAfrica'
