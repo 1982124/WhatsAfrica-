@@ -5,6 +5,7 @@ on:
     paths:
       - 'api/_lib/safe-external-fetch.js'
       - 'api/smartlink-import.js'
+      - 'api/smartlink-ai.js'
       - 'tests/smartlink-safe-external-fetch.test.cjs'
       - '.github/workflows/smartlink-security-tests.yml'
   workflow_dispatch:
@@ -27,5 +28,6 @@ jobs:
         run: |
           node --check api/_lib/safe-external-fetch.js
           node --check api/smartlink-import.js
+          node --check api/smartlink-ai.js
       - name: SSRF regression tests
         run: node --test tests/smartlink-safe-external-fetch.test.cjs
