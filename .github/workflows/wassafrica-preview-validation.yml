@@ -1,0 +1,67 @@
+name: WASSAFRICA — Preview Validation
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wassafrica-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-preview-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout pull request revision
+        uses: actions/checkout@v4
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@48.10.2
+
+      - name: Static integrity gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t jsfiles < <(find . -type f -name '*.js' -not -path './node_modules/*' -not -path './.git/*' | sort)
+          for f in "${jsfiles[@]}"; do node --check "$f"; done
+          test -f inbox.html
+          test -f smartlink-public.html
+          grep -Fq 'wa:inbox-ready' inbox.html
+          grep -Fq 'smart_links' smartlink-public.html
+          grep -Fq 'Strict-Transport-Security' vercel.json
+
+      - name: Require Vercel access token
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$VERCEL_TOKEN" ]]; then
+            echo "::error::Missing GitHub Actions secret VERCEL_TOKEN. Add it in Settings > Secrets and variables > Actions. Never commit or paste the token into source code."
+            exit 1
+          fi
+
+      - name: Pull Preview environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_mx52snHfM2FwA3sXVop7HSNI
+          VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
+        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+
+      - name: Build Preview artifact without deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_mx52snHfM2FwA3sXVop7HSNI
+          VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
+        run: |
+          set -euo pipefail
+          vercel build --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+          test -d .vercel/output
+          echo "WASSAFRICA PREVIEW BUILD VERIFIED (NOT DEPLOYED)"
+          echo "Commit: $GITHUB_SHA"
