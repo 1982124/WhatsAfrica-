@@ -1,52 +1,55 @@
 async function fetchImportedImage(imageUrl,res){
-  const u=new URL(imageUrl);
-  if(!['http:','https:'].includes(u.protocol)||u.username||u.password)return res.status(400).json({error:'INVALID_IMAGE_URL'});
-  if(u.port&&u.port!=='80'&&u.port!=='443')return res.status(400).json({error:'INVALID_IMAGE_PORT'});
-  const host=u.hostname.toLowerCase();
-  if(host==='localhost'||host.endsWith('.localhost')||host==='127.0.0.1'||host==='::1'||host.startsWith('127.')||host.startsWith('10.')||host.startsWith('192.168.')||host.startsWith('169.254.')||host.startsWith('172.16.')||host.startsWith('172.17.')||host.startsWith('172.18.')||host.startsWith('172.19.')||host.startsWith('172.2')||host.startsWith('172.30.')||host.startsWith('172.31.')||host.endsWith('.internal'))return res.status(400).json({error:'BLOCKED_HOST'});
-  const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),5000);let r;
-  try{r=await fetch(imageUrl,{method:'GET',redirect:'manual',signal:ac.signal,headers:{'User-Agent':'WASSAFRICA Smart Link Image Import/1.0','Accept':'image/avif,image/webp,image/png,image/jpeg,image/gif'}})}
-  catch(e){return res.status(502).json({error:'IMAGE_FETCH_FAILED',message:e?.message||'Image fetch failed'})}
-  finally{clearTimeout(timer)}
+  let r;
+  try{
+    r=await safeExternalFetch(imageUrl,{method:'GET',maxBytes:5*1024*1024,timeoutMs:5000,headers:{'User-Agent':'WASSAFRICA Smart Link Image Import/1.0','Accept':'image/avif,image/webp,image/png,image/jpeg,image/gif'}});
+  }catch(e){
+    const code=String(e?.message||'');
+    if(['INVALID_SOURCE_URL','INVALID_SOURCE_PORT','BLOCKED_SOURCE_HOST','BLOCKED_SOURCE_ADDRESS','SOURCE_URL_TOO_LONG'].includes(code))return res.status(400).json({error:code});
+    return res.status(502).json({error:code==='SOURCE_TOO_LARGE'?'IMAGE_TOO_LARGE':'IMAGE_FETCH_FAILED',message:'Image fetch failed'});
+  }
   if(r.status>=300&&r.status<400)return res.status(400).json({error:'REDIRECT_NOT_ALLOWED'});
   if(!r.ok)return res.status(502).json({error:'IMAGE_FETCH_FAILED',status:r.status});
   const type=(r.headers.get('content-type')||'').split(';')[0].toLowerCase();
-  if(!/^image\/(jpeg|png|webp|gif|avif)$/.test(type))return res.status(415).json({error:'NOT_AN_IMAGE'});
+  if(!/^image\\/(jpeg|png|webp|gif|avif)$/.test(type))return res.status(415).json({error:'NOT_AN_IMAGE'});
   const len=Number(r.headers.get('content-length')||0);
   if(len>5*1024*1024)return res.status(413).json({error:'IMAGE_TOO_LARGE'});
   const buf=Buffer.from(await r.arrayBuffer());
-  if(buf.length>5*1024*1024)return res.status(413).json({error:'IMAGE_TOO_LARGE'});
+  if(!buf.length||buf.length>5*1024*1024)return res.status(413).json({error:'IMAGE_TOO_LARGE'});
   res.setHeader('Content-Type',type);res.setHeader('Cache-Control','private, max-age=300');res.setHeader('X-Content-Type-Options','nosniff');
-  return res.status(200).send(buf)
+  return res.status(200).send(buf);
 }
 async function fetchSourcePage(pageUrl){
-  const first=new URL(pageUrl);
-  if(!['http:','https:'].includes(first.protocol)||first.username||first.password)throw new Error('INVALID_SOURCE_URL');
-  if(first.port&&first.port!=='80'&&first.port!=='443')throw new Error('INVALID_SOURCE_PORT');
-  const isBlockedHost=(host)=>host==='localhost'||host.endsWith('.localhost')||host==='127.0.0.1'||host==='::1'||host.startsWith('127.')||host.startsWith('10.')||host.startsWith('192.168.')||host.startsWith('169.254.')||/^172\.(1[6-9]|2[0-9]|3[01])\./.test(host)||host.endsWith('.internal');
-  if(isBlockedHost(first.hostname.toLowerCase()))throw new Error('BLOCKED_SOURCE_HOST');
-  let url=pageUrl;
+  let url=String(pageUrl);
   for(let hop=0;hop<4;hop++){
-    const u=new URL(url);if(isBlockedHost(u.hostname.toLowerCase()))throw new Error('BLOCKED_SOURCE_HOST');
-    const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),10000);let r;
-    try{r=await fetch(url,{redirect:'manual',signal:ac.signal,headers:{'User-Agent':'WASSAFRICA Smart Link Analyzer/1.0','Accept':'text/html,application/xhtml+xml'}})}
-    catch(e){throw new Error('SOURCE_FETCH_FAILED:'+((e&&e.message)||'fetch failed'))}finally{clearTimeout(timer)}
-    if(r.status>=300&&r.status<400){const loc=r.headers.get('location');if(!loc)throw new Error('SOURCE_REDIRECT_INVALID');url=new URL(loc,url).toString();continue}
+    let r;
+    try{
+      r=await safeExternalFetch(url,{method:'GET',maxBytes:4*1024*1024,timeoutMs:10000,headers:{'User-Agent':'WASSAFRICA Smart Link Analyzer/1.0','Accept':'text/html,application/xhtml+xml'}});
+    }catch(e){
+      throw new Error(String(e?.message||'SOURCE_FETCH_FAILED'));
+    }
+    if(r.status>=300&&r.status<400){
+      const loc=r.headers.get('location');
+      if(!loc)throw new Error('SOURCE_REDIRECT_INVALID');
+      try{url=new URL(loc,url).toString()}catch{throw new Error('SOURCE_REDIRECT_INVALID')}
+      continue;
+    }
     if(!r.ok)throw new Error('SOURCE_FETCH_HTTP_'+r.status);
-    const type=(r.headers.get('content-type')||'').toLowerCase();if(!type.includes('text/html')&&!type.includes('application/xhtml+xml'))throw new Error('SOURCE_NOT_HTML');
+    const type=(r.headers.get('content-type')||'').toLowerCase();
+    if(!type.includes('text/html')&&!type.includes('application/xhtml+xml'))throw new Error('SOURCE_NOT_HTML');
     const declaredLength=Number(r.headers.get('content-length')||0);
     if(declaredLength>4*1024*1024)throw new Error('SOURCE_TOO_LARGE');
     const htmlBuffer=Buffer.from(await r.arrayBuffer());
     if(htmlBuffer.length>4*1024*1024)throw new Error('SOURCE_TOO_LARGE');
-    const html=htmlBuffer.toString('utf8');const clean=html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<noscript[\s\S]*?<\/noscript>/gi,' ');
-    const title=(clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
+    const html=htmlBuffer.toString('utf8');
+    const clean=html.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<noscript[\\s\\S]*?<\\/noscript>/gi,' ');
+    const title=(clean.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
     const metas=[...clean.matchAll(/<meta[^>]+(?:name|property)=["'](?:description|og:title|og:description|og:image|product:price:amount|product:price:currency)["'][^>]+content=["']([^"']*)["'][^>]*>/gi)].map(m=>m[1]).filter(Boolean);
     const images=[...html.matchAll(/<(?:img|source)[^>]+(?:src|srcset)=["']([^"']+)["']/gi)].map(m=>m[1].split(',')[0].trim()).filter(Boolean).map(x=>{try{return new URL(x,url).toString()}catch{return null}}).filter(Boolean).slice(0,10);
-    const jsonld=[...html.matchAll(/<script[^>]+type=["']application\/ld\\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1].trim()).filter(Boolean).slice(0,5);
-    const text=clean.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim().slice(0,14000);
+    const jsonld=[...html.matchAll(/<script[^>]+type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1].trim()).filter(Boolean).slice(0,5);
+    const text=clean.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\\s+/g,' ').trim().slice(0,14000);
     return {url,title,metas,images,jsonld,text};
   }
-  throw new Error('SOURCE_TOO_MANY_REDIRECTS')
+  throw new Error('SOURCE_TOO_MANY_REDIRECTS');
 }
 function extractResponseText(j){
   if(typeof j?.output_text==='string'&&j.output_text.trim())return j.output_text.trim();
