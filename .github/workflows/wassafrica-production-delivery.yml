@@ -1,24 +1,23 @@
-name: WASSAFRICA — Preview Validation
+name: WASSAFRICA — Production Delivery
 
 on:
-  pull_request:
+  push:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: wassafrica-preview-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: wassafrica-production
+  cancel-in-progress: false
 
 jobs:
-  validate-preview-build:
+  deploy-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout pull request revision
+      - name: Checkout exact main commit
         uses: actions/checkout@v4
 
       - name: Install pinned Vercel CLI
@@ -36,32 +35,77 @@ jobs:
           grep -Fq 'smart_links' smartlink-public.html
           grep -Fq 'Strict-Transport-Security' vercel.json
 
-      - name: Require Vercel access token
+      - name: Require deployment credentials
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_mx52snHfM2FwA3sXVop7HSNI
+          VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
+          VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "$VERCEL_TOKEN" ]]; then
-            echo "::error::Missing GitHub Actions secret VERCEL_TOKEN. Add it in Settings > Secrets and variables > Actions. Never commit or paste the token into source code."
+            echo "::error::Missing GitHub Actions secret VERCEL_TOKEN. Add it in Settings > Secrets and variables > Actions."
             exit 1
           fi
 
-      - name: Pull Preview environment
+      - name: Pull production environment
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: team_mx52snHfM2FwA3sXVop7HSNI
           VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
-        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
 
-      - name: Build Preview artifact without deployment
+      - name: Build exact production artifact
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_mx52snHfM2FwA3sXVop7HSNI
+          VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
+        run: vercel build --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+
+      - name: Deploy exact artifact to production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: team_mx52snHfM2FwA3sXVop7HSNI
           VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
         run: |
           set -euo pipefail
-          vercel build --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
-          test -d .vercel/output
-          echo "WASSAFRICA PREVIEW BUILD VERIFIED (NOT DEPLOYED)"
+          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID")"
+          echo "DEPLOYMENT_URL=$url" >> "$GITHUB_ENV"
+          echo "Production deployment: $url"
+
+      - name: Verify production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://wassafrica.vercel.app'
+          for path in / /auth /inbox /messaging /market /marketplace /marche /dashboard /offer-create /manifesto /install /manifest.webmanifest /sw.js /robots.txt /sitemap.xml; do
+            code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 30 "$base$path")
+            echo "$path -> $code"
+            case "$code" in 200|204|301|302|303) ;; *) exit 1 ;; esac
+          done
+
+      - name: Verify canonical production content
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L -sS --max-time 30 https://wassafrica.vercel.app/inbox | grep -Fq 'Messages WassAfrica'
+          curl -L -sS --max-time 30 https://wassafrica.vercel.app/market | grep -Fq 'WassAfrica'
+          curl -L -sS --max-time 30 https://wassafrica.vercel.app/robots.txt | grep -Fq 'Sitemap: https://wassafrica.vercel.app/sitemap.xml'
+          curl -L -sS --max-time 30 https://wassafrica.vercel.app/sitemap.xml | grep -Fq 'https://wassafrica.vercel.app/marche'
+
+      - name: Verify production security headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(curl -L -sS -D - -o /dev/null --max-time 30 https://wassafrica.vercel.app/auth)"
+          printf '%s\n' "$headers" | grep -qi '^strict-transport-security:'
+          printf '%s\n' "$headers" | grep -qi '^x-content-type-options:'
+          printf '%s\n' "$headers" | grep -qi '^x-frame-options:'
+          printf '%s\n' "$headers" | grep -qi '^permissions-policy:'
+
+      - name: Delivery report
+        run: |
+          echo "WASSAFRICA PRODUCTION DELIVERY VERIFIED"
           echo "Commit: $GITHUB_SHA"
+          echo "Deployment: $DEPLOYMENT_URL"
