@@ -101,7 +101,8 @@ async function safeExternalFetch(input, options = {}) {
       else resolve(response);
     };
     const onAbort = () => request.destroy(new Error('SOURCE_FETCH_ABORTED'));
-    const request = transport.request({
+    const requestImpl = options.requestImpl || transport.request;
+    const request = requestImpl.call(transport, {
       protocol: url.protocol,
       hostname: url.hostname.replace(/^\[|\]$/g, ''),
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
