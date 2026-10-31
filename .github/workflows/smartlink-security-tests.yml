@@ -1,0 +1,31 @@
+name: Smart Link security tests
+
+on:
+  pull_request:
+    paths:
+      - 'api/_lib/safe-external-fetch.js'
+      - 'api/smartlink-import.js'
+      - 'tests/smartlink-safe-external-fetch.test.cjs'
+      - '.github/workflows/smartlink-security-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smartlink-safe-fetch:
+    name: Smart Link SSRF regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Syntax check
+        run: |
+          node --check api/_lib/safe-external-fetch.js
+          node --check api/smartlink-import.js
+      - name: SSRF regression tests
+        run: node --test tests/smartlink-safe-external-fetch.test.cjs
