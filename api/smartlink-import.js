@@ -1,3 +1,5 @@
+const { safeExternalFetch } = require('./_lib/safe-external-fetch');
+
 async function fetchImportedImage(imageUrl,res){
   let r;
   try{
@@ -10,7 +12,7 @@ async function fetchImportedImage(imageUrl,res){
   if(r.status>=300&&r.status<400)return res.status(400).json({error:'REDIRECT_NOT_ALLOWED'});
   if(!r.ok)return res.status(502).json({error:'IMAGE_FETCH_FAILED',status:r.status});
   const type=(r.headers.get('content-type')||'').split(';')[0].toLowerCase();
-  if(!/^image\\/(jpeg|png|webp|gif|avif)$/.test(type))return res.status(415).json({error:'NOT_AN_IMAGE'});
+  if(!/^image\/(jpeg|png|webp|gif|avif)$/.test(type))return res.status(415).json({error:'NOT_AN_IMAGE'});
   const len=Number(r.headers.get('content-length')||0);
   if(len>5*1024*1024)return res.status(413).json({error:'IMAGE_TOO_LARGE'});
   const buf=Buffer.from(await r.arrayBuffer());
@@ -41,12 +43,12 @@ async function fetchSourcePage(pageUrl){
     const htmlBuffer=Buffer.from(await r.arrayBuffer());
     if(htmlBuffer.length>4*1024*1024)throw new Error('SOURCE_TOO_LARGE');
     const html=htmlBuffer.toString('utf8');
-    const clean=html.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<noscript[\\s\\S]*?<\\/noscript>/gi,' ');
-    const title=(clean.match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
+    const clean=html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<noscript[\s\S]*?<\/noscript>/gi,' ');
+    const title=(clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim();
     const metas=[...clean.matchAll(/<meta[^>]+(?:name|property)=["'](?:description|og:title|og:description|og:image|product:price:amount|product:price:currency)["'][^>]+content=["']([^"']*)["'][^>]*>/gi)].map(m=>m[1]).filter(Boolean);
     const images=[...html.matchAll(/<(?:img|source)[^>]+(?:src|srcset)=["']([^"']+)["']/gi)].map(m=>m[1].split(',')[0].trim()).filter(Boolean).map(x=>{try{return new URL(x,url).toString()}catch{return null}}).filter(Boolean).slice(0,10);
-    const jsonld=[...html.matchAll(/<script[^>]+type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1].trim()).filter(Boolean).slice(0,5);
-    const text=clean.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\\s+/g,' ').trim().slice(0,14000);
+    const jsonld=[...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1].trim()).filter(Boolean).slice(0,5);
+    const text=clean.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim().slice(0,14000);
     return {url,title,metas,images,jsonld,text};
   }
   throw new Error('SOURCE_TOO_MANY_REDIRECTS');
