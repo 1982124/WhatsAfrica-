@@ -1,23 +1,24 @@
-name: WASSAFRICA — Production Delivery
+name: WASSAFRICA — Preview Validation
 
 on:
-  push:
+  pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: wassafrica-production
-  cancel-in-progress: false
+  group: wassafrica-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy-and-verify:
+  validate-preview-build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout exact main commit
+      - name: Checkout pull request revision
         uses: actions/checkout@v4
 
       - name: Install pinned Vercel CLI
@@ -38,6 +39,7 @@ jobs:
       - name: Require Vercel access token
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        shell: bash
         run: |
           set -euo pipefail
           if [[ -z "$VERCEL_TOKEN" ]]; then
@@ -45,57 +47,17 @@ jobs:
             exit 1
           fi
 
-      - name: Pull production environment
+      - name: Pull Preview environment
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --scope="team_mx52snHfM2FwA3sXVop7HSNI"
+        run: vercel pull --yes --environment=preview --scope="team_mx52snHfM2FwA3sXVop7HSNI"
 
-      - name: Build exact production artifact
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel build --prod --token="$VERCEL_TOKEN" --scope="team_mx52snHfM2FwA3sXVop7HSNI"
-
-      - name: Deploy exact artifact to production
+      - name: Build Preview artifact without deployment
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --scope="team_mx52snHfM2FwA3sXVop7HSNI")"
-          echo "DEPLOYMENT_URL=$url" >> "$GITHUB_ENV"
-          echo "Production deployment: $url"
-
-      - name: Verify production routes
-        shell: bash
-        run: |
-          set -euo pipefail
-          base='https://wassafrica.vercel.app'
-          for path in / /auth /inbox /messaging /market /marketplace /marche /dashboard /offer-create /manifesto /install /manifest.webmanifest /sw.js /robots.txt /sitemap.xml; do
-            code=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 30 "$base$path")
-            echo "$path -> $code"
-            case "$code" in 200|204|301|302|303) ;; *) exit 1 ;; esac
-          done
-
-      - name: Verify canonical production content
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -L -sS --max-time 30 https://wassafrica.vercel.app/inbox | grep -Fq 'Messages WassAfrica'
-          curl -L -sS --max-time 30 https://wassafrica.vercel.app/market | grep -Fq 'WassAfrica'
-          curl -L -sS --max-time 30 https://wassafrica.vercel.app/robots.txt | grep -Fq 'Sitemap: https://wassafrica.vercel.app/sitemap.xml'
-          curl -L -sS --max-time 30 https://wassafrica.vercel.app/sitemap.xml | grep -Fq 'https://wassafrica.vercel.app/marche'
-
-      - name: Verify production security headers
-        shell: bash
-        run: |
-          set -euo pipefail
-          headers="$(curl -L -sS -D - -o /dev/null --max-time 30 https://wassafrica.vercel.app/auth)"
-          printf '%s\n' "$headers" | grep -qi '^strict-transport-security:'
-          printf '%s\n' "$headers" | grep -qi '^x-content-type-options:'
-          printf '%s\n' "$headers" | grep -qi '^x-frame-options:'
-          printf '%s\n' "$headers" | grep -qi '^permissions-policy:'
-
-      - name: Delivery report
-        run: |
-          echo "WASSAFRICA PRODUCTION DELIVERY VERIFIED"
+          vercel build --scope="team_mx52snHfM2FwA3sXVop7HSNI"
+          test -d .vercel/output
+          echo "WASSAFRICA PREVIEW BUILD VERIFIED (NOT DEPLOYED)"
           echo "Commit: $GITHUB_SHA"
-          echo "Deployment: $DEPLOYMENT_URL"
