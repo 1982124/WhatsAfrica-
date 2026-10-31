@@ -40,7 +40,6 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: team_mx52snHfM2FwA3sXVop7HSNI
           VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
-          VERCEL_PROJECT_ID: prj_h1PSYw1DMyDhmoaVc2Qy4uRsgJbh
         shell: bash
         run: |
           set -euo pipefail
