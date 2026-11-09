@@ -6,7 +6,7 @@ async function fetchImportedImage(imageUrl,res){
   if(host==='localhost'||host.endsWith('.localhost')||host==='127.0.0.1'||host==='::1'||host.startsWith('127.')||host.startsWith('10.')||host.startsWith('192.168.')||host.startsWith('169.254.')||host.startsWith('172.16.')||host.startsWith('172.17.')||host.startsWith('172.18.')||host.startsWith('172.19.')||host.startsWith('172.2')||host.startsWith('172.30.')||host.startsWith('172.31.')||host.endsWith('.internal'))return res.status(400).json({error:'BLOCKED_HOST'});
   const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),5000);let r;
   try{r=await fetch(imageUrl,{method:'GET',redirect:'manual',signal:ac.signal,headers:{'User-Agent':'WASSAFRICA Smart Link Image Import/1.0','Accept':'image/avif,image/webp,image/png,image/jpeg,image/gif'}})}
-  catch(e){return res.status(502).json({error:'IMAGE_FETCH_FAILED',message:e?.message||'Image fetch failed'})}
+  catch(e){console.warn('[SMARTLINK_AI]', 'IMAGE_FETCH_FAILED', e?.name||'Error');return res.status(502).json({error:'IMAGE_FETCH_FAILED',message:'Impossible de récupérer cette image.'})}
   finally{clearTimeout(timer)}
   if(r.status>=300&&r.status<400)return res.status(400).json({error:'REDIRECT_NOT_ALLOWED'});
   if(!r.ok)return res.status(502).json({error:'IMAGE_FETCH_FAILED',status:r.status});
@@ -515,13 +515,13 @@ async function handler(req,res){
       const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':'Bearer '+openAiKey,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.WASSAFRICA_SMARTLINK_MODEL||'gpt-5.6-sol',tools:[{type:'web_search'}],input:prompt,text:{format:{type:'json_schema',name:'smartlink_offers',strict:true,schema:{type:'object',properties:{offers:{type:'array',maxItems:20,items:{type:'object',properties:{title:{type:'string'},description:{type:'string'},price:{type:['number','null']},currency:{type:'string'},stock:{type:['number','null']},category:{type:'string'},product_type:{type:'string',enum:['physical','digital','service']},source_url:{type:'string'},image_urls:{type:'array',items:{type:'string'},maxItems:5}},required:['title','description','price','currency','stock','category','product_type','source_url','image_urls'],additionalProperties:false}}},required:['offers'],additionalProperties:false}}}})});
       j=await r.json();
       console.info('[SMARTLINK_AI]',requestId,'OPENAI_RESPONSE','status='+r.status);
-      if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENAI_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',detail:j?.error?.message||'Erreur IA lors de l’analyse des liens.'})}
+      if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENAI_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',message:'Le moteur IA est momentanément indisponible. Réessayez plus tard.'})}
     }else{
       const models=(process.env.OPENROUTER_MODELS||'qwen/qwen3.6-flash,qwen/qwen3.5-9b').split(',').map(x=>x.trim()).filter(Boolean).slice(0,4);
       console.info('[SMARTLINK_AI]',requestId,'OPENROUTER_REQUEST','model='+models[0]);
       const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),30000);let r;let raw='';try{r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+openRouterKey,'Content-Type':'application/json','HTTP-Referer':'https://wassafrica.vercel.app','X-Title':'WassAfrica Smart Link'},body:JSON.stringify({model:models[0],models,messages:[{role:'system',content:'Tu es un assistant commercial fiable. Réponds uniquement en JSON valide. Ne fabrique aucune donnée absente des sources.'},{role:'user',content:prompt}],temperature:0.1,max_tokens:4000,response_format:{type:'json_object'}}),signal:ac.signal});raw=await r.text()}catch(e){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_FETCH_FAILED',e?.name||'Error',e?.message||'');return res.status(502).json({error:'AI_REQUEST_FAILED',message:e?.name==='AbortError'?'Le moteur IA a dépassé le délai autorisé.':'Le moteur IA est momentanément inaccessible.'})}finally{clearTimeout(timer)}try{j=raw?JSON.parse(raw):null}catch(e){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_NON_JSON','status='+r?.status);return res.status(502).json({error:'AI_REQUEST_FAILED',message:'Le moteur IA a renvoyé une réponse invalide.'})}
       console.info('[SMARTLINK_AI]',requestId,'OPENROUTER_RESPONSE','status='+r.status);
-      if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',detail:j?.error?.message||'Erreur IA lors de l’analyse des liens.'})}
+      if(!r.ok){console.error('[SMARTLINK_AI]',requestId,'OPENROUTER_ERROR',j?.error?.code||'unknown');return res.status(502).json({error:'AI_REQUEST_FAILED',message:'Le moteur IA est momentanément indisponible. Réessayez plus tard.'})}
     }
     let out=extractResponseText(j);
     if(!out&&j?.choices?.[0]?.message?.content)out=j.choices[0].message.content;
@@ -551,7 +551,7 @@ async function handler(req,res){
     return res.status(200).json({offers})
   }catch(e){
     console.error('[SMARTLINK_AI]',requestId,'FAILED',e?.name||'Error',e?.message||'Erreur import IA');
-    return res.status(500).json({error:'IMPORT_FAILED',message:'L’importation IA a rencontré une erreur serveur.',detail:e?.message||'Erreur import IA'})
+    return res.status(500).json({error:'IMPORT_FAILED',message:'L’importation IA a rencontré une erreur serveur.',request_id:requestId})
   }
 }
 
