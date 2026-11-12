@@ -26,7 +26,7 @@
 <span class="muted">Créez l’offre ici, puis ajoutez vos produits.</span>
 </header>
 
-<section id="collections" class="card"><div class="row"><h2 style="margin:0">Mes collections</h2><button class="btn primary" type="button" onclick="startNew()">+ Nouvelle collection</button></div><div id="list" class="muted" style="margin-top:12px">Connexion à votre espace…</div></section>
+<section id="collections" class="card"><div class="row"><h2 style="margin:0">Mes collections</h2><button class="btn primary" type="button" onclick="startNew()">+ Nouvelle collection</button></div><div class="field" id="businessContext" hidden><label for="businessPicker">Activité commerciale</label><select id="businessPicker" aria-label="Choisir l’activité commerciale"></select><p class="muted">Les collections affichées appartiennent à l’activité sélectionnée.</p></div><div id="list" class="muted" style="margin-top:12px">Connexion à votre espace…</div></section>
 
 <section id="studio" class="card" style="display:none">
 <div class="row"><div><h2 id="studioTitle" style="margin:0">Nouvelle collection</h2><div id="progress" class="progress-note"></div></div><button class="btn" type="button" onclick="closeStudio()">← Mes collections</button></div>
@@ -55,7 +55,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const money=(n,c='XOF')=>Number(n||0).toLocaleString('fr-FR')+' '+c;
 const cleanQ=v=>(v||'').replace(/[%_]/g,'').trim();
 let booting=false;
-async function bootFromSession(s){if(booting)return;booting=true;try{if(!s){location.href='/auth?next='+encodeURIComponent(location.href);return}storeSession(s);userId=s.user.id;$('list').textContent='Chargement de vos collections…';const r=await db.from('businesses').select('id').eq('owner_id',userId).limit(1).maybeSingle();if(r.error)throw r.error;if(!r.data){$('list').textContent='Aucune activité commerciale associée.';return}bid=r.data.id;await loadCollections()}catch(e){$('list').textContent='Impossible de charger vos collections : '+(e.message||e)}finally{booting=false}}
+async function bootFromSession(s){if(booting)return;booting=true;try{if(!s){location.href='/auth?next='+encodeURIComponent(location.href);return}storeSession(s);userId=s.user.id;$('list').textContent='Chargement de vos collections…';const r=await db.from('businesses').select('id,name,owner_id').eq('owner_id',userId).order('created_at',{ascending:false});if(r.error)throw r.error;const businesses=r.data||[];if(!businesses.length){$('list').textContent='Aucune activité commerciale associée.';return}const requested=new URLSearchParams(location.search).get('business_id');const chosen=businesses.find(x=>x.id===requested)||businesses[0];bid=chosen.id;if(businesses.length>1){$('businessPicker').innerHTML=businesses.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name||'Activité sans nom')+'</option>').join('');$('businessPicker').value=bid;$('businessContext').hidden=false;$('businessPicker').onchange=async()=>{const next=businesses.find(x=>x.id===$('businessPicker').value);if(!next)return;bid=next.id;const url=new URL(location.href);url.searchParams.set('business_id',bid);history.replaceState(null,'',url.pathname+url.search+url.hash);await loadCollections()}}await loadCollections()}catch(e){$('list').textContent='Impossible de charger vos collections : '+(e.message||e)}finally{booting=false}}
 async function init(){
  $('list').textContent='Connexion à votre espace…';
  try{
