@@ -1,1 +1,124 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#163A72"><meta name="mobile-web-app-capable" content="yes"><link rel="manifest" href="/manifest.webmanifest"><title>Installer WASSAFRICA</title><style>body{margin:0;background:#f5f7fb;color:#172033;font:16px system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:680px;margin:auto;padding:28px 18px}.card{background:#fff;border:1px solid #dfe5ef;border-radius:24px;padding:28px;box-shadow:0 16px 50px #163a7218}.logo{width:92px;height:92px;border-radius:24px;background:#163A72;display:grid;place-items:center;color:#fff;font-size:48px;font-weight:950;box-shadow:0 12px 30px #163a7230}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:16px;padding:14px 18px;background:#2563EB;color:#fff;font-weight:900;text-decoration:none;cursor:pointer;font-size:16px}.install{background:#F59E0B;color:#111}.muted{color:#64748b;line-height:1.6}.steps{padding-left:22px;line-height:1.8}.status{margin-top:14px;font-weight:800}.brand{font-size:24px;font-weight:950;color:#163A72;margin:18px 0}.hidden{display:none}@media(max-width:560px){.wrap{padding:16px 12px}.card{padding:22px}.btn{width:100%}}</style></head><body><main class="wrap"><div class="brand">WASSAFRICA</div><section class="card"><div class="logo">W</div><h1>Installer WASSAFRICA sur Android</h1><p class="muted">Installez WASSAFRICA comme une application sur votre téléphone. L’application s’ouvrira ensuite en plein écran depuis votre écran d’accueil.</p><button id="install" class="btn install hidden">📲 Installer WASSAFRICA</button><p id="status" class="status"></p><h2>Si le bouton n’apparaît pas</h2><ol class="steps"><li>Ouvrez WASSAFRICA dans <b>Google Chrome</b>.</li><li>Appuyez sur le menu <b>⋮</b>.</li><li>Choisissez <b>Installer l’application</b> ou <b>Ajouter à l’écran d’accueil</b>.</li><li>Validez l’installation.</li></ol><p class="muted">L’installation nécessite une connexion HTTPS et un navigateur compatible. WASSAFRICA utilise son manifeste et son service worker officiels pour l’installation.</p><a class="btn" href="/">← Retour à WASSAFRICA</a></section></main><script>let deferred=null;const btn=document.getElementById('install'),status=document.getElementById('status');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;btn.classList.remove('hidden');status.textContent='Installation disponible sur cet appareil.'});btn.onclick=async()=>{if(!deferred)return;deferred.prompt();const r=await deferred.userChoice;status.textContent=r.outcome==='accepted'?'✓ WASSAFRICA est en cours d’installation.':'Installation non confirmée.';deferred=null;btn.classList.add('hidden')};window.addEventListener('appinstalled',()=>{status.textContent='✓ WASSAFRICA est installée sur votre appareil.';btn.classList.add('hidden')});if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});</script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#163A72">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="WASSAFRICA">
+  <meta name="apple-touch-icon" content="/icon-192.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>Installer WASSAFRICA sur vos appareils</title>
+  <style>
+    :root{color-scheme:light;--blue:#163a72;--ink:#172033;--muted:#5f6b7c;--line:#dfe5ef;--bg:#f5f7fb;--gold:#f2b544}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+    .wrap{width:min(820px,100%);margin:auto;padding:28px 18px 48px}.brand{font-size:25px;font-weight:950;color:var(--blue);margin:8px 0 20px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:clamp(20px,5vw,34px);box-shadow:0 16px 50px #163a7218}
+    .logo{width:76px;height:76px;border-radius:21px;background:var(--blue);display:grid;place-items:center;color:#fff;font-size:42px;font-weight:950}
+    h1{font-size:clamp(27px,5vw,38px);line-height:1.12;margin:18px 0 8px}h2{font-size:20px;margin:26px 0 8px}
+    p{margin:8px 0}.muted{color:var(--muted)}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:14px;padding:13px 18px;background:var(--blue);color:#fff;font-weight:900;text-decoration:none;cursor:pointer;font:inherit}
+    .install{background:var(--gold);color:#211a0b;font-weight:900}.hidden{display:none!important}
+    .status{margin-top:14px;padding:12px 14px;border-radius:13px;background:#eef3fb;font-weight:750}.status[data-state="offline"]{background:#fff3df;color:#704400}
+    .devices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.device{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff}.device h3{margin:0 0 6px;font-size:16px}.device ol{padding-left:20px;margin:8px 0 0}.device li{margin:5px 0}.note{margin-top:18px;padding:14px;border-left:4px solid var(--gold);background:#fff9eb;border-radius:8px}
+    @media(max-width:600px){.wrap{padding:14px 12px 32px}.devices{grid-template-columns:1fr}.btn{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="brand">WASSAFRICA</div>
+    <section class="card">
+      <div class="logo" aria-hidden="true">W</div>
+      <h1>WASSAFRICA sur votre téléphone ou ordinateur</h1>
+      <p class="muted">Installez WASSAFRICA comme une application depuis un navigateur compatible. L'installation ne nécessite pas de passer par un magasin d'applications.</p>
+      <button id="install" class="btn install hidden" type="button">📲 Installer WASSAFRICA</button>
+      <p id="status" class="status" role="status" aria-live="polite">Vérification de votre appareil…</p>
+
+      <h2>Choisissez votre appareil</h2>
+      <div class="devices">
+        <section class="device">
+          <h3>Android — Chrome, Edge ou navigateur compatible</h3>
+          <ol><li>Ouvrez WASSAFRICA dans Chrome ou Edge.</li><li>Ouvrez le menu ⋮.</li><li>Choisissez « Installer l'application » ou « Ajouter à l'écran d'accueil ».</li><li>Confirmez.</li></ol>
+        </section>
+        <section class="device">
+          <h3>iPhone et iPad — Safari</h3>
+          <ol><li>Ouvrez WASSAFRICA dans Safari.</li><li>Appuyez sur le bouton Partager.</li><li>Choisissez « Sur l'écran d'accueil ».</li><li>Activez « Ouvrir comme app web » si cette option apparaît, puis Ajouter.</li></ol>
+          <p class="muted">Sur iOS/iPadOS, utilisez Safari pour l'installation depuis le navigateur.</p>
+        </section>
+        <section class="device">
+          <h3>Windows — Chrome ou Edge</h3>
+          <ol><li>Ouvrez WASSAFRICA dans Chrome ou Edge.</li><li>Cliquez sur l'icône Installer dans la barre d'adresse, si elle apparaît, ou ouvrez le menu.</li><li>Choisissez « Installer WASSAFRICA » puis confirmez.</li></ol>
+        </section>
+        <section class="device">
+          <h3>macOS — Chrome, Edge ou Safari</h3>
+          <ol><li>Dans Chrome ou Edge, ouvrez le menu et choisissez l'installation de WASSAFRICA.</li><li>Dans Safari sur les versions compatibles, utilisez Fichier → Ajouter au Dock.</li><li>Suivez la confirmation affichée.</li></ol>
+        </section>
+        <section class="device">
+          <h3>Linux et ChromeOS</h3>
+          <ol><li>Ouvrez WASSAFRICA dans Chrome ou Chromium compatible.</li><li>Ouvrez le menu du navigateur.</li><li>Choisissez « Installer la page comme application » ou l'option équivalente.</li></ol>
+          <p class="muted">Si votre navigateur ne propose pas l'installation, ajoutez WASSAFRICA aux favoris.</p>
+        </section>
+        <section class="device">
+          <h3>Autres navigateurs</h3>
+          <p>Si votre navigateur ne propose pas l'installation d'applications web, vous pouvez quand même utiliser WASSAFRICA directement dans ce navigateur ou l'ajouter aux favoris.</p>
+        </section>
+      </div>
+
+      <h2>Utilisation hors connexion</h2>
+      <p>Après une première ouverture avec Internet, WASSAFRICA peut retrouver certaines pages et ressources déjà mises en cache. Les données disponibles hors connexion dépendent des pages déjà chargées et du stockage conservé par votre appareil.</p>
+      <p class="muted">La connexion au compte, les nouveaux contenus du serveur, la synchronisation, les appels en direct et les paiements nécessitent Internet. Une action en attente n'est pas une commande payée : aucun paiement n'est confirmé hors connexion.</p>
+      <div class="note"><strong>Conseil :</strong> ouvrez WASSAFRICA une première fois avec une bonne connexion, puis vérifiez les pages dont vous avez besoin avant de partir hors ligne.</div>
+      <p style="margin-top:22px"><a class="btn" href="/">← Retour à WASSAFRICA</a></p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const button = document.getElementById('install');
+      const status = document.getElementById('status');
+      let deferredPrompt = null;
+      const standalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      const updateStatus = () => {
+        if (!navigator.onLine) {
+          status.dataset.state = 'offline';
+          status.textContent = 'Vous êtes hors connexion. Les pages déjà mises en cache peuvent rester accessibles ; les services serveur attendront le retour d’Internet.';
+        } else if (standalone()) {
+          status.dataset.state = 'online';
+          status.textContent = 'WASSAFRICA est ouverte en mode application sur cet appareil.';
+        } else {
+          status.dataset.state = 'online';
+          status.textContent = 'Connexion disponible. Suivez les étapes correspondant à votre appareil pour installer WASSAFRICA.';
+        }
+      };
+      window.addEventListener('online', updateStatus);
+      window.addEventListener('offline', updateStatus);
+      window.addEventListener('appinstalled', () => {
+        button.classList.add('hidden');
+        status.textContent = 'WASSAFRICA a été installée sur cet appareil.';
+      });
+      window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault();
+        deferredPrompt = event;
+        button.classList.remove('hidden');
+      });
+      button.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        status.textContent = choice.outcome === 'accepted'
+          ? 'La demande d’installation a été acceptée par le navigateur.'
+          : 'Installation non confirmée. Vous pouvez utiliser les étapes manuelles ci-dessus.';
+        deferredPrompt = null;
+        button.classList.add('hidden');
+      });
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', {scope:'/', updateViaCache:'none'}).catch(error => {
+            console.warn('WASSAFRICA service worker registration failed', error);
+          });
+        }, {once:true});
+      }
+      updateStatus();
+    })();
+  </script>
+</body>
+</html>
