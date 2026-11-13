@@ -1,8 +1,7 @@
 -- P1 security hardening: a user may self-join only as a regular member.
--- Existing administrators and the mapped group owner retain their current
--- ability to assign the roles already permitted by the live policy.
--- This migration is intentionally isolated in a review branch; it has not
--- been applied to the production Supabase project.
+-- Group owners and existing admins retain role-management access through
+-- public.is_group_admin(), which checks groups.owner_id and admin memberships.
+-- This migration is isolated in a review branch and is not applied to production.
 
 BEGIN;
 
@@ -22,18 +21,10 @@ CREATE POLICY group_members_insert_combined
       user_id = (SELECT auth.uid())
       AND role = 'member'::text
     )
-    OR EXISTS (
-      SELECT 1
-      FROM public.groups g
-      JOIN public.profiles p
-        ON p.smartlink_slug = g.owner_slug
-      WHERE g.id = group_members.group_id
-        AND p.user_id = (SELECT auth.uid())
-    )
   );
 
 COMMENT ON POLICY group_members_insert_combined
   ON public.group_members
-  IS 'Self-join is restricted to role member; existing group admins and the mapped group owner retain role-management access.';
+  IS 'Only group owners and existing admins may assign group roles; users may self-join only as member.';
 
 COMMIT;
