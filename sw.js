@@ -3,7 +3,6 @@ const CACHE_PREFIX='wassafrica-shell-';
 const STATIC_EXT=/\.(?:html|js|css|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$/i;
 const HTML_EXT=/\.html$/i;
 const SENSITIVE_PATH=/^\/(?:api(?:\/|$)|admin(?:[-/]|$)|cockpit(?:\.html|\/|$)|auth(?:\.html|\/|$)|dashboard(?:\.html|\/|$)|checkout(?:[-/]|\.html|$)|orders?(?:\.html|\/|$)|cart(?:\.html|\/|$)|payment(?:[-/]|\.html|$))/i;
-const SENSITIVE_PATH=/^\\/(?:api(?:\\/|$)|admin(?:[-/]|$)|cockpit(?:\\.html|\\/|$)|auth(?:\\.html|\\/|$)|dashboard(?:\\.html|\\/|$)|checkout(?:[-/]|\\.html|$)|orders?(?:\\.html|\\/|$)|cart(?:\\.html|\\/|$)|payment(?:[-/]|\\.html|$))/i;
 function canCacheResponse(response){if(!response||!response.ok||response.type==='opaque')return false;const cc=(response.headers.get('Cache-Control')||'').toLowerCase();return !/(?:private|no-store|no-cache)/.test(cc);}
 function safeNavigation(url){return !url.search && !SENSITIVE_PATH.test(url.pathname);}
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>Promise.allSettled(CORE.filter(u=>!SENSITIVE_PATH.test(new URL(u,self.location.origin).pathname)).map(u=>c.add(new Request(u,{cache:'reload'}))))).then(()=>self.skipWaiting()));});
