@@ -136,7 +136,7 @@ async function paymentWebhook(req,res){
   const eventStatus={'payin.session.completed':'paid','payin.session.cancelled':'cancelled','payin.session.pending':'pending'}[event];
   if(!token)return res.status(400).json({ok:false,error:'provider_token_missing'});
   if(!eventStatus)return res.status(202).json({ok:true,ignored:true,reason:'unsupported_event'});
-  const intents=await paymentServiceGet('payment_intents',{provider:'eq.moneyfusion',provider_reference:'eq.'+token,select:'id,order_id,amount,status,provider_reference'});
+  const intents=await paymentServiceGet('payment_intents',{provider:'eq.moneyfusion',provider_reference:'eq.'+token,select:'id,order_id,amount,currency,status,provider_reference'});
   const intent=intents[0];
   if(!intent?.order_id)return res.status(404).json({ok:false,error:'payment_intent_not_found'});
   let verified;
@@ -157,9 +157,11 @@ async function paymentWebhook(req,res){
   const order=orders[0];
   if(!order)return res.status(404).json({ok:false,error:'payment_order_not_found'});
   // MoneyFusion's documented status response does not expose a currency field.
-  // This integration therefore accepts only WASSAFRICA orders denominated in XOF.
+  // Verify that the local payment intent and its order use the same currency.
   const orderCurrency=String(order.currency||'').trim().toUpperCase();
-  if(orderCurrency!=='XOF')return res.status(409).json({ok:false,error:'unsupported_order_currency'});
+  const intentCurrency=String(intent.currency||'').trim().toUpperCase();
+  if(!orderCurrency||!intentCurrency||orderCurrency!==intentCurrency)
+    return res.status(409).json({ok:false,error:'payment_currency_mismatch'});
   const expectedAmount=Number(intent.amount),orderAmount=Number(order.total);
   if(!Number.isFinite(expectedAmount)||expectedAmount<=0||!Number.isFinite(orderAmount)||orderAmount<=0||Math.abs(expectedAmount-orderAmount)>0.01)
     return res.status(409).json({ok:false,error:'payment_intent_order_amount_mismatch'});
