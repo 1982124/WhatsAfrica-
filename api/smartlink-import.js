@@ -136,7 +136,7 @@ async function paymentWebhook(req,res){
   const eventStatus={'payin.session.completed':'paid','payin.session.cancelled':'cancelled','payin.session.pending':'pending'}[event];
   if(!token)return res.status(400).json({ok:false,error:'provider_token_missing'});
   if(!eventStatus)return res.status(202).json({ok:true,ignored:true,reason:'unsupported_event'});
-  const intents=await paymentServiceGet('payment_intents',{provider:'eq.moneyfusion',provider_reference:'eq.'+token,select:'id,order_id,amount,status,provider_reference'});
+  const intents=await paymentServiceGet('payment_intents',{provider:'eq.moneyfusion',provider_reference:'eq.'+token,select:'id,order_id,amount,currency,status,provider_reference'});
   const intent=intents[0];
   if(!intent?.order_id)return res.status(404).json({ok:false,error:'payment_intent_not_found'});
   let verified;
@@ -151,9 +151,30 @@ async function paymentWebhook(req,res){
   if(!allowedStatuses[event].includes(providerStatus))return res.status(409).json({ok:false,error:'provider_status_mismatch'});
   const personalInfo=Array.isArray(verified.personal_Info)?verified.personal_Info:[];
   const providerOrderId=personalInfo.map(x=>String(x?.orderId||'').trim()).find(Boolean);
-  if(providerOrderId&&providerOrderId!==String(intent.order_id))return res.status(409).json({ok:false,error:'provider_order_mismatch'});
-  const amount=Number(verified.Montant??verified.montant),fees=Number(verified.frais??0),expectedAmount=Number(intent.amount);
-  if(Number.isFinite(amount)&&Number.isFinite(expectedAmount)&&Math.abs(amount+(Number.isFinite(fees)?fees:0)-expectedAmount)>0.01&&Math.abs(amount-expectedAmount)>0.01)return res.status(409).json({ok:false,error:'amount_mismatch'});
+  if(!providerOrderId)return res.status(409).json({ok:false,error:'provider_order_reference_missing'});
+  if(providerOrderId!==String(intent.order_id))return res.status(409).json({ok:false,error:'provider_order_mismatch'});
+  const orders=await paymentServiceGet('orders',{id:'eq.'+intent.order_id,select:'id,total,currency'});
+  const order=orders[0];
+  if(!order)return res.status(404).json({ok:false,error:'payment_order_not_found'});
+  // MoneyFusion's documented status response does not expose a currency field.
+  // Verify that the local payment intent and its order use the same currency.
+  const orderCurrency=String(order.currency||'').trim().toUpperCase();
+  const intentCurrency=String(intent.currency||'').trim().toUpperCase();
+  if(!orderCurrency||!intentCurrency||orderCurrency!==intentCurrency)
+    return res.status(409).json({ok:false,error:'payment_currency_mismatch'});
+  const expectedAmount=Number(intent.amount),orderAmount=Number(order.total);
+  if(!Number.isFinite(expectedAmount)||expectedAmount<=0||!Number.isFinite(orderAmount)||orderAmount<=0||Math.abs(expectedAmount-orderAmount)>0.01)
+    return res.status(409).json({ok:false,error:'payment_intent_order_amount_mismatch'});
+  const rawAmount=verified.Montant??verified.montant;
+  if(rawAmount===undefined||rawAmount===null||String(rawAmount).trim()==='')
+    return res.status(409).json({ok:false,error:'provider_amount_missing'});
+  const amount=Number(rawAmount);
+  const rawFees=verified.frais??0;
+  const fees=Number(rawFees);
+  if(!Number.isFinite(amount)||amount<=0||!Number.isFinite(fees)||fees<0)
+    return res.status(409).json({ok:false,error:'provider_amount_invalid'});
+  if(Math.abs(amount+fees-expectedAmount)>0.01&&Math.abs(amount-expectedAmount)>0.01)
+    return res.status(409).json({ok:false,error:'amount_mismatch'});
   const transaction=String(verified.numeroTransaction||verified._id||token).trim();
   const result=await paymentRpc('apply_payment_webhook_event_for_service',{p_order_id:intent.order_id,p_provider:'moneyfusion',p_provider_event_id:token+':'+event,p_event_type:event,p_transaction_id:transaction,p_status:eventStatus,p_payload_hash:null},sk);
   return res.status(200).json({ok:true,event,status:eventStatus,result});
