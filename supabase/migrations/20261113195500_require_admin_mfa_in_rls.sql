@@ -72,3 +72,14 @@ with check (
   (select public.is_platform_admin())
   and (select public.admin_mfa_verified())
 );
+
+-- Broadcast history is also restricted to a verified administrator session.
+drop policy if exists platform_broadcasts_admin_select on public.platform_broadcasts;
+create policy platform_broadcasts_admin_select
+on public.platform_broadcasts
+for select
+to authenticated
+using (
+  (select public.is_platform_admin())
+  and (select public.admin_mfa_verified())
+);
